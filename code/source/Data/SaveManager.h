@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <filesystem>
 #include "../Debug/Debug.h"
 
 #ifdef _DEBUG
@@ -240,5 +241,10 @@ namespace RogueSaveManager {
 	{
 		ASSERT(inStream.is_open());
 		inStream.close();
+	}
+
+	static bool FileExists(const std::string filename)
+	{
+		return std::filesystem::exists(filename);
 	}
 };

@@ -102,6 +102,8 @@ public:
     Vec3 GetVector();
     void SetVector(Vec3 vector);
 
+    Vec2 AsVec2();
+
     Tile& GetTile();
     Tile* operator ->();
 
@@ -157,6 +159,11 @@ inline Location operator-(Location lhs, Vec2 rhs)
     ASSERT(x >= 0);
     ASSERT(y >= 0);
     return Location((ushort)x, (ushort)y, lhs.z());
+}
+
+inline Vec2 operator+(Vec2 lhs, Vec2 rhs)
+{
+    return Vec2(lhs.x + rhs.x, lhs.y + rhs.y);
 }
 
 inline Vec2 operator-(Vec2 lhs, Vec2 rhs)

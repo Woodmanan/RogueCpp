@@ -28,6 +28,7 @@ public:
     color_t m_backgroundColor;
 	bool m_blocksVision;
 	float m_movementCost;
+    int m_index = -1;
 };
 
 class TileStats

@@ -85,6 +85,11 @@ void Location::SetVector(Vec3 vector)
              ( intZ                     & zMask);
 }
 
+Vec2 Location::AsVec2()
+{
+    return Vec2(x(), y());
+}
+
 Tile& Location::GetTile()
 {
     ASSERT(InMap());

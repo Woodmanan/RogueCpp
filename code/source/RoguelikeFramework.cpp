@@ -8,12 +8,13 @@
 #include "Data/SaveManager.h"
 #include "Data/RegisterSaveTypes.h"
 #include "Map/Map.h"
+#include "LOS/LOS.h"
 #include <format>
 #include <chrono>
 
 using namespace std;
 
-void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation)
+void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
 {
     for (int i = 0; i < window.x; i++)
     {
@@ -29,6 +30,17 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             }
         }
     }
+
+    for (int i = -view.GetRadius(); i <= view.GetRadius(); i++)
+    {
+        for (int j = -view.GetRadius(); j <= view.GetRadius(); j++)
+        {
+            Vec2 windowCoord = Vec2(i, j) + Vec2(40, 20);
+            terminal_color(color_from_argb(255, 0, 255, 0));
+            terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+            terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -36,49 +48,36 @@ int main(int argc, char* argv[])
     //Initialize Random
     srand(1);
 
-    Vec2 size(64, 64);
+    Vec2 size(32, 32);
     THandle<Map> map;
-
-    for (int i = 0; i < 1; i++)
-    {
-        map = RogueDataManager::Allocate<Map>(size, i, 2);
-        map->LinkBackingTile<BackingTile>('#', color_from_argb(255, 120, 120, 120), color_from_argb(255, 0, 0, 0), true, -1);
-        map->LinkBackingTile<BackingTile>('.', color_from_argb(255, 200, 200, 200), color_from_argb(255, 0, 0, 0), false, 1);
-
-        map->FillTilesExc(Vec2(0, 0), size, 1);
-        map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
-
-        for (int j = 0; j < 1000; j++)
-        {
-            Vec2 location = Vec2(rand() % map->m_size.x, rand() % map->m_size.y);
-            map->SetTile(location, 0);
-        }
-    }
-
-    map->WrapMapEdges();
-
     Location start = Location(0, 0, 0);
     Location next = Location(1, 1, 0);
+    Location playerLoc = Location(1, 1, 0);
     Location invalid;
     bool testBit;
 
-    //RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
-    //RogueSaveManager::Write("Map", map);
-    //RogueSaveManager::Write("Start", start);
-    //RogueSaveManager::Write("next", next);
-    //RogueSaveManager::Write("invalid", invalid);
-    //RogueDataManager::Get()->SaveAll();
-    //RogueSaveManager::CloseWriteSaveFile();
+    if (RogueSaveManager::FileExists("MySaveFile.rsf"))
+    {
+        RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf");
+        RogueSaveManager::Read("Map", map);
+        RogueSaveManager::Read("Player", playerLoc);
+        RogueDataManager::Get()->LoadAll();
+        RogueSaveManager::CloseReadSaveFile();
+    }
+    else
+    {
+        for (int i = 0; i < 1; i++)
+        {
+            map = RogueDataManager::Allocate<Map>(size, i, 2);
+            map->LinkBackingTile<BackingTile>('#', color_from_argb(255, 120, 120, 120), color_from_argb(255, 0, 0, 0), true, -1);
+            map->LinkBackingTile<BackingTile>('.', color_from_argb(255, 200, 200, 200), color_from_argb(255, 0, 0, 0), false, 1);
 
-    //RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf");
-    //RogueSaveManager::Read("Map", map);
-    //RogueSaveManager::Read("Start", start);
-    //RogueSaveManager::Read("next", next);
-    //RogueSaveManager::Read("invalid", invalid);
-    //RogueDataManager::Get()->LoadAll();
-    //RogueSaveManager::CloseReadSaveFile();
+            map->FillTilesExc(Vec2(0, 0), size, 0);
+            map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
+        }
 
-    Location playerLoc = Location(1, 1, 0);
+        map->WrapMapEdges();
+    }
 
     char k;
     int x = 80, y = 40;
@@ -89,6 +88,9 @@ int main(int argc, char* argv[])
     terminal_print(34, 20, "hello, world! I am here");
     //terminal_print(34, 21, std::to_string(test.GetID()).c_str());
     terminal_refresh();
+
+    View view;
+    view.SetRadius(10);
 
     auto clock = chrono::system_clock::now();
     float FPS = 0.0f;
@@ -102,6 +104,11 @@ int main(int argc, char* argv[])
         switch (k)
         {
         case TK_Q:
+            RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
+            RogueSaveManager::Write("Map", map);
+            RogueSaveManager::Write("Player", playerLoc);
+            RogueDataManager::Get()->SaveAll();
+            RogueSaveManager::CloseWriteSaveFile();
             shouldBreak = true;
             break;
         case TK_H:
@@ -172,11 +179,24 @@ int main(int argc, char* argv[])
         case TK_N:
             playerLoc = playerLoc.Traverse(Direction::SouthEast);
             break;
+        case TK_SPACE:
+            map->SetTile(playerLoc.AsVec2(), 1 - playerLoc->m_backingTile->m_index);
+            break;
+        case TK_EQUALS:
+            view.SetRadius(view.GetRadius() + 1);
+            break;
+        case TK_MINUS:
+            view.SetRadius(std::max(0, view.GetRadius() - 1));
+            break;
         }
 
         k = TK_G;
         terminal_clear();
-        RenderMap(map, size, Vec2(x, y), playerLoc);
+
+        LOS::Calculate(view, playerLoc);
+
+        RenderMap(map, size, Vec2(x, y), playerLoc, view);
+        terminal_color(color_from_argb(255, 255, 0, 255));
         terminal_put(40, 20, '@');
 
 

@@ -29,6 +29,7 @@ int Map::LinkBackingTile(THandle<BackingTile> tile)
 {
 	m_backingTiles.push_back(tile);
 	ASSERT(m_backingTiles.size() > 0);
+    tile->m_index = m_backingTiles.size() - 1;
 	return m_backingTiles.size() - 1;
 }
 
@@ -137,6 +138,7 @@ namespace RogueSaveManager
         Write("BGColor", value.m_backgroundColor);
 		Write("Blocks Vision", value.m_blocksVision);
 		Write("Movement Cost", value.m_movementCost);
+        Write("Index", value.m_index);
 		RemoveOffset();
 	}
 
@@ -148,6 +150,7 @@ namespace RogueSaveManager
         Read("BGColor", value.m_backgroundColor);
         Read("Blocks Vision", value.m_blocksVision);
         Read("Movement Cost", value.m_movementCost);
+        Read("Index", value.m_index);
         RemoveOffset();
     }
 
