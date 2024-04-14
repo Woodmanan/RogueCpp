@@ -14,7 +14,7 @@
 
 using namespace std;
 
-void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view, View& fakeBackground)
 {
     for (int i = 0; i < window.x; i++)
     {
@@ -22,7 +22,7 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
         {
             Vec2 playerOffset = Vec2(i, window.y - j) - Vec2(40, 20);
             Location mapLocation = playerLocation + playerOffset;
-            if (mapLocation.InMap())
+            if (mapLocation.GetValid() && mapLocation.InMap())
             {
                 terminal_color(mapLocation->m_backingTile->m_foregroundColor);
                 terminal_bkcolor(mapLocation->m_backingTile->m_backgroundColor);
@@ -31,15 +31,46 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
         }
     }
 
-    for (int i = -view.GetRadius(); i <= view.GetRadius(); i++)
+    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+
+    for (int i = -fakeBackground.GetRadius(); i <= fakeBackground.GetRadius(); i++)
     {
-        for (int j = -view.GetRadius(); j <= view.GetRadius(); j++)
+        for (int j = -fakeBackground.GetRadius(); j <= fakeBackground.GetRadius(); j++)
         {
-            Vec2 windowCoord = Vec2(i, j) + Vec2(40, 20);
-            terminal_color(color_from_argb(255, 0, 255, 0));
+            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+            terminal_color(color_from_argb(255, 0, 40, 0));
+            terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+            terminal_put(windowCoord.x, windowCoord.y, fakeBackground.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
+        }
+    }
+
+    for (int i = -maxRadius; i <= maxRadius; i++)
+    {
+        for (int j = -maxRadius; j <= maxRadius; j++)
+        {
+            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+
+            bool visible = view.GetVisibilityLocal(i, j);
+
+            if (visible)
+            {
+                terminal_color(color_from_argb(255, 0, 255, 0));
+            }
+            else
+            {
+                terminal_color(color_from_argb(255, 0, 0, 0));
+            }
             terminal_bkcolor(color_from_argb(255, 0, 0, 0));
             terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
         }
+    }
+}
+
+void ResetMap(THandle<Map> map)
+{
+    if (map.IsValid())
+    {
+
     }
 }
 
@@ -50,11 +81,8 @@ int main(int argc, char* argv[])
 
     Vec2 size(32, 32);
     THandle<Map> map;
-    Location start = Location(0, 0, 0);
-    Location next = Location(1, 1, 0);
     Location playerLoc = Location(1, 1, 0);
-    Location invalid;
-    bool testBit;
+    Location warpPosition;
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
@@ -71,6 +99,8 @@ int main(int argc, char* argv[])
             map = RogueDataManager::Allocate<Map>(size, i, 2);
             map->LinkBackingTile<BackingTile>('#', color_from_argb(255, 120, 120, 120), color_from_argb(255, 0, 0, 0), true, -1);
             map->LinkBackingTile<BackingTile>('.', color_from_argb(255, 200, 200, 200), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('S', color_from_argb(255, 200, 100, 200), color_from_argb(255, 80, 80, 80), false, 1);
+            map->LinkBackingTile<BackingTile>('0', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
 
             map->FillTilesExc(Vec2(0, 0), size, 0);
             map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
@@ -91,6 +121,9 @@ int main(int argc, char* argv[])
 
     View view;
     view.SetRadius(10);
+    View fakeBackground;
+    fakeBackground.SetRadius(0);
+
 
     auto clock = chrono::system_clock::now();
     float FPS = 0.0f;
@@ -180,7 +213,7 @@ int main(int argc, char* argv[])
             playerLoc = playerLoc.Traverse(Direction::SouthEast);
             break;
         case TK_SPACE:
-            map->SetTile(playerLoc.AsVec2(), 1 - playerLoc->m_backingTile->m_index);
+            map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
         case TK_EQUALS:
             view.SetRadius(view.GetRadius() + 1);
@@ -188,14 +221,37 @@ int main(int argc, char* argv[])
         case TK_MINUS:
             view.SetRadius(std::max(0, view.GetRadius() - 1));
             break;
+        case TK_ENTER:
+            if (!warpPosition.GetValid())
+            {
+                warpPosition = playerLoc;
+            }
+            else
+            {
+                //Establish the warp!
+                map->SetTile(playerLoc.AsVec2(), 3);
+                map->SetTile(warpPosition.AsVec2(), 3);
+                map->CreatePortal(warpPosition.AsVec2(), playerLoc.AsVec2());
+                warpPosition = Location();
+            }
+            break;
+        case TK_S:
+            map->SetTile(playerLoc.AsVec2(), 2);
+            break;
+        case TK_R:
+            map->Reset();
+            map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
+            break;
         }
 
         k = TK_G;
         terminal_clear();
 
         LOS::Calculate(view, playerLoc);
+        fakeBackground.ResetAt(playerLoc);
+        fakeBackground.BuildLocalSpace();
 
-        RenderMap(map, size, Vec2(x, y), playerLoc, view);
+        RenderMap(map, size, Vec2(x, y), playerLoc, view, fakeBackground);
         terminal_color(color_from_argb(255, 255, 0, 255));
         terminal_put(40, 20, '@');
 

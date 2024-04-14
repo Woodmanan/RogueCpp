@@ -76,6 +76,54 @@ void Map::FillTilesExc(Vec2 from, Vec2 to, int index)
     }
 }
 
+void Map::Reset()
+{
+    for (int i = 0; i < m_size.x; i++)
+    {
+        for (int j = 0; j < m_size.y; j++)
+        {
+            SetTile(Vec2(i, j), 0);
+            Tile& tile = GetTile(i, j);
+            if (tile.m_stats.IsValid())
+            {
+                WrapTile(Vec2(i, j));
+            }
+        }
+    }
+}
+
+THandle<TileStats> Map::GetOrAddStats(Tile& tile)
+{
+    if (!tile.m_stats.IsValid())
+    {
+        tile.m_stats = RogueDataManager::Allocate<TileStats>();
+    }
+
+    ASSERT(tile.m_stats.IsValid());
+
+    return tile.m_stats;
+}
+
+THandle<TileNeighbors> Map::GetOrAddNeighbors(Tile& tile)
+{
+    THandle<TileStats> stats = GetOrAddStats(tile);
+
+    if (!stats->m_neighbors.IsValid())
+    {
+        stats->m_neighbors = RogueDataManager::Allocate<TileNeighbors>();
+    }
+
+    ASSERT(stats->m_neighbors.IsValid());
+
+    return stats->m_neighbors;
+}
+
+void Map::SetNeighbors(Tile& tile, TileNeighbors neighbors)
+{
+    THandle<TileNeighbors> tileNeighbors = GetOrAddNeighbors(tile);
+    tileNeighbors.GetReference() = neighbors;
+}
+
 void Map::WrapMapEdges()
 {
     for (int x = 0; x < m_size.x; x++)
@@ -94,21 +142,9 @@ void Map::WrapMapEdges()
 void Map::WrapTile(Vec2 location)
 {
     Tile& tile = GetTile(location);
-    if (!tile.m_stats.IsValid())
-    {
-        tile.m_stats = RogueDataManager::Allocate<TileStats>();
-    }
+    THandle<TileNeighbors> neighbors = GetOrAddNeighbors(tile);
+    ASSERT(tile.m_stats.IsValid() && neighbors.IsValid() && tile.m_stats->m_neighbors.GetInternalOffset() == neighbors.GetInternalOffset());
 
-    THandle<TileStats> stats = tile.m_stats;
-    ASSERT(stats.IsValid());
-
-
-    if (!tile.m_stats->m_neighbors.IsValid())
-    {
-        tile.m_stats->m_neighbors = RogueDataManager::Allocate<TileNeighbors>();
-    }
-
-    THandle<TileNeighbors> neighbors = tile.m_stats->m_neighbors;
     neighbors->N  = WrapVector(location,  0,  1);
     neighbors->NE = WrapVector(location,  1,  1);
     neighbors->E  = WrapVector(location,  1,  0);
@@ -126,6 +162,22 @@ Location Map::WrapVector(Vec2 location, int xOffset, int yOffset)
     int y = location.y + yOffset;
     y = (y + m_size.y) % m_size.y;
     return Location(x, y, z);
+}
+
+void Map::CreatePortal(Vec2 open, Vec2 exit)
+{
+    WrapTile(open);
+    WrapTile(exit);
+
+    Tile& openTile = GetTile(open);
+    Tile& exitTile = GetTile(exit);
+    
+    THandle<TileStats> openStats = GetOrAddStats(openTile);
+    THandle<TileStats> exitStats = GetOrAddStats(exitTile);
+    
+    THandle<TileNeighbors> hold = openStats->m_neighbors;
+    openStats->m_neighbors = exitStats->m_neighbors;
+    exitStats->m_neighbors = hold;
 }
 
 namespace RogueSaveManager
@@ -171,6 +223,7 @@ namespace RogueSaveManager
     void Serialize(Map& value)
     {
         AddOffset();
+        Write("Z", value.z);
         Write("Size", value.m_size);
         Write("Interleave", value.m_interleaveBits);
         Write("Backing Tiles", value.m_backingTiles);
@@ -196,6 +249,7 @@ namespace RogueSaveManager
     void Deserialize(Map& value)
     {
         AddOffset();
+        Read("Z", value.z);
         Read("Size", value.m_size);
         Read("Interleave", value.m_interleaveBits);
         Read("Backing Tiles", value.m_backingTiles);

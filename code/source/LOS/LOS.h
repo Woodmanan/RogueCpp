@@ -46,5 +46,55 @@ int IntLerp(int a, int b, int numerator, int denominator);
 
 namespace LOS
 {
+	struct Fraction
+	{
+		int m_numerator;
+		int m_denominator;
+
+		Fraction(int numerator, int denominator) : m_numerator(numerator), m_denominator(denominator) {}
+	};
+
+	struct Row
+	{
+		int m_depth;
+		Fraction m_startSlope;
+		Fraction m_endSlope;
+
+		Row(int depth, Fraction startSlope, Fraction endSlope) :
+			m_depth(depth),
+			m_startSlope(startSlope),
+			m_endSlope(endSlope) {}
+
+		int GetMinCol()
+		{
+			//Needs to round ties up!
+			int numerator = 2 * m_depth * m_startSlope.m_numerator + m_startSlope.m_denominator;
+			int denominator = 2 * m_startSlope.m_denominator;
+
+			return IntDivisionFloor(numerator, denominator);
+		}
+
+		int GetMaxCol()
+		{
+			//Needs to round ties down!
+			int numerator = 2 * m_depth * m_endSlope.m_numerator - m_endSlope.m_denominator;
+			int denominator = 2 * m_endSlope.m_denominator;
+
+			return IntDivisionCeil(numerator, denominator);
+		}
+	};
+
 	void Calculate(View& view, Location location);
+
+	void CalculateQuadrant(View& view, Direction direction);
+
+	void Scan(View& view, Direction direction, Row& row);
+
+	Location GetTile(View& view, Direction direction, int col, int row);
+
+	bool IsSymmetric(Row& row, int col);
+	bool IsWall(Location location);
+	bool IsFloor(Location location);
+	void Reveal(View& view, Direction direction, int col, int row);
+	Fraction Slope(int col, int row);
 }

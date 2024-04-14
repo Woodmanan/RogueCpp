@@ -106,9 +106,17 @@ public:
     void FillTilesInc(Vec2 from, Vec2 to, int index);
     void FillTilesExc(Vec2 from, Vec2 to, int index);
 
+    void Reset();
+
+    THandle<TileStats> GetOrAddStats(Tile& tile);
+    THandle<TileNeighbors> GetOrAddNeighbors(Tile& tile);
+    void SetNeighbors(Tile& tile, TileNeighbors neighbors);
+
     void WrapMapEdges();
     void WrapTile(Vec2 location);
     Location WrapVector(Vec2 location, int xOffset, int yOffset);
+
+    void CreatePortal(Vec2 open, Vec2 exit);
 
     int LinkBackingTile(THandle<BackingTile> tile);
     template<typename T, class... Args>

@@ -124,7 +124,7 @@ Location Location::Traverse(short xOffset, short yOffset)
         return Location(x(), y(), z());
     }
 
-    short index = (xOffset + 1) + ((yOffset + 1) * 3);
+    short index = (xOffset + 1) + ((1 - yOffset) * 3);
 
     /* 
     *  0 | 1 | 2

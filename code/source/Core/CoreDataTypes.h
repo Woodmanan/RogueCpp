@@ -170,3 +170,30 @@ inline Vec2 operator-(Vec2 lhs, Vec2 rhs)
 {
     return Vec2(lhs.x - rhs.x, lhs.y - rhs.y);
 }
+
+inline int IntDivisionFloor(int num, int denom)
+{
+    if (num < 0)
+    {
+        int remainder = (num % denom) != 0;
+        return num / denom - remainder;
+    }
+    else
+    {
+        return num / denom;
+    }
+
+}
+
+inline int IntDivisionCeil(int num, int denom)
+{
+    if (num > 0)
+    {
+        int remainder = (num % denom) != 0;
+        return num / denom + remainder;
+    }
+    else
+    {
+        return num / denom;
+    }
+}
