@@ -129,10 +129,9 @@ namespace RogueSaveManager {
 		AddOffset();
 		size_t size;
 		Read("Count", size);
-		values.reserve(size);
+		values.resize(size);
 		for (int i = 0; i < size; i++)
 		{
-			values.emplace_back(T());
 			Deserialize(values[i]);
 		}
 		RemoveOffset();
@@ -224,8 +223,9 @@ namespace RogueSaveManager {
 		{
 			Deserialize(buf[i]);
 		}
+
 		ReadNewline();
-		if (strcmp(buf, header) != 0)
+		if (strncmp(buf, header, 4) != 0)
 		{
 			HALT();
 		}
