@@ -99,6 +99,11 @@ bool View::GetVisibilityLocal(int x, int y)
 	return m_visibility[GetIndexByLocal(x, y)];
 }
 
+void View::SetLocationLocal(int x, int y, Location location)
+{
+	m_locations[GetIndexByLocal(x, y)] = location;
+}
+
 int IntLerp(int a, int b, int numerator, int denominator)
 {
 	int offset = (b - a);
@@ -115,12 +120,14 @@ namespace LOS
 	void Calculate(View& view, Location location)
 	{
 		view.ResetAt(location);
-		view.BuildLocalSpace();
+		//view.BuildLocalSpace();
 
 		CalculateQuadrant(view, West);
 		CalculateQuadrant(view, East);
 		CalculateQuadrant(view, North);
 		CalculateQuadrant(view, South);
+
+		//CalculateQuadrant(view, South);
 	}
 
 	void CalculateQuadrant(View& view, Direction direction)
@@ -140,8 +147,8 @@ namespace LOS
 
 		for (int col = minCol; col <= maxCol; col++)
 		{
+			ResolveTileBresenham(view, direction, col, row.m_depth);
 			Location tile = GetTile(view, direction, col, row.m_depth);
-			bool prevWall = IsWall(prevTile);
 
 			if (IsWall(tile) || IsSymmetric(row, col))
 			{
@@ -169,11 +176,119 @@ namespace LOS
 		}
 	}
 
+	void ResolveTileBresenham(View& view, Direction direction, int col, int row)
+	{
+		Location point = view.GetLocationLocal(0, 0);
+		Vec2 endpoint = Vec2(col, row);
+		int x0 = 0;
+		int y0 = 0;
+		int dx = abs(endpoint.x - 0), sx = 0 < endpoint.x ? 1 : -1;
+		int dy = -abs(endpoint.y - 0), sy = 0 < endpoint.y ? 1 : -1;
+		int err = dx + dy, e2; /* error value e_xy */
+
+		for (;;) {  /* loop */
+			if (x0 == endpoint.x && y0 == endpoint.y)
+			{
+				break;
+			}
+			Vec2 currentPoint = Transform(direction, x0, y0);
+			e2 = 2 * err;
+			if (e2 >= dy) { err += dy; x0 += sx; } /* e_xy+e_x > 0 */
+			if (e2 <= dx) { err += dx; y0 += sy; } /* e_xy+e_y < 0 */
+
+			Vec2 newPoint = Transform(direction, x0, y0);
+
+			point = point.Traverse(newPoint - currentPoint);
+		}
+
+		Vec2 finalPoint = Transform(direction, col, row);
+		view.SetLocationLocal(finalPoint.x, finalPoint.y, point);
+	}
+
+	void ResolveTile(View& view, Direction direction, int col, int row)
+	{
+		//Fraction slope = CenterSlope(col, row);
+
+		int parentRow = row - 1;
+		int parentCol = 0;
+
+		int colA = FractionMultiplyRoundDown(parentRow, Slope(col, row));
+		int colB = FractionMultiplyRoundUp(parentRow, OppositeSlope(col, row));
+
+		Location tileA = GetTile(view, direction, colA, parentRow);
+		Location tileB = GetTile(view, direction, colB, parentRow);
+
+		if (colA == colB)
+		{
+			parentCol = colA;
+		}
+		else if (!tileA.GetValid() || !tileB.GetValid()) // If one of them isn't valid, we haven't shot any rays through it - we can skip!
+		{
+			parentCol = (tileA.GetValid()) ? colA : colB;
+		}
+		else if (IsWall(tileA)) //If one is a wall, the other must not be (since we can see through it) - pick the opposite
+		{
+			parentCol = colB;
+		}
+		else if (IsWall(tileB)) //Same as above
+		{
+			parentCol = colA;
+		}
+		else
+		{
+			//Vec2
+			//Tiebreaker - we have two valid, open squares. Both are sending light into this square
+
+			//Switch up our casting to using our center position - we're looking for closer alignments now
+			int centerLow = FractionMultiplyRoundDown(parentRow, CenterSlope(col, row));
+			int centerHigh = FractionMultiplyRoundUp(parentRow, CenterSlope(col, row));
+
+			ASSERT(centerLow == colA || centerLow == colB);
+			ASSERT(centerHigh == colA || centerHigh == colB);
+
+
+			if (centerLow == centerHigh)
+			{
+				//Common case - one of them is more in line with this tile, so we should pick that one.
+				parentCol = centerLow;
+			}
+			else
+			{
+				//Uncommon case - we're split perfectly down the middle. Tiebreak to the center.
+				parentCol = (abs(colA) < abs(colB)) ? colA : colB;
+			}
+		}
+
+		Vec2 parentLoc = Transform(direction, parentCol, parentRow);
+		Vec2 childLoc = Transform(direction, col, row);
+
+		Vec2 offset = childLoc - parentLoc;
+
+		Location parent = GetTile(view, direction, parentCol, parentRow);
+		ASSERT(parent.GetValid());
+
+		SetTile(view, direction, col, row, GetTile(view, direction, parentCol, parentRow).Traverse(offset.x, offset.y));
+	}
+
 	Location GetTile(View& view, Direction direction, int col, int row)
+	{
+		Vec2 pos = Transform(direction, col, row);
+
+		return view.GetLocationLocal(pos.x, pos.y);
+	}
+
+	void SetTile(View& view, Direction direction, int col, int row, Location location)
+	{
+		Vec2 pos = Transform(direction, col, row);
+
+		view.SetLocationLocal(pos.x, pos.y, location);
+	}
+
+	Vec2 Transform(Direction direction, int col, int row)
 	{
 		int x = 0;
 		int y = 0;
-		
+
 		switch (direction)
 		{
 		case North:
@@ -194,7 +309,28 @@ namespace LOS
 			break;
 		}
 
-		return view.GetLocationLocal(x, y);
+		return Vec2(x, y);
+	}
+
+	Vec2 GetBresenhamParent(int x, int y)
+	{
+		bool negX = x < 0;
+		bool nexY = y < 0;
+
+		x = abs(x);
+		y = abs(y);
+
+		bool flipped = (x > y);
+		if (flipped)
+		{
+			int hold = x;
+			x = y;
+			y = hold;
+		}
+
+
+
+		return Vec2(0, 0);
 	}
 
 	bool IsSymmetric(Row& row, int col)
@@ -216,34 +352,23 @@ namespace LOS
 
 	void Reveal(View& view, Direction direction, int col, int row)
 	{
-		int x = 0;
-		int y = 0;
+		Vec2 pos = Transform(direction, col, row);
 
-		switch (direction)
-		{
-		case North:
-			x = col;
-			y = row;
-			break;
-		case East:
-			x = row;
-			y = col;
-			break;
-		case South:
-			x = col;
-			y = -row;
-			break;
-		case West:
-			x = -row;
-			y = col;
-			break;
-		}
-
-		view.Mark(x, y, true);
+		view.Mark(pos.x, pos.y, true);
 	}
 
 	Fraction Slope(int col, int row)
 	{
 		return Fraction(2 * col - 1, 2 * row);
+	}
+
+	Fraction CenterSlope(int col, int row)
+	{
+		return Fraction(col, row);
+	}
+
+	Fraction OppositeSlope(int col, int row)
+	{
+		return Fraction(2 * col + 1, 2 * row);
 	}
 }

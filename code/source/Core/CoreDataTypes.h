@@ -107,8 +107,10 @@ public:
     Tile& GetTile();
     Tile* operator ->();
 
+#ifndef _DEBUG
     int GetData() { return m_data; }
     void SetData(int newData) { m_data = newData; }
+#endif // _DEBUG
 
     bool InMap();
 
@@ -119,6 +121,8 @@ public:
     Location _Traverse_No_Neighbor(Direction direction);
     Location _Traverse_Neighbors(Direction direction);
 
+
+
     static const int xSize = 12;
     static const int ySize = 12;
     static const int zSize = 7;
@@ -127,8 +131,16 @@ public:
     static const int zMask = 0x0000007F;
     static const int invalidMask = 0x80000000;
 
+#ifndef _DEBUG
 private:
     int m_data;
+#else
+private:
+    bool m_valid;
+    ushort m_x;
+    ushort m_y;
+    ushort m_z;
+#endif
 };
 
 namespace RogueSaveManager
@@ -146,9 +158,16 @@ inline Location operator+(Location lhs, Vec2 rhs)
 {
     int x = lhs.x() + rhs.x;
     int y = lhs.y() + rhs.y;
-    ASSERT(x < USHRT_MAX);
-    ASSERT(y < USHRT_MAX);
-    return Location((ushort) x, (ushort) y, lhs.z());
+    if (x < 0 || y < 0)
+    {
+        return Location();
+    }
+    else
+    {
+        ASSERT(x < USHRT_MAX);
+        ASSERT(y < USHRT_MAX);
+        return Location((ushort)x, (ushort)y, lhs.z());
+    }
 }
 
 //Define all the useful math ops here!

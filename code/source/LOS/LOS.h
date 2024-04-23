@@ -36,6 +36,9 @@ public:
 	Location GetLocationLocal(int x, int y);
 	bool GetVisibilityLocal(int x, int y);
 
+	//Setters
+	void SetLocationLocal(int x, int y, Location location);
+
 protected:
 	int m_radius = -1;
 	vector<Location> m_locations;
@@ -54,6 +57,22 @@ namespace LOS
 		Fraction(int numerator, int denominator) : m_numerator(numerator), m_denominator(denominator) {}
 	};
 
+	inline int FractionMultiplyRoundUp(int value, Fraction fraction)
+	{
+		int numerator = 2 * value * fraction.m_numerator + fraction.m_denominator;
+		int denominator = 2 * fraction.m_denominator;
+
+		return IntDivisionFloor(numerator, denominator);
+	}
+
+	inline int FractionMultiplyRoundDown(int value, Fraction fraction)
+	{
+		int numerator = 2 * value * fraction.m_numerator - fraction.m_denominator;
+		int denominator = 2 * fraction.m_denominator;
+
+		return IntDivisionCeil(numerator, denominator);
+	}
+
 	struct Row
 	{
 		int m_depth;
@@ -67,20 +86,12 @@ namespace LOS
 
 		int GetMinCol()
 		{
-			//Needs to round ties up!
-			int numerator = 2 * m_depth * m_startSlope.m_numerator + m_startSlope.m_denominator;
-			int denominator = 2 * m_startSlope.m_denominator;
-
-			return IntDivisionFloor(numerator, denominator);
+			return FractionMultiplyRoundUp(m_depth, m_startSlope);
 		}
 
 		int GetMaxCol()
 		{
-			//Needs to round ties down!
-			int numerator = 2 * m_depth * m_endSlope.m_numerator - m_endSlope.m_denominator;
-			int denominator = 2 * m_endSlope.m_denominator;
-
-			return IntDivisionCeil(numerator, denominator);
+			return FractionMultiplyRoundDown(m_depth, m_endSlope);
 		}
 	};
 
@@ -90,11 +101,20 @@ namespace LOS
 
 	void Scan(View& view, Direction direction, Row& row);
 
+	void ResolveTile(View& view, Direction direction, int col, int row);
 	Location GetTile(View& view, Direction direction, int col, int row);
+	void SetTile(View& view, Direction direction, int col, int row, Location location);
+
+	Vec2 Transform(Direction direction, int col, int row);
+
+	void ResolveTileBresenham(View& view, Direction direction, int col, int row);
 
 	bool IsSymmetric(Row& row, int col);
 	bool IsWall(Location location);
 	bool IsFloor(Location location);
+	bool RequiresRecast(Location location);
 	void Reveal(View& view, Direction direction, int col, int row);
 	Fraction Slope(int col, int row);
+	Fraction CenterSlope(int col, int row);
+	Fraction OppositeSlope(int col, int row);
 }

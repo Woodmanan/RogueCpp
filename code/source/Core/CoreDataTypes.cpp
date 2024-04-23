@@ -19,28 +19,48 @@ std::ostream& operator << (std::ostream& out, Direction direction)
 
 Location::Location()
 {
+#ifdef _DEBUG
+    m_valid = false;
+    m_x = 0;
+    m_y = 0;
+    m_z = 0;
+#else
     m_data = invalidMask;
+#endif
 }
 
 Location::Location(ushort x, ushort y, ushort z)
 {
     static_assert((xSize + ySize + zSize + 1) == 32, "Location will not fit into an int!");
-    int intX = (int)x;
-    int intY = (int)y;
-    int intZ = (int)z;
-
-    m_data = ((intX << (ySize + zSize)) & xMask) |
-             ((intY << (zSize))         & yMask) |
-             ( intZ                     & zMask);
+    ASSERT(x < (1 << xSize));
+    ASSERT(y < (1 << ySize));
+    ASSERT(z < (1 << zSize));
+#ifdef _DEBUG
+    m_x = x;
+    m_y = y;
+    m_z = z;
+    m_valid = true;
+#else
+    m_data = ((x << (ySize + zSize)) & xMask) |
+             ((y << (zSize))         & yMask) |
+             ( z                     & zMask);
+#endif
 }
 
 bool Location::GetValid()
 {
+#ifdef _DEBUG
+    return m_valid;
+#else
     return !(m_data & invalidMask);
+#endif
 }
 
 void Location::SetValid(bool valid)
 {
+#ifdef _DEBUG
+    m_valid = valid;
+#else
     if (valid)
     {
         m_data &= (~invalidMask);
@@ -49,24 +69,37 @@ void Location::SetValid(bool valid)
     {
         m_data |= invalidMask;
     }
+#endif
 }
 
 ushort Location::x()
 {
     ASSERT(GetValid());
+#ifdef _DEBUG
+    return m_x;
+#else
     return (ushort)((m_data & xMask) >> (ySize + zSize));
+#endif
 }
 
 ushort Location::y()
 {
     ASSERT(GetValid());
+#ifdef _DEBUG
+    return m_y;
+#else
     return (ushort)((m_data & yMask) >> (zSize));
+#endif
 }
 
 ushort Location::z()
 {
     ASSERT(GetValid());
+#ifdef _DEBUG
+        return m_z;
+#else
     return (ushort)(m_data & zMask);
+#endif
 }
 
 Vec3 Location::GetVector()
@@ -76,13 +109,19 @@ Vec3 Location::GetVector()
 
 void Location::SetVector(Vec3 vector)
 {
-    int intX = (int)vector.x;
-    int intY = (int)vector.y;
-    int intZ = (int)vector.z;
-
-    m_data = ((intX << (ySize + zSize)) & xMask) |
-             ((intY << (zSize))         & yMask) |
-             ( intZ                     & zMask);
+    ASSERT(vector.x < (1 << xSize));
+    ASSERT(vector.y < (1 << ySize));
+    ASSERT(vector.z < (1 << zSize));
+#ifdef _DEBUG
+    m_x = vector.x;
+    m_y = vector.y;
+    m_z = vector.z;
+    m_valid = true;
+#else
+    m_data = ((vector.x << (ySize + zSize)) & xMask) |
+             ((vector.y << (zSize))         & yMask) |
+             ( vector.z                     & zMask);
+#endif
 }
 
 Vec2 Location::AsVec2()
@@ -271,36 +310,30 @@ namespace RogueSaveManager
     void Serialize(Location& value)
     {
         AddOffset();
-        if (debug)
+#ifdef _DEBUG
+        Write("Valid", value.GetValid());
+        if (value.GetValid())
         {
-            Write("Valid", value.GetValid());
-            if (value.GetValid())
-            {
-                Write("Vector", value.GetVector());
-            }
+            Write("Vector", value.GetVector());
         }
-        else
-        {
-            Write("Data", value.GetData());
-        }
+#else
+     Write("Data", value.GetData());
+#endif
         RemoveOffset();
     }
 
     void Deserialize(Location& value)
     {
         AddOffset();
-        if (debug)
+#ifdef _DEBUG
+        value.SetValid(Read<bool>("Valid"));
+        if (value.GetValid())
         {
-            value.SetValid(Read<bool>("Valid"));
-            if (value.GetValid())
-            {
-                value.SetVector(Read<Vec3>("Vector"));
-            }
+            value.SetVector(Read<Vec3>("Vector"));
         }
-        else
-        {
-            value.SetData(Read<int>("Data"));
-        }
+#else
+        value.SetData(Read<int>("Data"));
+#endif
         RemoveOffset();
     }
 }

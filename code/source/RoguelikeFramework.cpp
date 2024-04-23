@@ -14,6 +14,15 @@
 
 using namespace std;
 
+color_t Blend(color_t a, color_t b)
+{
+    uint32_t alpha = (((a >> 24) & 0xFF) + ((b >> 24) & 0xFF)) / 2 & 0xFF;
+    uint32_t red =   (((a >> 16) & 0xFF) + ((b >> 16) & 0xFF)) / 2 & 0xFF;
+    uint32_t green = (((a >>  8) & 0xFF) + ((b >>  8) & 0xFF)) / 2 & 0xFF;
+    uint32_t blue =  (((a >>  0) & 0xFF) + ((b >>  0) & 0xFF)) / 2 & 0xFF;
+    return (alpha << 24) | (red << 16) | (green << 8) | blue;
+}
+
 void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view, View& fakeBackground)
 {
     for (int i = 0; i < window.x; i++)
@@ -51,18 +60,51 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
 
             bool visible = view.GetVisibilityLocal(i, j);
-
-            if (visible)
+            if (view.GetLocationLocal(i, j).GetValid())
             {
-                terminal_color(color_from_argb(255, 0, 255, 0));
+                if (visible)
+                {
+                    color_t green = color_from_argb(255, 0, 120, 0);
+                    terminal_color(Blend(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor, green));
+                }
+                else
+                {
+                    terminal_color(color_from_argb(255, 0, 0, 0));
+                }
+                terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+                terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
             }
             else
             {
                 terminal_color(color_from_argb(255, 0, 0, 0));
+                terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+                terminal_put(windowCoord.x, windowCoord.y, ' ');
             }
-            terminal_bkcolor(color_from_argb(255, 0, 0, 0));
-            terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
         }
+    }
+}
+
+void RenderBresenham(Vec2 window, Vec2 endpoint)
+{
+    terminal_color(color_from_argb(255, 100, 0, 100));
+    terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+    int x0 = 0;
+    int y0 = 0;
+    int dx = abs(endpoint.x - 0), sx = 0 < endpoint.x ? 1 : -1;
+    int dy = -abs(endpoint.y - 0), sy = 0 < endpoint.y ? 1 : -1;
+    int err = dx + dy, e2; /* error value e_xy */
+
+    for (;;) {  /* loop */
+        Vec2 pos = Vec2(40, 20) + Vec2(x0, -y0);
+        terminal_put(pos.x, pos.y, '*');
+        if (x0 == endpoint.x && y0 == endpoint.y)
+        {
+            terminal_put(pos.x, pos.y, '+');
+            break;
+        }
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; } /* e_xy+e_x > 0 */
+        if (e2 <= dx) { err += dx; y0 += sy; } /* e_xy+e_y < 0 */
     }
 }
 
@@ -83,12 +125,16 @@ int main(int argc, char* argv[])
     THandle<Map> map;
     Location playerLoc = Location(1, 1, 0);
     Location warpPosition;
+    int radius = 10;
+    Vec2 bresenhamPoint = Vec2(0, 0);
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
         RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf");
         RogueSaveManager::Read("Map", map);
         RogueSaveManager::Read("Player", playerLoc);
+        RogueSaveManager::Read("Radius", radius);
+        RogueSaveManager::Read("bPoint", bresenhamPoint);
         RogueDataManager::Get()->LoadAll();
         RogueSaveManager::CloseReadSaveFile();
     }
@@ -120,10 +166,9 @@ int main(int argc, char* argv[])
     terminal_refresh();
 
     View view;
-    view.SetRadius(10);
+    view.SetRadius(radius);
     View fakeBackground;
     fakeBackground.SetRadius(0);
-
 
     auto clock = chrono::system_clock::now();
     float FPS = 0.0f;
@@ -140,6 +185,8 @@ int main(int argc, char* argv[])
             RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
             RogueSaveManager::Write("Map", map);
             RogueSaveManager::Write("Player", playerLoc);
+            RogueSaveManager::Write("Radius", radius);
+            RogueSaveManager::Write("bPoint", bresenhamPoint);
             RogueDataManager::Get()->SaveAll();
             RogueSaveManager::CloseWriteSaveFile();
             shouldBreak = true;
@@ -148,10 +195,7 @@ int main(int argc, char* argv[])
         case TK_LEFT:
             if (terminal_state(TK_SHIFT))
             {
-                for (int i = 0; i < 10; i++)
-                {
-                    playerLoc = playerLoc.Traverse(Direction::West);
-                }
+                bresenhamPoint = bresenhamPoint + Vec2(-1, 0);
             }
             else
             {
@@ -162,10 +206,7 @@ int main(int argc, char* argv[])
         case TK_UP:
             if (terminal_state(TK_SHIFT))
             {
-                for (int i = 0; i < 10; i++)
-                {
-                    playerLoc = playerLoc.Traverse(Direction::North);
-                }
+                bresenhamPoint = bresenhamPoint + Vec2(0, 1);
             }
             else
             {
@@ -176,10 +217,7 @@ int main(int argc, char* argv[])
         case TK_DOWN:
             if (terminal_state(TK_SHIFT))
             {
-                for (int i = 0; i < 10; i++)
-                {
-                    playerLoc = playerLoc.Traverse(Direction::South);
-                }
+                bresenhamPoint = bresenhamPoint + Vec2(0, -1);
             }
             else
             {
@@ -190,10 +228,7 @@ int main(int argc, char* argv[])
         case TK_RIGHT:
             if (terminal_state(TK_SHIFT))
             {
-                for (int i = 0; i < 10; i++)
-                {
-                    playerLoc = playerLoc.Traverse(Direction::East);
-                }
+                bresenhamPoint = bresenhamPoint + Vec2(1, 0);
             }
             else
             {
@@ -201,25 +236,55 @@ int main(int argc, char* argv[])
             }
             break;
         case TK_Y:
-            playerLoc = playerLoc.Traverse(Direction::NorthWest);
+            if (terminal_state(TK_SHIFT))
+            {
+                bresenhamPoint = bresenhamPoint + Vec2(-1, 1);
+            }
+            else
+            {
+                playerLoc = playerLoc.Traverse(Direction::NorthWest);
+            }
             break;
         case TK_U:
-            playerLoc = playerLoc.Traverse(Direction::NorthEast);
+            if (terminal_state(TK_SHIFT))
+            {
+                bresenhamPoint = bresenhamPoint + Vec2(1, 1);
+            }
+            else
+            {
+                playerLoc = playerLoc.Traverse(Direction::NorthEast);
+            }
             break;
         case TK_B:
-            playerLoc = playerLoc.Traverse(Direction::SouthWest);
+            if (terminal_state(TK_SHIFT))
+            {
+                bresenhamPoint = bresenhamPoint + Vec2(-1, -1);
+            }
+            else
+            {
+                playerLoc = playerLoc.Traverse(Direction::SouthWest);
+            }
             break;
         case TK_N:
-            playerLoc = playerLoc.Traverse(Direction::SouthEast);
+            if (terminal_state(TK_SHIFT))
+            {
+                bresenhamPoint = bresenhamPoint + Vec2(1, -1);
+            }
+            else
+            {
+                playerLoc = playerLoc.Traverse(Direction::SouthEast);
+            }
             break;
         case TK_SPACE:
             map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
         case TK_EQUALS:
-            view.SetRadius(view.GetRadius() + 1);
+            radius = radius + 1;
+            view.SetRadius(radius);
             break;
         case TK_MINUS:
-            view.SetRadius(std::max(0, view.GetRadius() - 1));
+            radius = std::max(0, radius - 1);
+            view.SetRadius(radius);
             break;
         case TK_ENTER:
             if (!warpPosition.GetValid())
@@ -239,8 +304,12 @@ int main(int argc, char* argv[])
             map->SetTile(playerLoc.AsVec2(), 2);
             break;
         case TK_R:
-            map->Reset();
-            map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
+            if (!terminal_state(TK_SHIFT))
+            {
+                map->Reset();
+                map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
+            }
+            bresenhamPoint = Vec2(0, 0);
             break;
         }
 
@@ -252,6 +321,7 @@ int main(int argc, char* argv[])
         fakeBackground.BuildLocalSpace();
 
         RenderMap(map, size, Vec2(x, y), playerLoc, view, fakeBackground);
+        RenderBresenham(Vec2(x, y), bresenhamPoint);
         terminal_color(color_from_argb(255, 255, 0, 255));
         terminal_put(40, 20, '@');
 
