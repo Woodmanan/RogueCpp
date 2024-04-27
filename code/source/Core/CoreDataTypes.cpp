@@ -271,6 +271,23 @@ Location Location::_Traverse_Neighbors(Direction direction)
     }
 }
 
+THandle<TileNeighbors> Location::GetNeighbors()
+{
+    if (GetValid())
+    {
+        THandle<TileStats> stats = GetTile().m_stats;
+        if (stats.IsValid())
+        {
+            THandle<TileNeighbors> neighbors = stats->m_neighbors;
+            if (neighbors.IsValid())
+            {
+                return neighbors;
+            }
+        }
+    }
+    return THandle<TileNeighbors>();
+}
+
 namespace RogueSaveManager
 {
     void Serialize(Vec2& value)

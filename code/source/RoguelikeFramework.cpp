@@ -14,6 +14,14 @@
 
 using namespace std;
 
+color_t passColors[5] = {
+    color_from_argb(255, 255, 0, 255),
+    color_from_argb(255, 0, 200, 0),
+    color_from_argb(255, 100, 100, 200),
+    color_from_argb(255, 200, 200, 00),
+    color_from_argb(255, 255, 100, 100),
+};
+
 color_t Blend(color_t a, color_t b)
 {
     uint32_t alpha = (((a >> 24) & 0xFF) + ((b >> 24) & 0xFF)) / 2 & 0xFF;
@@ -23,7 +31,7 @@ color_t Blend(color_t a, color_t b)
     return (alpha << 24) | (red << 16) | (green << 8) | blue;
 }
 
-void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view, View& fakeBackground)
+void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
 {
     for (int i = 0; i < window.x; i++)
     {
@@ -42,17 +50,6 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
 
     int maxRadius = std::min(view.GetRadius(), (int)window.x);
 
-    for (int i = -fakeBackground.GetRadius(); i <= fakeBackground.GetRadius(); i++)
-    {
-        for (int j = -fakeBackground.GetRadius(); j <= fakeBackground.GetRadius(); j++)
-        {
-            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
-            terminal_color(color_from_argb(255, 0, 40, 0));
-            terminal_bkcolor(color_from_argb(255, 0, 0, 0));
-            terminal_put(windowCoord.x, windowCoord.y, fakeBackground.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
-        }
-    }
-
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
@@ -64,7 +61,8 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             {
                 if (visible)
                 {
-                    color_t green = color_from_argb(255, 0, 120, 0);
+                    int step = view.GetVisibilityPassIndex(i, j);
+                    color_t green = passColors[step % 5];
                     terminal_color(Blend(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor, green));
                 }
                 else
@@ -125,7 +123,7 @@ int main(int argc, char* argv[])
     THandle<Map> map;
     Location playerLoc = Location(1, 1, 0);
     Location warpPosition;
-    int radius = 10;
+    int radius = 0;
     Vec2 bresenhamPoint = Vec2(0, 0);
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
@@ -317,10 +315,8 @@ int main(int argc, char* argv[])
         terminal_clear();
 
         LOS::Calculate(view, playerLoc);
-        fakeBackground.ResetAt(playerLoc);
-        fakeBackground.BuildLocalSpace();
 
-        RenderMap(map, size, Vec2(x, y), playerLoc, view, fakeBackground);
+        RenderMap(map, size, Vec2(x, y), playerLoc, view);
         RenderBresenham(Vec2(x, y), bresenhamPoint);
         terminal_color(color_from_argb(255, 255, 0, 255));
         terminal_put(40, 20, '@');

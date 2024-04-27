@@ -21,10 +21,10 @@ public:
 	int GetRadius() { return m_radius; }
 	void ResetAt(Location location);
 
-	int GetIndexByLocal(int x, int y);
+	int GetIndexByLocal(int x, int y) const;
 
 	void Clear();
-	void Mark(int x, int y, bool value);
+	void Mark(int x, int y, uchar value);
 
 	//Local Space Calculations
 	Vec2 GetSensibleParent(int x, int y);
@@ -33,8 +33,9 @@ public:
 
 
 	//Getters
-	Location GetLocationLocal(int x, int y);
-	bool GetVisibilityLocal(int x, int y);
+	Location GetLocationLocal(int x, int y) const;
+	bool GetVisibilityLocal(int x, int y) const;
+	uchar GetVisibilityPassIndex(int x, int y) const;
 
 	//Setters
 	void SetLocationLocal(int x, int y, Location location);
@@ -42,7 +43,7 @@ public:
 protected:
 	int m_radius = -1;
 	vector<Location> m_locations;
-	vector<bool> m_visibility;
+	vector<uchar> m_visibility;
 };
 
 int IntLerp(int a, int b, int numerator, int denominator);
@@ -73,13 +74,28 @@ namespace LOS
 		return IntDivisionCeil(numerator, denominator);
 	}
 
+	inline bool operator <(Fraction lhs, Fraction rhs)
+	{
+		return (lhs.m_numerator * rhs.m_denominator) < (lhs.m_denominator * rhs.m_numerator);
+	}
+
+	inline bool operator >(Fraction lhs, Fraction rhs)
+	{
+		return (lhs.m_numerator * rhs.m_denominator) > (lhs.m_denominator * rhs.m_numerator);
+	}
+
 	struct Row
 	{
 		int m_depth;
 		Fraction m_startSlope;
 		Fraction m_endSlope;
+		uchar m_pass;
 
-		Row(int depth, Fraction startSlope, Fraction endSlope) :
+		int m_sourceX;
+		int m_sourceY;
+
+		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope) :
+			m_pass(pass),
 			m_depth(depth),
 			m_startSlope(startSlope),
 			m_endSlope(endSlope) {}
@@ -102,18 +118,25 @@ namespace LOS
 	void Scan(View& view, Direction direction, Row& row);
 
 	void ResolveTile(View& view, Direction direction, int col, int row);
+	void ResolveTileByRowParent(View& view, Direction direction, int col, const Row& row);
+
+	bool ShouldOverwrite(const View& view, int col, int row, uchar pass);
+	Location BresenhamTraverse(Location start, Vec2 offset);
+
 	Location GetTile(View& view, Direction direction, int col, int row);
 	void SetTile(View& view, Direction direction, int col, int row, Location location);
 
 	Vec2 Transform(Direction direction, int col, int row);
 
-	void ResolveTileBresenham(View& view, Direction direction, int col, int row);
 
-	bool IsSymmetric(Row& row, int col);
+	bool IsSymmetric(const Row& row, int col);
+	bool IsSymmetric(const int col, const int row, const Fraction start, const Fraction end);
 	bool IsWall(Location location);
 	bool IsFloor(Location location);
 	bool RequiresRecast(Location location);
-	void Reveal(View& view, Direction direction, int col, int row);
+	bool BlocksVision(Location location);
+	bool AllowsVision(Location location);
+	void Reveal(View& view, Direction direction, int col, int row, uchar pass);
 	Fraction Slope(int col, int row);
 	Fraction CenterSlope(int col, int row);
 	Fraction OppositeSlope(int col, int row);

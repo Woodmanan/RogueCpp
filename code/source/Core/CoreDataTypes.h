@@ -2,7 +2,12 @@
 #include "../Data/SaveManager.h"
 
 class Tile;
+class TileNeighbors;
 
+template<typename T>
+class THandle;
+
+typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 
@@ -120,6 +125,8 @@ public:
 
     Location _Traverse_No_Neighbor(Direction direction);
     Location _Traverse_Neighbors(Direction direction);
+
+    THandle<TileNeighbors> GetNeighbors();
 
 
 

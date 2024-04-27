@@ -13,7 +13,7 @@ void View::SetRadius(int radius)
 	}
 }
 
-int View::GetIndexByLocal(int x, int y)
+int View::GetIndexByLocal(int x, int y) const
 {
 	ASSERT(x >= -m_radius && x <= m_radius);
 	ASSERT(y >= -m_radius && y <= m_radius);
@@ -24,13 +24,13 @@ int View::GetIndexByLocal(int x, int y)
 void View::ResetAt(Location location)
 {
 	std::fill(m_locations.begin(), m_locations.end(), Location());
-	std::fill(m_visibility.begin(), m_visibility.end(), false);
+	std::fill(m_visibility.begin(), m_visibility.end(), 0);
 
 	m_locations[GetIndexByLocal(0, 0)] = location;
-	m_visibility[GetIndexByLocal(0, 0)] = true;
+	m_visibility[GetIndexByLocal(0, 0)] = 1;
 }
 
-void View::Mark(int x, int y, bool value)
+void View::Mark(int x, int y, uchar value)
 {
 	m_visibility[GetIndexByLocal(x, y)] = value;
 }
@@ -89,12 +89,17 @@ void View::BuildLocalSpaceTile(int x, int y)
 	m_locations[GetIndexByLocal(x, y)] = parent.Traverse(offset.x, offset.y);
 }
 
-Location View::GetLocationLocal(int x, int y)
+Location View::GetLocationLocal(int x, int y) const
 {
 	return m_locations[GetIndexByLocal(x, y)];
 }
 
-bool View::GetVisibilityLocal(int x, int y)
+bool View::GetVisibilityLocal(int x, int y) const
+{
+	return m_visibility[GetIndexByLocal(x, y)] > 0;
+}
+
+uchar View::GetVisibilityPassIndex(int x, int y) const
 {
 	return m_visibility[GetIndexByLocal(x, y)];
 }
@@ -120,19 +125,18 @@ namespace LOS
 	void Calculate(View& view, Location location)
 	{
 		view.ResetAt(location);
-		//view.BuildLocalSpace();
 
 		CalculateQuadrant(view, West);
 		CalculateQuadrant(view, East);
 		CalculateQuadrant(view, North);
 		CalculateQuadrant(view, South);
 
-		//CalculateQuadrant(view, South);
+		//CalculateQuadrant(view, North);
 	}
 
 	void CalculateQuadrant(View& view, Direction direction)
 	{
-		Row start = Row(1, Fraction(-1, 1), Fraction(1, 1));
+		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1));
 		Scan(view, direction, start);
 	}
 
@@ -147,62 +151,59 @@ namespace LOS
 
 		for (int col = minCol; col <= maxCol; col++)
 		{
-			ResolveTileBresenham(view, direction, col, row.m_depth);
+			Vec2 pos = Transform(direction, col, row.m_depth);
+			if (!ShouldOverwrite(view, pos.x, pos.y, row.m_pass))
+			{
+				continue;
+			}
+
+			ResolveTileByRowParent(view, direction, col, row);
+
 			Location tile = GetTile(view, direction, col, row.m_depth);
 
 			if (IsWall(tile) || IsSymmetric(row, col))
 			{
-				Reveal(view, direction, col, row.m_depth);
+				Reveal(view, direction, col, row.m_depth, row.m_pass);
 			}
-			if (IsWall(prevTile) && IsFloor(tile))
+			if (BlocksVision(prevTile) && AllowsVision(tile))
 			{
 				row.m_startSlope = Slope(col, row.m_depth);
 			}
-			if (IsFloor(prevTile) && IsWall(tile))
+			if (AllowsVision(prevTile) && BlocksVision(tile))
 			{
 				//Move to next row!
-				Row nextRow = Row(row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth));
+				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth));
 				Scan(view, direction, nextRow);
+			}
+
+			if (IsFloor(tile) && IsSymmetric(row, col) && RequiresRecast(tile))
+			{
+				//Scan the other side first
+				if (col != maxCol)
+				{
+					Row nextRow = Row(row.m_pass, row.m_depth, OppositeSlope(col, row.m_depth), row.m_endSlope);
+					Scan(view, direction, nextRow);
+				}
+
+				//Scan next pass
+				Reveal(view, direction, col, row.m_depth, row.m_pass + 1);
+				Fraction min = std::max(row.m_startSlope, Slope(col, row.m_depth));
+				Fraction max = std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
+
+				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max);
+				Scan(view, direction, recurseRow);
+				return;
 			}
 
 			prevTile = tile;
 		}
 
-		if (IsFloor(prevTile))
+		if (!BlocksVision(prevTile))
 		{
 			//Scan next row!
-			Row nextRow = Row(row.m_depth + 1, row.m_startSlope, row.m_endSlope);
+			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope);
 			Scan(view, direction, nextRow);
 		}
-	}
-
-	void ResolveTileBresenham(View& view, Direction direction, int col, int row)
-	{
-		Location point = view.GetLocationLocal(0, 0);
-		Vec2 endpoint = Vec2(col, row);
-		int x0 = 0;
-		int y0 = 0;
-		int dx = abs(endpoint.x - 0), sx = 0 < endpoint.x ? 1 : -1;
-		int dy = -abs(endpoint.y - 0), sy = 0 < endpoint.y ? 1 : -1;
-		int err = dx + dy, e2; /* error value e_xy */
-
-		for (;;) {  /* loop */
-			if (x0 == endpoint.x && y0 == endpoint.y)
-			{
-				break;
-			}
-			Vec2 currentPoint = Transform(direction, x0, y0);
-			e2 = 2 * err;
-			if (e2 >= dy) { err += dy; x0 += sx; } /* e_xy+e_x > 0 */
-			if (e2 <= dx) { err += dx; y0 += sy; } /* e_xy+e_y < 0 */
-
-			Vec2 newPoint = Transform(direction, x0, y0);
-
-			point = point.Traverse(newPoint - currentPoint);
-		}
-
-		Vec2 finalPoint = Transform(direction, col, row);
-		view.SetLocationLocal(finalPoint.x, finalPoint.y, point);
 	}
 
 	void ResolveTile(View& view, Direction direction, int col, int row)
@@ -270,6 +271,93 @@ namespace LOS
 		SetTile(view, direction, col, row, GetTile(view, direction, parentCol, parentRow).Traverse(offset.x, offset.y));
 	}
 
+	void ResolveTileByRowParent(View& view, Direction direction, int col, const Row& row)
+	{
+		Fraction minSlope = row.m_startSlope;//std::max(row.m_startSlope, Slope(col, row.m_depth));
+		Fraction maxSlope = row.m_endSlope; //std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
+
+		int parentRow = 0;
+		int parentCol = 0;
+
+		//Scan Phase - Search back to the most recent, visible, same pass parent
+		bool found = false;
+		int searchDepth = row.m_depth - 1;
+		while (searchDepth >= 0)
+		{
+			int minCol = FractionMultiplyRoundUp(searchDepth, minSlope);
+			int maxCol = FractionMultiplyRoundDown(searchDepth, maxSlope);
+
+			for (int searchCol = minCol; searchCol <= maxCol; searchCol++)
+			{
+				Vec2 viewPos = Transform(direction, searchCol, searchDepth);
+				if (view.GetVisibilityPassIndex(viewPos.x, viewPos.y) == row.m_pass)
+				{
+					parentCol = searchCol;
+					parentRow = searchDepth;
+					found = true;
+					break;
+				}
+			}
+
+			if (found)
+			{
+				break;
+			}
+
+			searchDepth--;
+		}
+
+		ASSERT(searchDepth != -1); //Implies we overshot the origin.
+		ASSERT(found);
+
+		Vec2 parentLoc = Transform(direction, parentCol, parentRow);
+		Vec2 childLoc = Transform(direction, col, row.m_depth);
+
+		Vec2 offset = childLoc - parentLoc;
+
+		Location parent = GetTile(view, direction, parentCol, parentRow);
+
+		Location child = BresenhamTraverse(parent, offset);
+
+		SetTile(view, direction, col, row.m_depth, child);
+	}
+
+	//Determines if a new entry can overwrite an existing one.
+	//Change this to control whether baselines passes are on top or below portal passes.
+	bool ShouldOverwrite(const View& view, int col, int row, uchar pass)
+	{
+		uchar current = view.GetVisibilityPassIndex(col, row);
+		return (current == 0) || (current <= pass);
+	}
+
+	Location BresenhamTraverse(Location start, Vec2 offset)
+	{
+		ASSERT(start.GetValid());
+		Location traversal = start;
+		int x0 = 0;
+		int y0 = 0;
+		int dx = abs(offset.x - 0), sx = 0 < offset.x ? 1 : -1;
+		int dy = -abs(offset.y - 0), sy = 0 < offset.y ? 1 : -1;
+		int err = dx + dy, e2; /* error value e_xy */
+
+		for (;;) {  /* loop */
+			Vec2 pos = Vec2(40, 20) + Vec2(x0, -y0);
+			if (x0 == offset.x && y0 == offset.y)
+			{
+				return traversal;
+			}
+			e2 = 2 * err;
+			int xOffset = 0;
+			int yOffset = 0;
+
+			if (e2 >= dy) { err += dy; x0 += sx; xOffset += sx; } /* e_xy+e_x > 0 */
+			if (e2 <= dx) { err += dx; y0 += sy; yOffset += sy; } /* e_xy+e_y < 0 */
+
+			traversal = traversal.Traverse(xOffset, yOffset);
+			ASSERT(traversal.GetValid());
+		}
+	}
+
 	Location GetTile(View& view, Direction direction, int col, int row)
 	{
 		Vec2 pos = Transform(direction, col, row);
@@ -333,10 +421,15 @@ namespace LOS
 		return Vec2(0, 0);
 	}
 
-	bool IsSymmetric(Row& row, int col)
+	bool IsSymmetric(const Row& row, int col)
 	{
-		bool withinLower = (col * row.m_startSlope.m_denominator >= row.m_depth * row.m_startSlope.m_numerator);
-		bool withinUpper = (col * row.m_endSlope.m_denominator <= row.m_depth * row.m_endSlope.m_numerator);
+		return IsSymmetric(col, row.m_depth, row.m_startSlope, row.m_endSlope);
+	}
+
+	bool IsSymmetric(const int col, const int row, const Fraction start, const Fraction end)
+	{
+		bool withinLower = (col * start.m_denominator >= row * start.m_numerator);
+		bool withinUpper = (col * end.m_denominator <= row * end.m_numerator);
 		return withinLower && withinUpper;
 	}
 
@@ -350,11 +443,27 @@ namespace LOS
 		return location.GetValid() && !location->m_backingTile->m_blocksVision;
 	}
 
-	void Reveal(View& view, Direction direction, int col, int row)
+	bool RequiresRecast(Location location)
+	{
+		THandle<TileNeighbors> neighbors = location.GetNeighbors();
+		return neighbors.IsValid();
+	}
+
+	bool BlocksVision(Location location)
+	{
+		return IsWall(location) || RequiresRecast(location);
+	}
+
+	bool AllowsVision(Location location)
+	{
+		return IsFloor(location) && !RequiresRecast(location);
+	}
+
+	void Reveal(View& view, Direction direction, int col, int row, uchar pass)
 	{
 		Vec2 pos = Transform(direction, col, row);
 
-		view.Mark(pos.x, pos.y, true);
+		view.Mark(pos.x, pos.y, pass);
 	}
 
 	Fraction Slope(int col, int row)
