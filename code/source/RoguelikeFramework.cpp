@@ -180,13 +180,20 @@ int main(int argc, char* argv[])
         switch (k)
         {
         case TK_Q:
-            RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
-            RogueSaveManager::Write("Map", map);
-            RogueSaveManager::Write("Player", playerLoc);
-            RogueSaveManager::Write("Radius", radius);
-            RogueSaveManager::Write("bPoint", bresenhamPoint);
-            RogueDataManager::Get()->SaveAll();
-            RogueSaveManager::CloseWriteSaveFile();
+            if (terminal_state(TK_SHIFT))
+            {
+                RogueSaveManager::DeleteSaveFile("MySaveFile.rsf");
+            }
+            else
+            {
+                RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
+                RogueSaveManager::Write("Map", map);
+                RogueSaveManager::Write("Player", playerLoc);
+                RogueSaveManager::Write("Radius", radius);
+                RogueSaveManager::Write("bPoint", bresenhamPoint);
+                RogueDataManager::Get()->SaveAll();
+                RogueSaveManager::CloseWriteSaveFile();
+            }
             shouldBreak = true;
             break;
         case TK_H:

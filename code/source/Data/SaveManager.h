@@ -247,4 +247,9 @@ namespace RogueSaveManager {
 	{
 		return std::filesystem::exists(filename);
 	}
+
+	static void DeleteSaveFile(const std::string filename)
+	{
+		std::filesystem::remove(filename);
+	}
 };
