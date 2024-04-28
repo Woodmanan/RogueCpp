@@ -27,6 +27,10 @@ Location::Location()
 #else
     m_data = invalidMask;
 #endif
+
+#ifdef LINK_TILE
+    RefreshLinkedTile();
+#endif
 }
 
 Location::Location(ushort x, ushort y, ushort z)
@@ -44,6 +48,10 @@ Location::Location(ushort x, ushort y, ushort z)
     m_data = ((x << (ySize + zSize)) & xMask) |
              ((y << (zSize))         & yMask) |
              ( z                     & zMask);
+#endif
+
+#ifdef LINK_TILE
+    RefreshLinkedTile();
 #endif
 }
 
@@ -144,6 +152,7 @@ Tile* Location::operator ->()
 bool Location::InMap()
 {
     if (!GetValid()) { return false; }
+
     Map* map = RogueDataManager::Get()->ResolveByTypeIndex<Map>(z());
     return x() >= 0 && y() >= 0 && x() < map->m_size.x && y() < map->m_size.y;
 }
@@ -287,6 +296,20 @@ THandle<TileNeighbors> Location::GetNeighbors()
     }
     return THandle<TileNeighbors>();
 }
+
+#ifdef LINK_TILE
+void Location::RefreshLinkedTile()
+{
+    if (GetValid() && RogueDataManager::Get()->CanResolve<Map>(z()) && InMap())
+    {
+        linkedTile = &RogueDataManager::Get()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    }
+    else
+    {
+        linkedTile = nullptr;
+    }
+}
+#endif
 
 namespace RogueSaveManager
 {

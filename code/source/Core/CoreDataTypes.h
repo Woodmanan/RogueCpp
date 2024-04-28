@@ -11,6 +11,10 @@ typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
 
+#ifdef _DEBUG
+#define LINK_TILE
+#endif
+
 struct Vec2
 {
     Vec2() : x(0), y(0) {}
@@ -147,6 +151,12 @@ private:
     ushort m_x;
     ushort m_y;
     ushort m_z;
+#endif
+
+#ifdef LINK_TILE
+private:
+    Tile* linkedTile = nullptr;
+    void RefreshLinkedTile();
 #endif
 };
 

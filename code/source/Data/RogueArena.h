@@ -76,6 +76,13 @@ public:
 		return offset;
 	}
 
+	bool Contains(int offset)
+	{
+		offset += sizeof(ArenaHeader);
+		ArenaHeader* header = GetHeader();
+		return (offset >= 0 && offset < header->currentOffset);
+	}
+
 	template <typename T>
 	T* Get(int offset)
 	{

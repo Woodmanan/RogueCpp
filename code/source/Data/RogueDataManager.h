@@ -27,6 +27,15 @@ using namespace std;
  * without traversing the tree.
  */
 
+/*
+* Handle linking is a debug feature that lets handles store a pointer to their
+* linked object. These links are evaluated lazily, in order to maintain invariants
+* about when handles are actively pointing to an object.
+*/
+#ifdef _DEBUG
+#define LINK_HANDLE
+#endif
+
 class Handle;
 template<typename T>
 class THandle;
@@ -90,6 +99,21 @@ public:
 		STRONG_ASSERT(arenaNum > 0);
 		int offset = manager->arenas[arenaNum]->AllocateByOffset<T>(std::forward<Args>(args)...);
 		return THandle<T>(arenaNum, offset);
+	}
+
+	template <typename T>
+	bool CanResolve(unsigned int offset)
+	{
+		return CanResolve(RogueSaveable<T>::ID, offset);
+	}
+
+	bool CanResolve(int index, unsigned int offset)
+	{
+		if (index > 0 && index < manager->arenas.size())
+		{
+			return manager->arenas[index]->Contains(offset);
+		}
+		return false;
 	}
 
 	void* ResolveHandle(int index, unsigned int offset)
@@ -156,6 +180,9 @@ public:
 
 	void* Get()
 	{
+#ifdef LINK_HANDLE
+		RefreshLinkedObject();
+#endif
 		return RogueDataManager::Get()->ResolveHandle(GetIndex(), GetOffset());
 	}
 
@@ -168,6 +195,21 @@ public:
 
 protected:
 	unsigned int _internalOffset;
+
+#ifdef LINK_HANDLE
+	void* linked = nullptr;
+	virtual void RefreshLinkedObject()
+	{
+		if (IsValid() && RogueDataManager::Get()->CanResolve(GetIndex(), GetOffset()))
+		{
+			linked = RogueDataManager::Get()->ResolveHandle(GetIndex(), GetOffset());
+		}
+		else
+		{
+			linked = nullptr;
+		}
+	}
+#endif
 };
 
 template <typename T>
@@ -193,13 +235,35 @@ public:
 
 	T* operator ->()
 	{
+#ifdef LINK_HANDLE
+		RefreshLinkedObject();
+#endif
 		return RogueDataManager::Get()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
 	T& GetReference()
 	{
+#ifdef LINK_HANDLE
+		RefreshLinkedObject();
+#endif
 		return *RogueDataManager::Get()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
+
+#ifdef LINK_HANDLE
+protected:
+	T* linked = nullptr;
+	virtual void RefreshLinkedObject() override
+	{
+		if (IsValid() && RogueDataManager::Get()->CanResolve(GetIndex(), GetOffset()))
+		{
+			linked = RogueDataManager::Get()->ResolveHandle<T>(GetIndex(), GetOffset());
+		}
+		else
+		{
+			linked = nullptr;
+		}
+	}
+#endif
 };
 
 template<typename> struct RegisterBase { };
