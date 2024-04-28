@@ -111,14 +111,14 @@ namespace LOS
 		}
 	};
 
-	void Calculate(View& view, Location location);
+	void Calculate(View& view, Location location, uchar maxPass = 255);
 
-	void CalculateQuadrant(View& view, Direction direction);
+	void CalculateQuadrant(View& view, Direction direction, uchar maxPass);
 
-	void Scan(View& view, Direction direction, Row& row);
+	void Scan(View& view, Direction direction, Row& row, uchar maxPass);
 
 	void ResolveTile(View& view, Direction direction, int col, int row);
-	void ResolveTileByRowParent(View& view, Direction direction, int col, const Row& row);
+	Location GetTileByRowParent(View& view, Direction direction, int col, const Row& row);
 
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass);
 	Location BresenhamTraverse(Location start, Vec2 offset);

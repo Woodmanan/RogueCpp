@@ -122,27 +122,28 @@ int IntLerp(int a, int b, int numerator, int denominator)
 
 namespace LOS
 {
-	void Calculate(View& view, Location location)
+	void Calculate(View& view, Location location, uchar maxPass)
 	{
 		view.ResetAt(location);
 
-		CalculateQuadrant(view, West);
-		CalculateQuadrant(view, East);
-		CalculateQuadrant(view, North);
-		CalculateQuadrant(view, South);
+		CalculateQuadrant(view, West, maxPass);
+		CalculateQuadrant(view, East, maxPass);
+		CalculateQuadrant(view, North, maxPass);
+		CalculateQuadrant(view, South, maxPass);
 
-		//CalculateQuadrant(view, North);
+		//CalculateQuadrant(view, North, maxPass);
 	}
 
-	void CalculateQuadrant(View& view, Direction direction)
+	void CalculateQuadrant(View& view, Direction direction, uchar maxPass)
 	{
 		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1));
-		Scan(view, direction, start);
+		Scan(view, direction, start, maxPass);
 	}
 
-	void Scan(View& view, Direction direction, Row& row)
+	void Scan(View& view, Direction direction, Row& row, uchar maxPass)
 	{
 		if (row.m_depth > view.GetRadius()) { return; }
+		if (row.m_pass > maxPass) { return; }
 
 		int minCol = row.GetMinCol();
 		int maxCol = row.GetMaxCol();
@@ -152,17 +153,13 @@ namespace LOS
 		for (int col = minCol; col <= maxCol; col++)
 		{
 			Vec2 pos = Transform(direction, col, row.m_depth);
-			if (!ShouldOverwrite(view, pos.x, pos.y, row.m_pass))
+			Location tile = GetTileByRowParent(view, direction, col, row);
+
+			bool shouldOverwrite = ShouldOverwrite(view, pos.x, pos.y, row.m_pass);
+
+			if ((IsWall(tile) || IsSymmetric(row, col)) && shouldOverwrite)
 			{
-				continue;
-			}
-
-			ResolveTileByRowParent(view, direction, col, row);
-
-			Location tile = GetTile(view, direction, col, row.m_depth);
-
-			if (IsWall(tile) || IsSymmetric(row, col))
-			{
+				SetTile(view, direction, col, row.m_depth, tile);
 				Reveal(view, direction, col, row.m_depth, row.m_pass);
 			}
 			if (BlocksVision(prevTile) && AllowsVision(tile))
@@ -173,16 +170,16 @@ namespace LOS
 			{
 				//Move to next row!
 				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth));
-				Scan(view, direction, nextRow);
+				Scan(view, direction, nextRow, maxPass);
 			}
 
-			if (IsFloor(tile) && IsSymmetric(row, col) && RequiresRecast(tile))
+			if (IsFloor(tile) && IsSymmetric(row, col) && RequiresRecast(tile) && shouldOverwrite)
 			{
 				//Scan the other side first
 				if (col != maxCol)
 				{
 					Row nextRow = Row(row.m_pass, row.m_depth, OppositeSlope(col, row.m_depth), row.m_endSlope);
-					Scan(view, direction, nextRow);
+					Scan(view, direction, nextRow, maxPass);
 				}
 
 				//Scan next pass
@@ -191,7 +188,7 @@ namespace LOS
 				Fraction max = std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
 
 				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max);
-				Scan(view, direction, recurseRow);
+				Scan(view, direction, recurseRow, maxPass);
 				return;
 			}
 
@@ -202,7 +199,7 @@ namespace LOS
 		{
 			//Scan next row!
 			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope);
-			Scan(view, direction, nextRow);
+			Scan(view, direction, nextRow, maxPass);
 		}
 	}
 
@@ -271,7 +268,7 @@ namespace LOS
 		SetTile(view, direction, col, row, GetTile(view, direction, parentCol, parentRow).Traverse(offset.x, offset.y));
 	}
 
-	void ResolveTileByRowParent(View& view, Direction direction, int col, const Row& row)
+	Location GetTileByRowParent(View& view, Direction direction, int col, const Row& row)
 	{
 		Fraction minSlope = row.m_startSlope;//std::max(row.m_startSlope, Slope(col, row.m_depth));
 		Fraction maxSlope = row.m_endSlope; //std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
@@ -319,7 +316,7 @@ namespace LOS
 
 		Location child = BresenhamTraverse(parent, offset);
 
-		SetTile(view, direction, col, row.m_depth, child);
+		return child;
 	}
 
 	//Determines if a new entry can overwrite an existing one.
@@ -327,7 +324,7 @@ namespace LOS
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass)
 	{
 		uchar current = view.GetVisibilityPassIndex(col, row);
-		return (current == 0) || (current <= pass);
+		return (current == 0) || (current >= pass);
 	}
 
 	Location BresenhamTraverse(Location start, Vec2 offset)

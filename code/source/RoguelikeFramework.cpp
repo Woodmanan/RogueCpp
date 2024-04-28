@@ -62,8 +62,9 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
                 if (visible)
                 {
                     int step = view.GetVisibilityPassIndex(i, j);
-                    color_t green = passColors[step % 5];
-                    terminal_color(Blend(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor, green));
+                    color_t color = passColors[step % 5];
+                    terminal_color(color);
+                    //terminal_color(Blend(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor, green));
                 }
                 else
                 {
@@ -123,7 +124,8 @@ int main(int argc, char* argv[])
     THandle<Map> map;
     Location playerLoc = Location(1, 1, 0);
     Location warpPosition;
-    int radius = 0;
+    int radius = 10;
+    int maxPass = 10;
     Vec2 bresenhamPoint = Vec2(0, 0);
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
@@ -132,6 +134,7 @@ int main(int argc, char* argv[])
         RogueSaveManager::Read("Map", map);
         RogueSaveManager::Read("Player", playerLoc);
         RogueSaveManager::Read("Radius", radius);
+        RogueSaveManager::Read("Max Pass", maxPass);
         RogueSaveManager::Read("bPoint", bresenhamPoint);
         RogueDataManager::Get()->LoadAll();
         RogueSaveManager::CloseReadSaveFile();
@@ -183,16 +186,6 @@ int main(int argc, char* argv[])
             if (terminal_state(TK_SHIFT))
             {
                 RogueSaveManager::DeleteSaveFile("MySaveFile.rsf");
-            }
-            else
-            {
-                RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
-                RogueSaveManager::Write("Map", map);
-                RogueSaveManager::Write("Player", playerLoc);
-                RogueSaveManager::Write("Radius", radius);
-                RogueSaveManager::Write("bPoint", bresenhamPoint);
-                RogueDataManager::Get()->SaveAll();
-                RogueSaveManager::CloseWriteSaveFile();
             }
             shouldBreak = true;
             break;
@@ -284,12 +277,26 @@ int main(int argc, char* argv[])
             map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
         case TK_EQUALS:
-            radius = radius + 1;
-            view.SetRadius(radius);
+            if (terminal_state(TK_SHIFT))
+            {
+                maxPass = maxPass + 1;
+            }
+            else
+            {
+                radius = radius + 1;
+                view.SetRadius(radius);
+            }
             break;
         case TK_MINUS:
-            radius = std::max(0, radius - 1);
-            view.SetRadius(radius);
+            if (terminal_state(TK_SHIFT))
+            {
+                maxPass = std::max(1, maxPass - 1);
+            }
+            else
+            {
+                radius = std::max(0, radius - 1);
+                view.SetRadius(radius);
+            }
             break;
         case TK_ENTER:
             if (!warpPosition.GetValid())
@@ -306,7 +313,22 @@ int main(int argc, char* argv[])
             }
             break;
         case TK_S:
-            map->SetTile(playerLoc.AsVec2(), 2);
+            if (terminal_state(TK_SHIFT))
+            {
+                RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
+                RogueSaveManager::Write("Map", map);
+                RogueSaveManager::Write("Player", playerLoc);
+                RogueSaveManager::Write("Radius", radius);
+                RogueSaveManager::Write("Max Pass", maxPass);
+                RogueSaveManager::Write("bPoint", bresenhamPoint);
+                RogueDataManager::Get()->SaveAll();
+                RogueSaveManager::CloseWriteSaveFile();
+                shouldBreak = true;
+            }
+            else
+            {
+                map->SetTile(playerLoc.AsVec2(), 2);
+            }
             break;
         case TK_R:
             if (!terminal_state(TK_SHIFT))
@@ -321,7 +343,7 @@ int main(int argc, char* argv[])
         k = TK_G;
         terminal_clear();
 
-        LOS::Calculate(view, playerLoc);
+        LOS::Calculate(view, playerLoc, maxPass);
 
         RenderMap(map, size, Vec2(x, y), playerLoc, view);
         RenderBresenham(Vec2(x, y), bresenhamPoint);
