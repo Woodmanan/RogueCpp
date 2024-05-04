@@ -13,6 +13,20 @@ void View::SetRadius(int radius)
 	}
 }
 
+void View::SetRadiusOnlyUpsize(int radius)
+{
+	int diameter = (2 * radius) + 1;
+	int numTiles = diameter * diameter;
+
+	if (m_locations.size() < numTiles)
+	{
+		m_locations.resize(numTiles);
+		m_visibility.resize(numTiles);
+	}
+
+	m_radius = radius;
+}
+
 int View::GetIndexByLocal(int x, int y) const
 {
 	ASSERT(x >= -m_radius && x <= m_radius);
@@ -124,23 +138,28 @@ namespace LOS
 {
 	void Calculate(View& view, Location location, uchar maxPass)
 	{
+		static View scratch;
+
+		scratch.SetRadiusOnlyUpsize(view.GetRadius());
+
 		view.ResetAt(location);
+		scratch.ResetAt(location);
 
-		CalculateQuadrant(view, West, maxPass);
-		CalculateQuadrant(view, East, maxPass);
-		CalculateQuadrant(view, North, maxPass);
-		CalculateQuadrant(view, South, maxPass);
+		CalculateQuadrant(view, scratch, West, maxPass);
+		CalculateQuadrant(view, scratch, East, maxPass);
+		CalculateQuadrant(view, scratch, North, maxPass);
+		CalculateQuadrant(view, scratch, South, maxPass);
 
-		//CalculateQuadrant(view, North, maxPass);
+		//CalculateQuadrant(view, scratch, South, maxPass);
 	}
 
-	void CalculateQuadrant(View& view, Direction direction, uchar maxPass)
+	void CalculateQuadrant(View& view, View& scratch, Direction direction, uchar maxPass)
 	{
 		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1));
-		Scan(view, direction, start, maxPass);
+		Scan(view, scratch, direction, start, maxPass);
 	}
 
-	void Scan(View& view, Direction direction, Row& row, uchar maxPass)
+	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass)
 	{
 		if (row.m_depth > view.GetRadius()) { return; }
 		if (row.m_pass > maxPass) { return; }
@@ -153,8 +172,12 @@ namespace LOS
 		for (int col = minCol; col <= maxCol; col++)
 		{
 			Vec2 pos = Transform(direction, col, row.m_depth);
-			Location tile = GetTileByRowParent(view, direction, col, row);
+			Location tile = GetTileByRowParent(view, scratch, direction, col, row);
 
+			//No matter what, write this tile into the scratch pad. Our recursions will either ignore it spatially or need it set.
+			SetTile(scratch, direction, col, row.m_depth, tile);
+
+			//Calculate via pass if we should be overwriting the current tile.
 			bool shouldOverwrite = ShouldOverwrite(view, pos.x, pos.y, row.m_pass);
 
 			if ((IsWall(tile) || IsSymmetric(row, col)) && shouldOverwrite)
@@ -170,26 +193,15 @@ namespace LOS
 			{
 				//Move to next row!
 				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth));
-				Scan(view, direction, nextRow, maxPass);
+				Scan(view, scratch, direction, nextRow, maxPass);
 			}
-
-			if (IsFloor(tile) && IsSymmetric(row, col) && RequiresRecast(tile) && shouldOverwrite)
+			if (IsFloor(tile) && RequiresRecast(tile))
 			{
-				//Scan the other side first
-				if (col != maxCol)
-				{
-					Row nextRow = Row(row.m_pass, row.m_depth, OppositeSlope(col, row.m_depth), row.m_endSlope);
-					Scan(view, direction, nextRow, maxPass);
-				}
-
 				//Scan next pass
-				Reveal(view, direction, col, row.m_depth, row.m_pass + 1);
 				Fraction min = std::max(row.m_startSlope, Slope(col, row.m_depth));
 				Fraction max = std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
-
 				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max);
-				Scan(view, direction, recurseRow, maxPass);
-				return;
+				Scan(view, scratch, direction, recurseRow, maxPass);
 			}
 
 			prevTile = tile;
@@ -199,7 +211,7 @@ namespace LOS
 		{
 			//Scan next row!
 			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope);
-			Scan(view, direction, nextRow, maxPass);
+			Scan(view, scratch, direction, nextRow, maxPass);
 		}
 	}
 
@@ -268,55 +280,30 @@ namespace LOS
 		SetTile(view, direction, col, row, GetTile(view, direction, parentCol, parentRow).Traverse(offset.x, offset.y));
 	}
 
-	Location GetTileByRowParent(View& view, Direction direction, int col, const Row& row)
+	Location GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row)
 	{
-		Fraction minSlope = row.m_startSlope;//std::max(row.m_startSlope, Slope(col, row.m_depth));
-		Fraction maxSlope = row.m_endSlope; //std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
+		Fraction minSlope = row.m_startSlope;
+		Fraction maxSlope = row.m_endSlope;
 
-		int parentRow = 0;
-		int parentCol = 0;
+		int parentRow = row.m_depth - 1;
 
 		//Scan Phase - Search back to the most recent, visible, same pass parent
-		bool found = false;
-		int searchDepth = row.m_depth - 1;
-		while (searchDepth >= 0)
-		{
-			int minCol = FractionMultiplyRoundUp(searchDepth, minSlope);
-			int maxCol = FractionMultiplyRoundDown(searchDepth, maxSlope);
+		int minCol = FractionMultiplyRoundUp(parentRow, minSlope);
+		int maxCol = FractionMultiplyRoundDown(parentRow, maxSlope);
 
-			for (int searchCol = minCol; searchCol <= maxCol; searchCol++)
-			{
-				Vec2 viewPos = Transform(direction, searchCol, searchDepth);
-				if (view.GetVisibilityPassIndex(viewPos.x, viewPos.y) == row.m_pass)
-				{
-					parentCol = searchCol;
-					parentRow = searchDepth;
-					found = true;
-					break;
-				}
-			}
-
-			if (found)
-			{
-				break;
-			}
-
-			searchDepth--;
-		}
-
-		ASSERT(searchDepth != -1); //Implies we overshot the origin.
-		ASSERT(found);
+		//Bounding box snap for location
+		int parentCol = std::min(std::max(minCol, col), maxCol);
 
 		Vec2 parentLoc = Transform(direction, parentCol, parentRow);
 		Vec2 childLoc = Transform(direction, col, row.m_depth);
 
 		Vec2 offset = childLoc - parentLoc;
 
-		Location parent = GetTile(view, direction, parentCol, parentRow);
+		ASSERT(std::abs(offset.x) <= 1 && std::abs(offset.y) <= 1);
 
-		Location child = BresenhamTraverse(parent, offset);
+		Location parent = GetTile(scratch, direction, parentCol, parentRow);
 
-		return child;
+		return parent.Traverse(offset);
 	}
 
 	//Determines if a new entry can overwrite an existing one.

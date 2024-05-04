@@ -18,6 +18,7 @@ public:
 	View() {}
 
 	void SetRadius(int radius);
+	void SetRadiusOnlyUpsize(int radius);
 	int GetRadius() { return m_radius; }
 	void ResetAt(Location location);
 
@@ -91,9 +92,6 @@ namespace LOS
 		Fraction m_endSlope;
 		uchar m_pass;
 
-		int m_sourceX;
-		int m_sourceY;
-
 		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope) :
 			m_pass(pass),
 			m_depth(depth),
@@ -113,12 +111,12 @@ namespace LOS
 
 	void Calculate(View& view, Location location, uchar maxPass = 255);
 
-	void CalculateQuadrant(View& view, Direction direction, uchar maxPass);
+	void CalculateQuadrant(View& view, View& scratch, Direction direction, uchar maxPass);
 
-	void Scan(View& view, Direction direction, Row& row, uchar maxPass);
+	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass);
 
 	void ResolveTile(View& view, Direction direction, int col, int row);
-	Location GetTileByRowParent(View& view, Direction direction, int col, const Row& row);
+	Location GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row);
 
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass);
 	Location BresenhamTraverse(Location start, Vec2 offset);

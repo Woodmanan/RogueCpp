@@ -15,11 +15,11 @@
 using namespace std;
 
 color_t passColors[5] = {
-    color_from_argb(255, 255, 0, 255),
-    color_from_argb(255, 0, 200, 0),
-    color_from_argb(255, 100, 100, 200),
-    color_from_argb(255, 200, 200, 00),
-    color_from_argb(255, 255, 100, 100),
+    color_from_argb(0xFF, 0x17, 0xD9, 0x2A),
+    color_from_argb(0xFF, 0x0F, 0xBF, 0xC8),
+    color_from_argb(0xFF, 0x59, 0x00, 0xED),
+    color_from_argb(0xFF, 0xF8, 0xDB, 0xEA),
+    color_from_argb(0xFF, 0xFB, 0x87, 0xA4)
 };
 
 color_t Blend(color_t a, color_t b)
@@ -31,7 +31,7 @@ color_t Blend(color_t a, color_t b)
     return (alpha << 24) | (red << 16) | (green << 8) | blue;
 }
 
-void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view, bool colorPasses)
 {
     for (int i = 0; i < window.x; i++)
     {
@@ -41,7 +41,7 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             Location mapLocation = playerLocation + playerOffset;
             if (mapLocation.GetValid() && mapLocation.InMap())
             {
-                terminal_color(mapLocation->m_backingTile->m_foregroundColor);
+                terminal_color(color_from_argb(0xFF, 0x99, 0x99, 0x99));
                 terminal_bkcolor(mapLocation->m_backingTile->m_backgroundColor);
                 terminal_put(i, j, mapLocation->m_backingTile->m_renderCharacter);
             }
@@ -61,10 +61,16 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             {
                 if (visible)
                 {
-                    int step = view.GetVisibilityPassIndex(i, j);
-                    color_t color = passColors[step % 5];
-                    terminal_color(color);
-                    //terminal_color(Blend(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor, green));
+                    if (colorPasses)
+                    {
+                        int step = view.GetVisibilityPassIndex(i, j) - 1;
+                        color_t color = passColors[step % 5];
+                        terminal_color(color);
+                    }
+                    else
+                    {
+                        terminal_color(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor);
+                    }
                 }
                 else
                 {
@@ -126,6 +132,8 @@ int main(int argc, char* argv[])
     Location warpPosition;
     int radius = 10;
     int maxPass = 10;
+    int currentIndex = -1;
+    bool colorPasses = false;
     Vec2 bresenhamPoint = Vec2(0, 0);
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
@@ -135,6 +143,8 @@ int main(int argc, char* argv[])
         RogueSaveManager::Read("Player", playerLoc);
         RogueSaveManager::Read("Radius", radius);
         RogueSaveManager::Read("Max Pass", maxPass);
+        RogueSaveManager::Read("Current Index", currentIndex);
+        RogueSaveManager::Read("Color Passes", colorPasses);
         RogueSaveManager::Read("bPoint", bresenhamPoint);
         RogueDataManager::Get()->LoadAll();
         RogueSaveManager::CloseReadSaveFile();
@@ -145,9 +155,14 @@ int main(int argc, char* argv[])
         {
             map = RogueDataManager::Allocate<Map>(size, i, 2);
             map->LinkBackingTile<BackingTile>('#', color_from_argb(255, 120, 120, 120), color_from_argb(255, 0, 0, 0), true, -1);
-            map->LinkBackingTile<BackingTile>('.', color_from_argb(255, 200, 200, 200), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('.', color_from_argb(255, 100, 200, 100), color_from_argb(255, 0, 0, 0), false, 1);
             map->LinkBackingTile<BackingTile>('S', color_from_argb(255, 200, 100, 200), color_from_argb(255, 80, 80, 80), false, 1);
             map->LinkBackingTile<BackingTile>('0', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('1', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('2', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('3', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('4', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('5', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
 
             map->FillTilesExc(Vec2(0, 0), size, 0);
             map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
@@ -162,14 +177,12 @@ int main(int argc, char* argv[])
     int pos_y = 20;
     terminal_open();
     terminal_set("window: size=81x41");
-    terminal_print(34, 20, "hello, world! I am here");
+    terminal_print(34, 20, "Hello World! I am here!");
     //terminal_print(34, 21, std::to_string(test.GetID()).c_str());
     terminal_refresh();
 
     View view;
     view.SetRadius(radius);
-    View fakeBackground;
-    fakeBackground.SetRadius(0);
 
     auto clock = chrono::system_clock::now();
     float FPS = 0.0f;
@@ -306,8 +319,9 @@ int main(int argc, char* argv[])
             else
             {
                 //Establish the warp!
-                map->SetTile(playerLoc.AsVec2(), 3);
-                map->SetTile(warpPosition.AsVec2(), 3);
+                currentIndex = std::min(currentIndex + 1, 5);
+                map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
+                map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
                 map->CreatePortal(warpPosition.AsVec2(), playerLoc.AsVec2());
                 warpPosition = Location();
             }
@@ -320,6 +334,8 @@ int main(int argc, char* argv[])
                 RogueSaveManager::Write("Player", playerLoc);
                 RogueSaveManager::Write("Radius", radius);
                 RogueSaveManager::Write("Max Pass", maxPass);
+                RogueSaveManager::Write("Current Index", currentIndex);
+                RogueSaveManager::Write("Color Passes", colorPasses);
                 RogueSaveManager::Write("bPoint", bresenhamPoint);
                 RogueDataManager::Get()->SaveAll();
                 RogueSaveManager::CloseWriteSaveFile();
@@ -338,6 +354,9 @@ int main(int argc, char* argv[])
             }
             bresenhamPoint = Vec2(0, 0);
             break;
+        case TK_C:
+            colorPasses = !colorPasses;
+            break;
         }
 
         k = TK_G;
@@ -345,7 +364,7 @@ int main(int argc, char* argv[])
 
         LOS::Calculate(view, playerLoc, maxPass);
 
-        RenderMap(map, size, Vec2(x, y), playerLoc, view);
+        RenderMap(map, size, Vec2(x, y), playerLoc, view, colorPasses);
         RenderBresenham(Vec2(x, y), bresenhamPoint);
         terminal_color(color_from_argb(255, 255, 0, 255));
         terminal_put(40, 20, '@');
