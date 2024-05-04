@@ -10,6 +10,10 @@ void View::SetRadius(int radius)
 		int numTiles = diameter * diameter;
 		m_locations.resize(numTiles);
 		m_visibility.resize(numTiles);
+		
+#ifdef DEBUG_HOTSPOTS
+		m_heat.resize(numTiles);
+#endif
 	}
 }
 
@@ -22,6 +26,9 @@ void View::SetRadiusOnlyUpsize(int radius)
 	{
 		m_locations.resize(numTiles);
 		m_visibility.resize(numTiles);
+#ifdef DEBUG_HOTSPOTS
+		m_heat.resize(numTiles);
+#endif
 	}
 
 	m_radius = radius;
@@ -37,70 +44,25 @@ int View::GetIndexByLocal(int x, int y) const
 
 void View::ResetAt(Location location)
 {
-	std::fill(m_locations.begin(), m_locations.end(), Location());
-	std::fill(m_visibility.begin(), m_visibility.end(), 0);
+	int diameter = (2 * m_radius) + 1;
+	int numTiles = diameter * diameter;
+
+	std::fill(m_locations.begin(), m_locations.begin() + numTiles, Location());
+	std::fill(m_visibility.begin(), m_visibility.begin() + numTiles, 0);
 
 	m_locations[GetIndexByLocal(0, 0)] = location;
 	m_visibility[GetIndexByLocal(0, 0)] = 1;
+
+#ifdef DEBUG_HOTSPOTS
+	std::fill(m_heat.begin(), m_heat.begin() + numTiles, 0);
+	m_maxHeat = 0;
+	m_sumHeat = 0;
+#endif
 }
 
 void View::Mark(int x, int y, uchar value)
 {
 	m_visibility[GetIndexByLocal(x, y)] = value;
-}
-
-//Does a LOT of the heavy lifting for this algorithm.
-//Gets the most sensible parent for the local location,
-//allowing the algorithm to propagate out in non-euclidean space
-Vec2 View::GetSensibleParent(int x, int y)
-{
-	//Move everything to one quadrant - we'll undo it later, but this makes the math consistent
-	int absX = std::abs(x);
-	int absY = std::abs(y);
-
-	//Int-only version of 2D lerp
-	int max = std::max(std::abs(x), std::abs(y));
-	int newX = IntLerp(0, absX, max - 1, max);
-	int newY = IntLerp(0, absY, max - 1, max);
-
-	//Confirm that we've moved in a direction, otherwise this math is wrong.
-	ASSERT(newX < absX || newY < absY);
-
-	if (x < 0) { newX = -newX; }
-	if (y < 0) { newY = -newY; }
-
-	return Vec2(newX, newY);
-}
-
-/*
- * Builds out the local-space graph of locations, which can then
- * be iterated upon by the shadowcasting algorithm.
- */
-void View::BuildLocalSpace()
-{
-	for (int r = 1; r <= m_radius; r++)
-	{
-		//Classic box algorithm to collect points.
-		for (int x = -r; x <= r; x++)
-		{
-			BuildLocalSpaceTile(x, r);
-			BuildLocalSpaceTile(x, -r);
-		}
-
-		for (int y = -r + 1; y <= r - 1; y++)
-		{
-			BuildLocalSpaceTile(r, y);
-			BuildLocalSpaceTile(-r, y);
-		}
-	}
-}
-
-void View::BuildLocalSpaceTile(int x, int y)
-{
-	Vec2 localParent = GetSensibleParent(x, y);
-	Vec2 offset = Vec2(x, y) - localParent;
-	Location parent = GetLocationLocal(localParent.x, localParent.y);
-	m_locations[GetIndexByLocal(x, y)] = parent.Traverse(offset.x, offset.y);
 }
 
 Location View::GetLocationLocal(int x, int y) const
@@ -123,34 +85,71 @@ void View::SetLocationLocal(int x, int y, Location location)
 	m_locations[GetIndexByLocal(x, y)] = location;
 }
 
-int IntLerp(int a, int b, int numerator, int denominator)
+void View::Debug_AddHeatLocal(int x, int y)
 {
-	int offset = (b - a);
+#ifdef DEBUG_HOTSPOTS
+	int index = GetIndexByLocal(x, y);
+	m_heat[index]++;
+	m_maxHeat = std::max(m_heat[index], m_maxHeat);
+	m_sumHeat++;
+#endif
+}
 
-	int scaledOffset = IntDivisionCeil(offset * numerator, denominator);
+int View::Debug_GetHeatLocal(int x, int y)
+{
+#ifdef DEBUG_HOTSPOTS
+	int index = GetIndexByLocal(x, y);
+	return m_heat[index];
+#else
+	return 0;
+#endif
+}
 
-	//int scaledOffset = (offset * numerator + (denominator / 2)) / denominator;
+int View::Debug_GetMaxHeat()
+{
+#ifdef DEBUG_HOTSPOTS
+	return m_maxHeat;
+#else
+	return 0;
+#endif
+}
 
-	return a + scaledOffset;
+int View::Debug_GetSumHeat()
+{
+#ifdef DEBUG_HOTSPOTS
+	return m_sumHeat;
+#else
+	return 0;
+#endif
+}
+
+float View::Debug_GetHeatPercentageLocal(int x, int y)
+{
+#ifdef DEBUG_HOTSPOTS
+	int index = GetIndexByLocal(x, y);
+	return ((float)m_heat[index]) / max(m_maxHeat, 1);
+#else
+	return 0.0f;
+#endif
 }
 
 namespace LOS
 {
 	void Calculate(View& view, Location location, uchar maxPass)
 	{
+		//Set scratch to match, iff it's smaller than needed
 		static View scratch;
-
 		scratch.SetRadiusOnlyUpsize(view.GetRadius());
 
+		//Reset the views
 		view.ResetAt(location);
 		scratch.ResetAt(location);
 
+		//Iterate each quadrant once
 		CalculateQuadrant(view, scratch, West, maxPass);
 		CalculateQuadrant(view, scratch, East, maxPass);
 		CalculateQuadrant(view, scratch, North, maxPass);
 		CalculateQuadrant(view, scratch, South, maxPass);
-
-		//CalculateQuadrant(view, scratch, South, maxPass);
 	}
 
 	void CalculateQuadrant(View& view, View& scratch, Direction direction, uchar maxPass)
@@ -173,17 +172,18 @@ namespace LOS
 		{
 			Vec2 pos = Transform(direction, col, row.m_depth);
 			Location tile = GetTileByRowParent(view, scratch, direction, col, row);
+			view.Debug_AddHeatLocal(pos.x, pos.y);
 
 			//No matter what, write this tile into the scratch pad. Our recursions will either ignore it spatially or need it set.
 			SetTile(scratch, direction, col, row.m_depth, tile);
 
-			//Calculate via pass if we should be overwriting the current tile.
-			bool shouldOverwrite = ShouldOverwrite(view, pos.x, pos.y, row.m_pass);
-
-			if ((IsWall(tile) || IsSymmetric(row, col)) && shouldOverwrite)
+			if ((IsWall(tile) || IsSymmetric(row, col)))
 			{
-				SetTile(view, direction, col, row.m_depth, tile);
-				Reveal(view, direction, col, row.m_depth, row.m_pass);
+				if (ShouldOverwrite(view, pos.x, pos.y, row.m_pass))
+				{
+					SetTile(view, direction, col, row.m_depth, tile);
+					Reveal(view, direction, col, row.m_depth, row.m_pass);
+				}
 			}
 			if (BlocksVision(prevTile) && AllowsVision(tile))
 			{
@@ -197,7 +197,7 @@ namespace LOS
 			}
 			if (IsFloor(tile) && RequiresRecast(tile))
 			{
-				//Scan next pass
+				//This is a portal - scan recursive pass through it's sightlines
 				Fraction min = std::max(row.m_startSlope, Slope(col, row.m_depth));
 				Fraction max = std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
 				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max);
@@ -213,71 +213,6 @@ namespace LOS
 			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope);
 			Scan(view, scratch, direction, nextRow, maxPass);
 		}
-	}
-
-	void ResolveTile(View& view, Direction direction, int col, int row)
-	{
-		//Fraction slope = CenterSlope(col, row);
-
-		int parentRow = row - 1;
-		int parentCol = 0;
-
-		int colA = FractionMultiplyRoundDown(parentRow, Slope(col, row));
-		int colB = FractionMultiplyRoundUp(parentRow, OppositeSlope(col, row));
-
-		Location tileA = GetTile(view, direction, colA, parentRow);
-		Location tileB = GetTile(view, direction, colB, parentRow);
-
-		if (colA == colB)
-		{
-			parentCol = colA;
-		}
-		else if (!tileA.GetValid() || !tileB.GetValid()) // If one of them isn't valid, we haven't shot any rays through it - we can skip!
-		{
-			parentCol = (tileA.GetValid()) ? colA : colB;
-		}
-		else if (IsWall(tileA)) //If one is a wall, the other must not be (since we can see through it) - pick the opposite
-		{
-			parentCol = colB;
-		}
-		else if (IsWall(tileB)) //Same as above
-		{
-			parentCol = colA;
-		}
-		else
-		{
-			//Vec2
-			//Tiebreaker - we have two valid, open squares. Both are sending light into this square
-
-			//Switch up our casting to using our center position - we're looking for closer alignments now
-			int centerLow = FractionMultiplyRoundDown(parentRow, CenterSlope(col, row));
-			int centerHigh = FractionMultiplyRoundUp(parentRow, CenterSlope(col, row));
-
-			ASSERT(centerLow == colA || centerLow == colB);
-			ASSERT(centerHigh == colA || centerHigh == colB);
-
-
-			if (centerLow == centerHigh)
-			{
-				//Common case - one of them is more in line with this tile, so we should pick that one.
-				parentCol = centerLow;
-			}
-			else
-			{
-				//Uncommon case - we're split perfectly down the middle. Tiebreak to the center.
-				parentCol = (abs(colA) < abs(colB)) ? colA : colB;
-			}
-		}
-
-		Vec2 parentLoc = Transform(direction, parentCol, parentRow);
-		Vec2 childLoc = Transform(direction, col, row);
-
-		Vec2 offset = childLoc - parentLoc;
-
-		Location parent = GetTile(view, direction, parentCol, parentRow);
-		ASSERT(parent.GetValid());
-
-		SetTile(view, direction, col, row, GetTile(view, direction, parentCol, parentRow).Traverse(offset.x, offset.y));
 	}
 
 	Location GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row)
@@ -307,39 +242,11 @@ namespace LOS
 	}
 
 	//Determines if a new entry can overwrite an existing one.
-	//Change this to control whether baselines passes are on top or below portal passes.
+	//Switching this logic allows blocking walls to show up, but removes some of the sightlines guarantees
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass)
 	{
 		uchar current = view.GetVisibilityPassIndex(col, row);
 		return (current == 0) || (current >= pass);
-	}
-
-	Location BresenhamTraverse(Location start, Vec2 offset)
-	{
-		ASSERT(start.GetValid());
-		Location traversal = start;
-		int x0 = 0;
-		int y0 = 0;
-		int dx = abs(offset.x - 0), sx = 0 < offset.x ? 1 : -1;
-		int dy = -abs(offset.y - 0), sy = 0 < offset.y ? 1 : -1;
-		int err = dx + dy, e2; /* error value e_xy */
-
-		for (;;) {  /* loop */
-			Vec2 pos = Vec2(40, 20) + Vec2(x0, -y0);
-			if (x0 == offset.x && y0 == offset.y)
-			{
-				return traversal;
-			}
-			e2 = 2 * err;
-			int xOffset = 0;
-			int yOffset = 0;
-
-			if (e2 >= dy) { err += dy; x0 += sx; xOffset += sx; } /* e_xy+e_x > 0 */
-			if (e2 <= dx) { err += dx; y0 += sy; yOffset += sy; } /* e_xy+e_y < 0 */
-
-			traversal = traversal.Traverse(xOffset, yOffset);
-			ASSERT(traversal.GetValid());
-		}
 	}
 
 	Location GetTile(View& view, Direction direction, int col, int row)
@@ -379,30 +286,11 @@ namespace LOS
 			x = -row;
 			y = col;
 			break;
+		default:
+			break;
 		}
 
 		return Vec2(x, y);
-	}
-
-	Vec2 GetBresenhamParent(int x, int y)
-	{
-		bool negX = x < 0;
-		bool nexY = y < 0;
-
-		x = abs(x);
-		y = abs(y);
-
-		bool flipped = (x > y);
-		if (flipped)
-		{
-			int hold = x;
-			x = y;
-			y = hold;
-		}
-
-
-
-		return Vec2(0, 0);
 	}
 
 	bool IsSymmetric(const Row& row, int col)

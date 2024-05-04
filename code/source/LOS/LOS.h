@@ -12,6 +12,8 @@
 	them.
 */
 
+#define DEBUG_HOTSPOTS
+
 class View
 {
 public:
@@ -24,14 +26,7 @@ public:
 
 	int GetIndexByLocal(int x, int y) const;
 
-	void Clear();
 	void Mark(int x, int y, uchar value);
-
-	//Local Space Calculations
-	Vec2 GetSensibleParent(int x, int y);
-	void BuildLocalSpace();
-	void BuildLocalSpaceTile(int x, int y);
-
 
 	//Getters
 	Location GetLocationLocal(int x, int y) const;
@@ -41,13 +36,23 @@ public:
 	//Setters
 	void SetLocationLocal(int x, int y, Location location);
 
+	//Debug tools (should compile out)
+	void Debug_AddHeatLocal(int x, int y);
+	int Debug_GetHeatLocal(int x, int y);
+	int Debug_GetMaxHeat();
+	int Debug_GetSumHeat();
+	float Debug_GetHeatPercentageLocal(int x, int y);
+
 protected:
 	int m_radius = -1;
 	vector<Location> m_locations;
 	vector<uchar> m_visibility;
+#ifdef DEBUG_HOTSPOTS
+	vector<int> m_heat;
+	int m_maxHeat = 0;
+	int m_sumHeat = 0;
+#endif
 };
-
-int IntLerp(int a, int b, int numerator, int denominator);
 
 namespace LOS
 {
@@ -109,24 +114,20 @@ namespace LOS
 		}
 	};
 
+	//Core shadowcasting
 	void Calculate(View& view, Location location, uchar maxPass = 255);
-
 	void CalculateQuadrant(View& view, View& scratch, Direction direction, uchar maxPass);
-
 	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass);
 
-	void ResolveTile(View& view, Direction direction, int col, int row);
+	//Recursive mapping
 	Location GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row);
-
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass);
-	Location BresenhamTraverse(Location start, Vec2 offset);
 
 	Location GetTile(View& view, Direction direction, int col, int row);
 	void SetTile(View& view, Direction direction, int col, int row, Location location);
 
+	//Utility functions
 	Vec2 Transform(Direction direction, int col, int row);
-
-
 	bool IsSymmetric(const Row& row, int col);
 	bool IsSymmetric(const int col, const int row, const Fraction start, const Fraction end);
 	bool IsWall(Location location);

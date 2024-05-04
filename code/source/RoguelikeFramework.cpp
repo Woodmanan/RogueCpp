@@ -31,7 +31,22 @@ color_t Blend(color_t a, color_t b)
     return (alpha << 24) | (red << 16) | (green << 8) | blue;
 }
 
-void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view, bool colorPasses)
+uint32_t Lerp(uint32_t a, uint32_t b, float percent)
+{
+    ASSERT(0 <= percent && percent <= 1);
+    return static_cast<uint32_t>(a * (1 - percent) + b * percent);
+}
+
+color_t Blend(color_t a, color_t b, float percent)
+{
+    uint32_t alpha = Lerp((a >> 24) & 0xFF, (b >> 24) & 0xFF, percent) & 0xFF;
+    uint32_t red =   Lerp((a >> 16) & 0xFF, (b >> 16) & 0xFF, percent) & 0xFF;
+    uint32_t green = Lerp((a >> 8)  & 0xFF, (b >> 8)  & 0xFF, percent) & 0xFF;
+    uint32_t blue =  Lerp((a >> 0)  & 0xFF, (b >> 0)  & 0xFF, percent) & 0xFF;
+    return (alpha << 24) | (red << 16) | (green << 8) | blue;
+}
+
+void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
 {
     for (int i = 0; i < window.x; i++)
     {
@@ -61,29 +76,65 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             {
                 if (visible)
                 {
-                    if (colorPasses)
-                    {
-                        int step = view.GetVisibilityPassIndex(i, j) - 1;
-                        color_t color = passColors[step % 5];
-                        terminal_color(color);
-                    }
-                    else
-                    {
-                        terminal_color(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor);
-                    }
+                    terminal_color(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor);
+                    terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+                    terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
                 }
-                else
-                {
-                    terminal_color(color_from_argb(255, 0, 0, 0));
-                }
-                terminal_bkcolor(color_from_argb(255, 0, 0, 0));
-                terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
             }
             else
             {
                 terminal_color(color_from_argb(255, 0, 0, 0));
                 terminal_bkcolor(color_from_argb(255, 0, 0, 0));
                 terminal_put(windowCoord.x, windowCoord.y, ' ');
+            }
+        }
+    }
+}
+
+void Render_Passes(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+{
+    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+
+    for (int i = -maxRadius; i <= maxRadius; i++)
+    {
+        for (int j = -maxRadius; j <= maxRadius; j++)
+        {
+            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+
+            bool visible = view.GetVisibilityLocal(i, j);
+            if (view.GetLocationLocal(i, j).GetValid())
+            {
+                if (visible)
+                {
+                    int step = view.GetVisibilityPassIndex(i, j) - 1;
+                    color_t color = passColors[step % 5];
+                    terminal_color(color);
+                    terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+                    terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
+                }
+            }
+        }
+    }
+}
+
+void Render_Hotspots(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+{
+    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+
+    for (int i = -maxRadius; i <= maxRadius; i++)
+    {
+        for (int j = -maxRadius; j <= maxRadius; j++)
+        {
+            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+
+            bool visible = view.GetVisibilityLocal(i, j);
+            if (visible)
+            {
+                color_t green = color_from_argb(0xFF, 0x00, 0x11, 0x00);
+                color_t red = color_from_argb(0xFF, 0xFF, 0x00, 0x00);
+                float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
+                terminal_color(Blend(green, red, heatPercent));
+                terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
             }
         }
     }
@@ -134,7 +185,13 @@ int main(int argc, char* argv[])
     int maxPass = 10;
     int currentIndex = -1;
     bool colorPasses = false;
+    bool hotspots = false;
+    bool render = true;
     Vec2 bresenhamPoint = Vec2(0, 0);
+
+    const int fpsMerge = 60;
+    int fpsIndex = 0;
+    float FPSBuffer[fpsMerge];
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
@@ -145,6 +202,7 @@ int main(int argc, char* argv[])
         RogueSaveManager::Read("Max Pass", maxPass);
         RogueSaveManager::Read("Current Index", currentIndex);
         RogueSaveManager::Read("Color Passes", colorPasses);
+        RogueSaveManager::Read("Hotspots", hotspots);
         RogueSaveManager::Read("bPoint", bresenhamPoint);
         RogueDataManager::Get()->LoadAll();
         RogueSaveManager::CloseReadSaveFile();
@@ -336,6 +394,7 @@ int main(int argc, char* argv[])
                 RogueSaveManager::Write("Max Pass", maxPass);
                 RogueSaveManager::Write("Current Index", currentIndex);
                 RogueSaveManager::Write("Color Passes", colorPasses);
+                RogueSaveManager::Write("Hotspots", hotspots);
                 RogueSaveManager::Write("bPoint", bresenhamPoint);
                 RogueDataManager::Get()->SaveAll();
                 RogueSaveManager::CloseWriteSaveFile();
@@ -355,32 +414,79 @@ int main(int argc, char* argv[])
             bresenhamPoint = Vec2(0, 0);
             break;
         case TK_C:
-            colorPasses = !colorPasses;
+            if (colorPasses)
+            {
+                colorPasses = false;
+                hotspots = true;
+            }
+            else if (hotspots)
+            {
+                hotspots = false;
+                render = false;
+            }
+            else if (!render)
+            {
+                render = true;
+            }
+            else
+            {
+                colorPasses = true;
+            }
             break;
         }
 
         k = TK_G;
-        terminal_clear();
+        clock = chrono::system_clock::now();
+        char buffer[30];
 
+        terminal_clear();
         LOS::Calculate(view, playerLoc, maxPass);
 
-        RenderMap(map, size, Vec2(x, y), playerLoc, view, colorPasses);
-        RenderBresenham(Vec2(x, y), bresenhamPoint);
-        terminal_color(color_from_argb(255, 255, 0, 255));
-        terminal_put(40, 20, '@');
+        if (render)
+        {
+            RenderMap(map, size, Vec2(x, y), playerLoc, view);
+            if (colorPasses)
+            {
+                Render_Passes(map, size, Vec2(x, y), playerLoc, view);
+            }
+            if (hotspots)
+            {
+                Render_Hotspots(map, size, Vec2(x, y), playerLoc, view);
+                std::snprintf(&buffer[0], 15, "Max Heat: %d", view.Debug_GetMaxHeat());
+                terminal_color(color_from_argb(255, 255, 0x55, 0x55));
+                terminal_print(0, 1, &buffer[0]);
 
+                std::snprintf(&buffer[0], 15, "Sum Heat: %d", view.Debug_GetSumHeat());
+                terminal_print(15, 1, &buffer[0]);
 
-        char buffer[10];
-        std::snprintf(&buffer[0], 10, "FPS: %f", FPS);
+                int maxTiles = (2 * view.GetRadius() + 1) * (2 * view.GetRadius() + 1);
+
+                std::snprintf(&buffer[0], 30, "NumTiles: %d (%.0f%%)", maxTiles, ((float) view.Debug_GetSumHeat() * 100) / maxTiles);
+                terminal_print(30, 1, &buffer[0]);
+
+            }
+            RenderBresenham(Vec2(x, y), bresenhamPoint);
+            terminal_color(color_from_argb(255, 255, 0, 255));
+            terminal_put(40, 20, '@');
+        }
+
+        std::snprintf(&buffer[0], 15, "FPS: %.1f", FPS);
         terminal_print(0, 0, &buffer[0]);
-
-        clock = chrono::system_clock::now();
         terminal_refresh();
         auto currentTime = chrono::system_clock::now();
         auto frameTime = chrono::duration_cast<chrono::duration<float>>(currentTime - clock);
         clock = currentTime;
 
-        FPS = 1.0f / (frameTime.count());
+        FPSBuffer[fpsIndex] = 1.0f / frameTime.count();
+        fpsIndex = (fpsIndex + 1) % fpsMerge;
+
+        FPS = 0.0f;
+        for (int i = 0; i < fpsMerge; i++)
+        {
+            FPS += FPSBuffer[i];
+        }
+
+        FPS = FPS / fpsMerge;
     }
     terminal_close();
 
