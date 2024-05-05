@@ -37,13 +37,6 @@ public:
     THandle<TileNeighbors> m_neighbors;
 };
 
-enum EVisibility : char
-{
-	HIDDEN = 0,
-	REVEALED = 1,
-	VISIBLE = 2
-};
-
 class TileNeighbors
 {
 public:
@@ -70,8 +63,6 @@ class Tile
 public:
 	THandle<BackingTile> m_backingTile;
 	THandle<TileStats> m_stats;
-    THandle<int> m_standing;
-	EVisibility m_visibility;
 };
 
 class Map

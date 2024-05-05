@@ -2,13 +2,14 @@
 //
 
 #include "RoguelikeFramework.h"
+#include "Core/CoreDataTypes.h"
 #include "Data/RogueArena.h"
-#include "..\libraries\BearLibTerminal\Include\C\BearLibTerminal.h"
 #include "Data/RogueDataManager.h"
 #include "Data/SaveManager.h"
 #include "Data/RegisterSaveTypes.h"
 #include "Map/Map.h"
 #include "LOS/LOS.h"
+#include "LOS/TileMemory.h"
 #include <format>
 #include <chrono>
 
@@ -16,10 +17,10 @@ using namespace std;
 
 color_t passColors[5] = {
     color_from_argb(0xFF, 0x17, 0xD9, 0x2A),
-    color_from_argb(0xFF, 0x0F, 0xBF, 0xC8),
     color_from_argb(0xFF, 0x59, 0x00, 0xED),
-    color_from_argb(0xFF, 0xF8, 0xDB, 0xEA),
-    color_from_argb(0xFF, 0xFB, 0x87, 0xA4)
+    color_from_argb(0xFF, 0xFF, 0x70, 0x46),
+    color_from_argb(0xFF, 0xD8, 0xDB, 0xDA),
+    color_from_argb(0xFF, 0xAA, 0x55, 0xAA)
 };
 
 color_t Blend(color_t a, color_t b)
@@ -31,22 +32,13 @@ color_t Blend(color_t a, color_t b)
     return (alpha << 24) | (red << 16) | (green << 8) | blue;
 }
 
-uint32_t Lerp(uint32_t a, uint32_t b, float percent)
-{
-    ASSERT(0 <= percent && percent <= 1);
-    return static_cast<uint32_t>(a * (1 - percent) + b * percent);
-}
+uint32_t render = 0x1;
+uint32_t color = 0x2;
+uint32_t passes = 0x4;
+uint32_t heat = 0x8;
+uint32_t background = 0x10;
 
-color_t Blend(color_t a, color_t b, float percent)
-{
-    uint32_t alpha = Lerp((a >> 24) & 0xFF, (b >> 24) & 0xFF, percent) & 0xFF;
-    uint32_t red =   Lerp((a >> 16) & 0xFF, (b >> 16) & 0xFF, percent) & 0xFF;
-    uint32_t green = Lerp((a >> 8)  & 0xFF, (b >> 8)  & 0xFF, percent) & 0xFF;
-    uint32_t blue =  Lerp((a >> 0)  & 0xFF, (b >> 0)  & 0xFF, percent) & 0xFF;
-    return (alpha << 24) | (red << 16) | (green << 8) | blue;
-}
-
-void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+void Render_Map(THandle<Map> map, Vec2 window, Location playerLocation)
 {
     for (int i = 0; i < window.x; i++)
     {
@@ -62,7 +54,10 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
             }
         }
     }
+}
 
+void Render_View(View& view, Vec2 window, Location playerLocation)
+{
     int maxRadius = std::min(view.GetRadius(), (int)window.x);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
@@ -81,17 +76,11 @@ void RenderMap(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation
                     terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
                 }
             }
-            else
-            {
-                terminal_color(color_from_argb(255, 0, 0, 0));
-                terminal_bkcolor(color_from_argb(255, 0, 0, 0));
-                terminal_put(windowCoord.x, windowCoord.y, ' ');
-            }
         }
     }
 }
 
-void Render_Passes(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+void Render_Passes(View& view, Vec2 window, Location playerLocation)
 {
     int maxRadius = std::min(view.GetRadius(), (int)window.x);
 
@@ -117,7 +106,7 @@ void Render_Passes(THandle<Map> map, Vec2 size, Vec2 window, Location playerLoca
     }
 }
 
-void Render_Hotspots(THandle<Map> map, Vec2 size, Vec2 window, Location playerLocation, View& view)
+void Render_Hotspots(View& view, Vec2 window, Location playerLocation)
 {
     int maxRadius = std::min(view.GetRadius(), (int)window.x);
 
@@ -177,17 +166,16 @@ int main(int argc, char* argv[])
     //Initialize Random
     srand(1);
 
-    Vec2 size(32, 32);
+    Vec2 size(128, 128);
     THandle<Map> map;
+    THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
     Location warpPosition;
     int radius = 10;
     int maxPass = 10;
     int currentIndex = -1;
-    bool colorPasses = false;
-    bool hotspots = false;
-    bool render = true;
     Vec2 bresenhamPoint = Vec2(0, 0);
+    uint32_t renderFlags = (render | background);
 
     const int fpsMerge = 60;
     int fpsIndex = 0;
@@ -197,12 +185,12 @@ int main(int argc, char* argv[])
     {
         RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf");
         RogueSaveManager::Read("Map", map);
+        RogueSaveManager::Read("Memory", memory);
         RogueSaveManager::Read("Player", playerLoc);
         RogueSaveManager::Read("Radius", radius);
         RogueSaveManager::Read("Max Pass", maxPass);
         RogueSaveManager::Read("Current Index", currentIndex);
-        RogueSaveManager::Read("Color Passes", colorPasses);
-        RogueSaveManager::Read("Hotspots", hotspots);
+        RogueSaveManager::Read("Render Flags", renderFlags);
         RogueSaveManager::Read("bPoint", bresenhamPoint);
         RogueDataManager::Get()->LoadAll();
         RogueSaveManager::CloseReadSaveFile();
@@ -224,6 +212,9 @@ int main(int argc, char* argv[])
 
             map->FillTilesExc(Vec2(0, 0), size, 0);
             map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
+            
+            memory = RogueDataManager::Allocate<TileMemory>(map);
+            memory->SetLocalPosition(playerLoc);
         }
 
         map->WrapMapEdges();
@@ -269,6 +260,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::West);
+                memory->Move(VectorFromDirection(Direction::West));
             }
             break;
         case TK_K:
@@ -280,6 +272,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::North);
+                memory->Move(VectorFromDirection(Direction::North));
             }
             break;
         case TK_J:
@@ -291,6 +284,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::South);
+                memory->Move(VectorFromDirection(Direction::South));
             }
             break;
         case TK_L:
@@ -302,6 +296,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::East);
+                memory->Move(VectorFromDirection(Direction::East));
             }
             break;
         case TK_Y:
@@ -312,6 +307,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::NorthWest);
+                memory->Move(VectorFromDirection(Direction::NorthWest));
             }
             break;
         case TK_U:
@@ -322,6 +318,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::NorthEast);
+                memory->Move(VectorFromDirection(Direction::NorthEast));
             }
             break;
         case TK_B:
@@ -332,6 +329,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::SouthWest);
+                memory->Move(VectorFromDirection(Direction::SouthWest));
             }
             break;
         case TK_N:
@@ -342,6 +340,7 @@ int main(int argc, char* argv[])
             else
             {
                 playerLoc = playerLoc.Traverse(Direction::SouthEast);
+                memory->Move(VectorFromDirection(Direction::SouthEast));
             }
             break;
         case TK_SPACE:
@@ -389,12 +388,12 @@ int main(int argc, char* argv[])
             {
                 RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
                 RogueSaveManager::Write("Map", map);
+                RogueSaveManager::Write("Memory", memory);
                 RogueSaveManager::Write("Player", playerLoc);
                 RogueSaveManager::Write("Radius", radius);
                 RogueSaveManager::Write("Max Pass", maxPass);
                 RogueSaveManager::Write("Current Index", currentIndex);
-                RogueSaveManager::Write("Color Passes", colorPasses);
-                RogueSaveManager::Write("Hotspots", hotspots);
+                RogueSaveManager::Write("Render Flags", renderFlags);
                 RogueSaveManager::Write("bPoint", bresenhamPoint);
                 RogueDataManager::Get()->SaveAll();
                 RogueSaveManager::CloseWriteSaveFile();
@@ -409,29 +408,33 @@ int main(int argc, char* argv[])
             if (!terminal_state(TK_SHIFT))
             {
                 map->Reset();
-                map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
+                map->FillTilesExc(Vec2(0, 0), Vec2(size.x - 0, size.y - 0), 1);
+                memory->Wipe();
             }
             bresenhamPoint = Vec2(0, 0);
             break;
         case TK_C:
-            if (colorPasses)
+            if (renderFlags & color)
             {
-                colorPasses = false;
-                hotspots = true;
+                renderFlags ^= color;
+                renderFlags |= heat;
             }
-            else if (hotspots)
+            else if (renderFlags & heat)
             {
-                hotspots = false;
-                render = false;
+                renderFlags ^= heat;
+                renderFlags ^= render;
             }
-            else if (!render)
+            else if (~renderFlags & render)
             {
-                render = true;
+                renderFlags |= render;
             }
             else
             {
-                colorPasses = true;
+                renderFlags |= color;
             }
+            break;
+        case TK_X:
+            renderFlags ^= background;
             break;
         }
 
@@ -441,28 +444,34 @@ int main(int argc, char* argv[])
 
         terminal_clear();
         LOS::Calculate(view, playerLoc, maxPass);
+        memory->Update(view);
 
-        if (render)
+        if (renderFlags & render)
         {
-            RenderMap(map, size, Vec2(x, y), playerLoc, view);
-            if (colorPasses)
+            if (renderFlags & background)
             {
-                Render_Passes(map, size, Vec2(x, y), playerLoc, view);
+                memory->Render(Vec2(x, y));
             }
-            if (hotspots)
+
+            Render_View(view, Vec2(x, y), playerLoc);
+            if (renderFlags & color)
             {
-                Render_Hotspots(map, size, Vec2(x, y), playerLoc, view);
+                Render_Passes(view, Vec2(x, y), playerLoc);
+            }
+            if (renderFlags & heat)
+            {
+                Render_Hotspots(view, Vec2(x, y), playerLoc);
                 std::snprintf(&buffer[0], 15, "Max Heat: %d", view.Debug_GetMaxHeat());
                 terminal_color(color_from_argb(255, 255, 0x55, 0x55));
                 terminal_print(0, 1, &buffer[0]);
 
-                std::snprintf(&buffer[0], 15, "Sum Heat: %d", view.Debug_GetSumHeat());
+                std::snprintf(&buffer[0], 20, "Sum Heat: %d", view.Debug_GetSumHeat());
                 terminal_print(15, 1, &buffer[0]);
 
-                int maxTiles = (2 * view.GetRadius() + 1) * (2 * view.GetRadius() + 1);
+                int maxTiles = view.Debug_GetNumRevealed();
 
                 std::snprintf(&buffer[0], 30, "NumTiles: %d (%.0f%%)", maxTiles, ((float) view.Debug_GetSumHeat() * 100) / maxTiles);
-                terminal_print(30, 1, &buffer[0]);
+                terminal_print(35, 1, &buffer[0]);
 
             }
             RenderBresenham(Vec2(x, y), bresenhamPoint);

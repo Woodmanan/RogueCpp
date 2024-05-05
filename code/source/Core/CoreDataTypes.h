@@ -1,5 +1,6 @@
 #pragma once
 #include "../Data/SaveManager.h"
+#include "../../libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
 
 class Tile;
 class TileNeighbors;
@@ -23,6 +24,13 @@ struct Vec2
 
 	short x;
 	short y;
+
+    Vec2& operator+=(const Vec2& rhs) 
+    {
+        this->x += rhs.x;
+        this->y += rhs.y;
+        return *this;
+    }
 };
 
 struct Vec3
@@ -92,6 +100,29 @@ inline static Direction Reverse(Direction direction)
         return East;
     case NorthWest:
         return SouthEast;
+    }
+}
+
+inline static Vec2 VectorFromDirection(const Direction direction)
+{
+    switch (direction)
+    {
+    case North:
+        return Vec2( 0,  1);
+    case NorthEast:
+        return Vec2( 1,  1);
+    case East:
+        return Vec2( 1,  0);
+    case SouthEast:
+        return Vec2( 1, -1);
+    case South:
+        return Vec2( 0, -1);
+    case SouthWest:
+        return Vec2(-1, -1);
+    case West:
+        return Vec2(-1,  0);
+    case NorthWest:
+        return Vec2(-1,  1);
     }
 }
 
@@ -197,7 +228,7 @@ inline Location operator-(Location lhs, Vec2 rhs)
     return Location((ushort)x, (ushort)y, lhs.z());
 }
 
-inline Vec2 operator+(Vec2 lhs, Vec2 rhs)
+inline Vec2 operator+(const Vec2 lhs, const Vec2 rhs)
 {
     return Vec2(lhs.x + rhs.x, lhs.y + rhs.y);
 }
@@ -232,4 +263,20 @@ inline int IntDivisionCeil(int num, int denom)
     {
         return num / denom;
     }
+}
+
+template<typename T>
+T Lerp(T a, T b, float percent)
+{
+    ASSERT(0 <= percent && percent <= 1);
+    return static_cast<T>(a * (1 - percent) + b * percent);
+}
+
+inline color_t Blend(color_t a, color_t b, float percent)
+{
+    uint32_t alpha = Lerp((a >> 24) & 0xFF, (b >> 24) & 0xFF, percent) & 0xFF;
+    uint32_t red = Lerp((a >> 16) & 0xFF, (b >> 16) & 0xFF, percent) & 0xFF;
+    uint32_t green = Lerp((a >> 8) & 0xFF, (b >> 8) & 0xFF, percent) & 0xFF;
+    uint32_t blue = Lerp((a >> 0) & 0xFF, (b >> 0) & 0xFF, percent) & 0xFF;
+    return (alpha << 24) | (red << 16) | (green << 8) | blue;
 }

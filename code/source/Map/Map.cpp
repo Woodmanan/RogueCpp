@@ -278,14 +278,6 @@ namespace RogueSaveManager
         AddOffset();
         Write("Backing", value.m_backingTile);
         Write("Stats", value.m_stats);
-        if (debug)
-        {
-            Write("Visibility", (short)value.m_visibility);
-        }
-        else
-        {
-            Write("Visibility", (char)value.m_visibility);
-        }
         RemoveOffset();
     }
 
@@ -294,14 +286,6 @@ namespace RogueSaveManager
         AddOffset();
         Read("Backing", value.m_backingTile);
         Read("Stats", value.m_stats);
-        if (debug)
-        {
-            value.m_visibility = (EVisibility)Read<short>("Visibility");
-        }
-        else
-        {
-            value.m_visibility = (EVisibility)Read<char>("Visibility");
-        }
         RemoveOffset();
     }
 

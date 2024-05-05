@@ -290,7 +290,7 @@ public:
 #define REGISTER_SAVE_TYPE(index, ClassName, name, size)\
 	class ClassName;\
 	template<> int RogueSaveable<ClassName>::ID = index;\
-    template<> RegisterHelper<ClassName>::RegisterHelper (int) { std::cout << index << ": "<< name << " Registered: " << std::to_string(size) << std::endl; RogueDataManager::Get()->RegisterArena<ClassName>(size); }\
+    template<> RegisterHelper<ClassName>::RegisterHelper (int) { std::cout << index << ": "<< name << " Registered: " << to_string(size) << std::endl; RogueDataManager::Get()->RegisterArena<ClassName>(size); }\
     template<> RegisterHelper<ClassName> RegisterHelper<ClassName>::_helper(size);
 
 namespace RogueSaveManager

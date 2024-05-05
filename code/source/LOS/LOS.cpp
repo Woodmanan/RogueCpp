@@ -1,4 +1,5 @@
 #include "LOS.h"
+#include "../Map/Map.h"
 #include <algorithm>
 
 void View::SetRadius(int radius)
@@ -57,6 +58,7 @@ void View::ResetAt(Location location)
 	std::fill(m_heat.begin(), m_heat.begin() + numTiles, 0);
 	m_maxHeat = 0;
 	m_sumHeat = 0;
+	m_numRevealed = 0;
 #endif
 }
 
@@ -118,6 +120,15 @@ int View::Debug_GetSumHeat()
 {
 #ifdef DEBUG_HOTSPOTS
 	return m_sumHeat;
+#else
+	return 0;
+#endif
+}
+
+int View::Debug_GetNumRevealed()
+{
+#ifdef DEBUG_HOTSPOTS
+	return m_numRevealed;
 #else
 	return 0;
 #endif
@@ -336,6 +347,10 @@ namespace LOS
 		Vec2 pos = Transform(direction, col, row);
 
 		view.Mark(pos.x, pos.y, pass);
+
+#ifdef DEBUG_HOTSPOTS
+		view.m_numRevealed++;
+#endif
 	}
 
 	Fraction Slope(int col, int row)

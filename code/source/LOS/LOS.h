@@ -1,5 +1,6 @@
 #pragma once
-#include "../Map/Map.h"
+#include "../Core/CoreDataTypes.h"
+#include <vector>
 
 /*
 	Non-euclidean Recursive Symmetric Shadowcasting
@@ -12,7 +13,17 @@
 	them.
 */
 
+class BackingTile;
+class TileStats;
+class TileNeighbors;
+class Tile;
+class Location;
+
+using namespace std;
+
+#ifdef _DEBUG
 #define DEBUG_HOTSPOTS
+#endif
 
 class View
 {
@@ -41,6 +52,7 @@ public:
 	int Debug_GetHeatLocal(int x, int y);
 	int Debug_GetMaxHeat();
 	int Debug_GetSumHeat();
+	int Debug_GetNumRevealed();
 	float Debug_GetHeatPercentageLocal(int x, int y);
 
 protected:
@@ -48,9 +60,11 @@ protected:
 	vector<Location> m_locations;
 	vector<uchar> m_visibility;
 #ifdef DEBUG_HOTSPOTS
+public:
 	vector<int> m_heat;
 	int m_maxHeat = 0;
 	int m_sumHeat = 0;
+	int m_numRevealed = 0;
 #endif
 };
 
@@ -92,10 +106,10 @@ namespace LOS
 
 	struct Row
 	{
+		uchar m_pass;
 		int m_depth;
 		Fraction m_startSlope;
 		Fraction m_endSlope;
-		uchar m_pass;
 
 		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope) :
 			m_pass(pass),
