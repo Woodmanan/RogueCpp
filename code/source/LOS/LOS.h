@@ -110,12 +110,14 @@ namespace LOS
 		int m_depth;
 		Fraction m_startSlope;
 		Fraction m_endSlope;
+		Direction m_rotation;
 
-		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope) :
+		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope, Direction rotation) :
 			m_pass(pass),
 			m_depth(depth),
 			m_startSlope(startSlope),
-			m_endSlope(endSlope) {}
+			m_endSlope(endSlope),
+			m_rotation(rotation){}
 
 		int GetMinCol()
 		{
@@ -129,12 +131,12 @@ namespace LOS
 	};
 
 	//Core shadowcasting
-	void Calculate(View& view, Location location, uchar maxPass = 255);
-	void CalculateQuadrant(View& view, View& scratch, Direction direction, uchar maxPass);
+	void Calculate(View& view, Location location, Direction rotation, uchar maxPass = 255);
+	void CalculateQuadrant(View& view, View& scratch, Direction direction, Direction rotation, uchar maxPass);
 	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass);
 
 	//Recursive mapping
-	Location GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row);
+	Location GetTileByRowParent(View& view, View& scratch, Direction direction, Direction rotation, int col, const Row& row);
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass);
 
 	Location GetTile(View& view, Direction direction, int col, int row);

@@ -146,7 +146,7 @@ float View::Debug_GetHeatPercentageLocal(int x, int y)
 
 namespace LOS
 {
-	void Calculate(View& view, Location location, uchar maxPass)
+	void Calculate(View& view, Location location, Direction rotation, uchar maxPass)
 	{
 		//Set scratch to match, iff it's smaller than needed
 		static View scratch;
@@ -157,15 +157,15 @@ namespace LOS
 		scratch.ResetAt(location);
 
 		//Iterate each quadrant once
-		CalculateQuadrant(view, scratch, West, maxPass);
-		CalculateQuadrant(view, scratch, East, maxPass);
-		CalculateQuadrant(view, scratch, North, maxPass);
-		CalculateQuadrant(view, scratch, South, maxPass);
+		CalculateQuadrant(view, scratch, West,  rotation, maxPass);
+		CalculateQuadrant(view, scratch, East,  rotation, maxPass);
+		CalculateQuadrant(view, scratch, North, rotation, maxPass);
+		CalculateQuadrant(view, scratch, South, rotation, maxPass);
 	}
 
-	void CalculateQuadrant(View& view, View& scratch, Direction direction, uchar maxPass)
+	void CalculateQuadrant(View& view, View& scratch, Direction direction, Direction rotation, uchar maxPass)
 	{
-		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1));
+		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1), rotation);
 		Scan(view, scratch, direction, start, maxPass);
 	}
 
@@ -182,7 +182,7 @@ namespace LOS
 		for (int col = minCol; col <= maxCol; col++)
 		{
 			Vec2 pos = Transform(direction, col, row.m_depth);
-			Location tile = GetTileByRowParent(view, scratch, direction, col, row);
+			Location tile = GetTileByRowParent(view, scratch, direction, row.m_rotation, col, row);
 			view.Debug_AddHeatLocal(pos.x, pos.y);
 
 			//No matter what, write this tile into the scratch pad. Our recursions will either ignore it spatially or need it set.
@@ -203,7 +203,7 @@ namespace LOS
 			if (AllowsVision(prevTile) && BlocksVision(tile))
 			{
 				//Move to next row!
-				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth));
+				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth), row.m_rotation);
 				Scan(view, scratch, direction, nextRow, maxPass);
 			}
 			if (IsFloor(tile) && RequiresRecast(tile))
@@ -211,7 +211,7 @@ namespace LOS
 				//This is a portal - scan recursive pass through it's sightlines
 				Fraction min = std::max(row.m_startSlope, Slope(col, row.m_depth));
 				Fraction max = std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
-				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max);
+				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max, row.m_rotation);
 				Scan(view, scratch, direction, recurseRow, maxPass);
 			}
 
@@ -221,12 +221,12 @@ namespace LOS
 		if (!BlocksVision(prevTile))
 		{
 			//Scan next row!
-			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope);
+			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope, row.m_rotation);
 			Scan(view, scratch, direction, nextRow, maxPass);
 		}
 	}
 
-	Location GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row)
+	Location GetTileByRowParent(View& view, View& scratch, Direction direction, Direction rotation, int col, const Row& row)
 	{
 		Fraction minSlope = row.m_startSlope;
 		Fraction maxSlope = row.m_endSlope;
@@ -249,7 +249,7 @@ namespace LOS
 
 		Location parent = GetTile(scratch, direction, parentCol, parentRow);
 
-		return parent.Traverse(offset);
+		return parent.Traverse(offset, rotation);
 	}
 
 	//Determines if a new entry can overwrite an existing one.

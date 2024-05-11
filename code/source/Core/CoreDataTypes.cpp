@@ -157,12 +157,12 @@ bool Location::InMap()
     return x() >= 0 && y() >= 0 && x() < map->m_size.x && y() < map->m_size.y;
 }
 
-Location Location::Traverse(Vec2 offset)
+Location Location::Traverse(Vec2 offset, Direction rotation)
 {
-    return Traverse(offset.x, offset.y);
+    return Traverse(offset.x, offset.y, rotation);
 }
 
-Location Location::Traverse(short xOffset, short yOffset)
+Location Location::Traverse(short xOffset, short yOffset, Direction rotation)
 {
     ASSERT(xOffset >= -1 && xOffset <= 1);
     ASSERT(yOffset >= -1 && yOffset <= 1);
@@ -213,18 +213,20 @@ Location Location::Traverse(short xOffset, short yOffset)
             break;
     }
 
-    return Traverse(direction);
+    return Traverse(direction, rotation);
 }
 
-Location Location::Traverse(Direction direction)
+Location Location::Traverse(Direction direction, Direction rotation)
 {
+    Direction finalDirection = Rotate(direction, rotation);
+
     if (!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid())
     {
-        return _Traverse_No_Neighbor(direction);
+        return _Traverse_No_Neighbor(finalDirection);
     }
     else
     {
-        return _Traverse_Neighbors(direction);
+        return _Traverse_Neighbors(finalDirection);
     }
 }
 

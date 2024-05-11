@@ -172,6 +172,11 @@ inline static Vec2 VectorFromDirection(const Direction direction)
     }
 }
 
+inline static Direction Rotate(Direction direction, Direction rotation)
+{
+    return (Direction) ((direction + rotation) % 8);
+}
+
 class Location
 {
 public:
@@ -200,9 +205,9 @@ public:
 
     bool InMap();
 
-    Location Traverse(Vec2 offset);
-    Location Traverse(short xOffset, short yOffset);
-    Location Traverse(Direction direction);
+    Location Traverse(Vec2 offset, Direction rotation = North);
+    Location Traverse(short xOffset, short yOffset, Direction rotation = North);
+    Location Traverse(Direction direction, Direction rotation = North);
 
     Location _Traverse_No_Neighbor(Direction direction);
     Location _Traverse_Neighbors(Direction direction);

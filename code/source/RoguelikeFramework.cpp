@@ -170,6 +170,7 @@ int main(int argc, char* argv[])
     THandle<Map> map;
     THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
+    Direction lookDirection = North;
     Location warpPosition;
     int radius = 10;
     int maxPass = 10;
@@ -187,6 +188,7 @@ int main(int argc, char* argv[])
         RogueSaveManager::Read("Map", map);
         RogueSaveManager::Read("Memory", memory);
         RogueSaveManager::Read("Player", playerLoc);
+        RogueSaveManager::Read("Look Direction", lookDirection);
         RogueSaveManager::Read("Radius", radius);
         RogueSaveManager::Read("Max Pass", maxPass);
         RogueSaveManager::Read("Current Index", currentIndex);
@@ -259,7 +261,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::West);
+                playerLoc = playerLoc.Traverse(Direction::West, lookDirection);
                 memory->Move(VectorFromDirection(Direction::West));
             }
             break;
@@ -271,7 +273,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::North);
+                playerLoc = playerLoc.Traverse(Direction::North, lookDirection);
                 memory->Move(VectorFromDirection(Direction::North));
             }
             break;
@@ -283,7 +285,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::South);
+                playerLoc = playerLoc.Traverse(Direction::South, lookDirection);
                 memory->Move(VectorFromDirection(Direction::South));
             }
             break;
@@ -295,7 +297,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::East);
+                playerLoc = playerLoc.Traverse(Direction::East, lookDirection);
                 memory->Move(VectorFromDirection(Direction::East));
             }
             break;
@@ -306,7 +308,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::NorthWest);
+                playerLoc = playerLoc.Traverse(Direction::NorthWest, lookDirection);
                 memory->Move(VectorFromDirection(Direction::NorthWest));
             }
             break;
@@ -317,7 +319,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::NorthEast);
+                playerLoc = playerLoc.Traverse(Direction::NorthEast, lookDirection);
                 memory->Move(VectorFromDirection(Direction::NorthEast));
             }
             break;
@@ -328,7 +330,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::SouthWest);
+                playerLoc = playerLoc.Traverse(Direction::SouthWest, lookDirection);
                 memory->Move(VectorFromDirection(Direction::SouthWest));
             }
             break;
@@ -339,7 +341,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::SouthEast);
+                playerLoc = playerLoc.Traverse(Direction::SouthEast, lookDirection);
                 memory->Move(VectorFromDirection(Direction::SouthEast));
             }
             break;
@@ -431,6 +433,7 @@ int main(int argc, char* argv[])
                 RogueSaveManager::Write("Map", map);
                 RogueSaveManager::Write("Memory", memory);
                 RogueSaveManager::Write("Player", playerLoc);
+                RogueSaveManager::Write("Look Direction", lookDirection);
                 RogueSaveManager::Write("Radius", radius);
                 RogueSaveManager::Write("Max Pass", maxPass);
                 RogueSaveManager::Write("Current Index", currentIndex);
@@ -477,6 +480,12 @@ int main(int argc, char* argv[])
         case TK_X:
             renderFlags ^= background;
             break;
+        case TK_9:
+            lookDirection = Rotate(lookDirection, NorthWest);
+            break;
+        case TK_0:
+            lookDirection = Rotate(lookDirection, NorthEast);
+            break;
         }
 
         k = TK_G;
@@ -484,7 +493,7 @@ int main(int argc, char* argv[])
         char buffer[30];
 
         terminal_clear();
-        LOS::Calculate(view, playerLoc, maxPass);
+        LOS::Calculate(view, playerLoc, lookDirection, maxPass);
         memory->Update(view);
 
         if (renderFlags & render)
