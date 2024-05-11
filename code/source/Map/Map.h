@@ -106,8 +106,11 @@ public:
     void WrapMapEdges();
     void WrapTile(Vec2 location);
     Location WrapVector(Vec2 location, int xOffset, int yOffset);
+    void SetNeighbor(Vec2 location, Direction direction, Location neighbor);
+    Location GetNeighbor(Vec2 location, Direction direction);
 
     void CreatePortal(Vec2 open, Vec2 exit);
+    void CreateDirectionalPortal(Vec2 open, Vec2 exit, Direction direction);
 
     int LinkBackingTile(THandle<BackingTile> tile);
     template<typename T, class... Args>

@@ -166,7 +166,7 @@ int main(int argc, char* argv[])
     //Initialize Random
     srand(1);
 
-    Vec2 size(128, 128);
+    Vec2 size(64, 64);
     THandle<Map> map;
     THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
@@ -379,7 +379,48 @@ int main(int argc, char* argv[])
                 currentIndex = std::min(currentIndex + 1, 5);
                 map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
                 map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
-                map->CreatePortal(warpPosition.AsVec2(), playerLoc.AsVec2());
+                Direction direction = North;
+
+                if (terminal_state(TK_SHIFT))
+                {
+                    switch (terminal_read())
+                    {
+                    case TK_K:
+                    case TK_UP:
+                        direction = North;
+                        break;
+                    case TK_U:
+                        direction = NorthEast;
+                        break;
+                    case TK_L:
+                    case TK_RIGHT:
+                        direction = East;
+                        break;
+                    case TK_N:
+                        direction = SouthEast;
+                        break;
+                    case TK_J:
+                    case TK_DOWN:
+                        direction = South;
+                        break;
+                    case TK_B:
+                        direction = SouthWest;
+                        break;
+                    case TK_H:
+                    case TK_LEFT:
+                        direction = West;
+                        break;
+                    case TK_Y:
+                        direction = NorthWest;
+                        break;
+                    }
+
+                    map->CreateDirectionalPortal(warpPosition.AsVec2(), playerLoc.AsVec2(), direction);
+                }
+                else
+                {
+                    map->CreatePortal(warpPosition.AsVec2(), playerLoc.AsVec2());
+                }
                 warpPosition = Location();
             }
             break;

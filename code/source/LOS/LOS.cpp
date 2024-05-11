@@ -346,11 +346,14 @@ namespace LOS
 	{
 		Vec2 pos = Transform(direction, col, row);
 
-		view.Mark(pos.x, pos.y, pass);
-
 #ifdef DEBUG_HOTSPOTS
-		view.m_numRevealed++;
+		if (!view.GetVisibilityLocal(pos.x, pos.y))
+		{
+			view.m_numRevealed++;
+		}
 #endif
+
+		view.Mark(pos.x, pos.y, pass);
 	}
 
 	Fraction Slope(int col, int row)

@@ -164,6 +164,73 @@ Location Map::WrapVector(Vec2 location, int xOffset, int yOffset)
     return Location(x, y, z);
 }
 
+void Map::SetNeighbor(Vec2 location, Direction direction, Location neighbor)
+{
+    Tile& tile = GetTile(location);
+    THandle<TileNeighbors> neighbors = GetOrAddNeighbors(tile);
+    switch (direction)
+    {
+    case North:
+        neighbors->N  = neighbor;
+        break;
+    case NorthEast:
+        neighbors->NE = neighbor;
+        break;
+    case East:
+        neighbors->E  = neighbor;
+        break;
+    case SouthEast:
+        neighbors->SE = neighbor;
+        break;
+    case South:
+        neighbors->S  = neighbor;
+        break;
+    case SouthWest:
+        neighbors->SW = neighbor;
+        break;
+    case West:
+        neighbors->W  = neighbor;
+        break;
+    case NorthWest:
+        neighbors->NW = neighbor;
+        break;
+    }
+}
+
+Location Map::GetNeighbor(Vec2 location, Direction direction)
+{
+    Tile& tile = GetTile(location);
+    THandle<TileNeighbors> neighbors = tile.m_stats.IsValid() ? tile.m_stats->m_neighbors : THandle<TileNeighbors>();
+
+    if (neighbors.IsValid())
+    {
+        switch (direction)
+        {
+        case North:
+            return neighbors->N;
+        case NorthEast:
+            return neighbors->NE;
+        case East:
+            return neighbors->E;
+        case SouthEast:
+            return neighbors->SE;
+        case South:
+            return neighbors->S;
+        case SouthWest:
+            return neighbors->SW;
+        case West:
+            return neighbors->W;
+        case NorthWest:
+            return neighbors->NW;
+        }
+    }
+    else
+    {
+        Vec2 offset = VectorFromDirection(direction);
+        return WrapVector(location, offset.x, offset.y);
+    }
+}
+
 void Map::CreatePortal(Vec2 open, Vec2 exit)
 {
     WrapTile(open);
@@ -178,6 +245,24 @@ void Map::CreatePortal(Vec2 open, Vec2 exit)
     THandle<TileNeighbors> hold = openStats->m_neighbors;
     openStats->m_neighbors = exitStats->m_neighbors;
     exitStats->m_neighbors = hold;
+}
+
+void Map::CreateDirectionalPortal(Vec2 open, Vec2 exit, Direction direction)
+{
+    //Normalize neighbors
+    WrapTile(open);
+    WrapTile(exit);
+
+    Direction CW = TurnClockwise(direction);
+    Direction CCW = TurnCounterClockwise(direction);
+
+    SetNeighbor(open, CW, GetNeighbor(exit, CW));
+    SetNeighbor(open, direction, GetNeighbor(exit, direction));
+    SetNeighbor(open, CCW, GetNeighbor(exit, CCW));
+
+    SetNeighbor(exit, Reverse(CW), GetNeighbor(open, Reverse(CW)));
+    SetNeighbor(exit, Reverse(direction), GetNeighbor(open, Reverse(direction)));
+    SetNeighbor(exit, Reverse(CCW), GetNeighbor(open, Reverse(CCW)));
 }
 
 namespace RogueSaveManager

@@ -103,6 +103,52 @@ inline static Direction Reverse(Direction direction)
     }
 }
 
+inline static Direction TurnCounterClockwise(Direction direction)
+{
+    switch (direction)
+    {
+    case North:
+        return NorthWest;
+    case NorthEast:
+        return North;
+    case East:
+        return NorthEast;
+    case SouthEast:
+        return East;
+    case South:
+        return SouthEast;
+    case SouthWest:
+        return South;
+    case West:
+        return SouthWest;
+    case NorthWest:
+        return West;
+    }
+}
+
+inline static Direction TurnClockwise(Direction direction)
+{
+    switch (direction)
+    {
+    case North:
+        return NorthEast;
+    case NorthEast:
+        return East;
+    case East:
+        return SouthEast;
+    case SouthEast:
+        return South;
+    case South:
+        return SouthWest;
+    case SouthWest:
+        return West;
+    case West:
+        return NorthWest;
+    case NorthWest:
+        return North;
+    }
+}
+
 inline static Vec2 VectorFromDirection(const Direction direction)
 {
     switch (direction)
