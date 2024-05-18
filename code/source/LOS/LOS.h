@@ -43,9 +43,11 @@ public:
 	Location GetLocationLocal(int x, int y) const;
 	bool GetVisibilityLocal(int x, int y) const;
 	uchar GetVisibilityPassIndex(int x, int y) const;
+	Direction GetRotationLocal(int x, int y) const;
 
 	//Setters
 	void SetLocationLocal(int x, int y, Location location);
+	void SetRotationLocal(int x, int y, Direction direction);
 
 	//Debug tools (should compile out)
 	void Debug_AddHeatLocal(int x, int y);
@@ -59,6 +61,7 @@ protected:
 	int m_radius = -1;
 	vector<Location> m_locations;
 	vector<uchar> m_visibility;
+	vector<Direction> m_rotations;
 #ifdef DEBUG_HOTSPOTS
 public:
 	vector<int> m_heat;
@@ -110,14 +113,12 @@ namespace LOS
 		int m_depth;
 		Fraction m_startSlope;
 		Fraction m_endSlope;
-		Direction m_rotation;
 
-		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope, Direction rotation) :
+		Row(uchar pass, int depth, Fraction startSlope, Fraction endSlope) :
 			m_pass(pass),
 			m_depth(depth),
 			m_startSlope(startSlope),
-			m_endSlope(endSlope),
-			m_rotation(rotation){}
+			m_endSlope(endSlope){}
 
 		int GetMinCol()
 		{
@@ -136,11 +137,14 @@ namespace LOS
 	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass);
 
 	//Recursive mapping
-	Location GetTileByRowParent(View& view, View& scratch, Direction direction, Direction rotation, int col, const Row& row);
+	std::pair<Location, Direction> GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row);
 	bool ShouldOverwrite(const View& view, int col, int row, uchar pass);
 
 	Location GetTile(View& view, Direction direction, int col, int row);
 	void SetTile(View& view, Direction direction, int col, int row, Location location);
+
+	Direction GetRotation(View& view, Direction direction, int col, int row);
+	void SetRotation(View& view, Direction direction, int col, int row, Direction rotation);
 
 	//Utility functions
 	Vec2 Transform(Direction direction, int col, int row);

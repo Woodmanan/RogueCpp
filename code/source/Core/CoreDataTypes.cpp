@@ -157,19 +157,19 @@ bool Location::InMap()
     return x() >= 0 && y() >= 0 && x() < map->m_size.x && y() < map->m_size.y;
 }
 
-Location Location::Traverse(Vec2 offset, Direction rotation)
+std::pair<Location, Direction> Location::Traverse(Vec2 offset, Direction rotation)
 {
     return Traverse(offset.x, offset.y, rotation);
 }
 
-Location Location::Traverse(short xOffset, short yOffset, Direction rotation)
+std::pair<Location, Direction> Location::Traverse(short xOffset, short yOffset, Direction rotation)
 {
     ASSERT(xOffset >= -1 && xOffset <= 1);
     ASSERT(yOffset >= -1 && yOffset <= 1);
 
     if (xOffset == 0 && yOffset == 0)
     {
-        return Location(x(), y(), z());
+        return std::make_pair(Location(x(), y(), z()), North);
     }
 
     short index = (xOffset + 1) + ((1 - yOffset) * 3);
@@ -216,7 +216,7 @@ Location Location::Traverse(short xOffset, short yOffset, Direction rotation)
     return Traverse(direction, rotation);
 }
 
-Location Location::Traverse(Direction direction, Direction rotation)
+std::pair<Location, Direction> Location::Traverse(Direction direction, Direction rotation)
 {
     Direction finalDirection = Rotate(direction, rotation);
 
@@ -230,56 +230,84 @@ Location Location::Traverse(Direction direction, Direction rotation)
     }
 }
 
-Location Location::_Traverse_No_Neighbor(Direction direction)
+std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction direction)
 {
     ASSERT((!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid()));
+    Map* map = RogueDataManager::Get()->ResolveByTypeIndex<Map>(z());
+    ASSERT(map != nullptr);
+
     switch (direction)
     {
         case North:
-            return Location(x() + 0, y() + 1, z());
+            return std::make_pair(map->WrapLocation(*this, 0, 1), North);
         case NorthEast:
-            return Location(x() + 1, y() + 1, z());
+            return std::make_pair(map->WrapLocation(*this, 1, 1), North);
         case East:
-            return Location(x() + 1, y() + 0, z());
+            return std::make_pair(map->WrapLocation(*this, 1, 0), North);
         case SouthEast:
-            return Location(x() + 1, y() - 1, z());
+            return std::make_pair(map->WrapLocation(*this, 1, -1), North);
         case South:
-            return Location(x() + 0, y() - 1, z());
+            return std::make_pair(map->WrapLocation(*this, 0, -1), North);
         case SouthWest:
-            return Location(x() - 1, y() - 1, z());
+            return std::make_pair(map->WrapLocation(*this, -1, -1), North);
         case West:
-            return Location(x() - 1, y() + 0, z());
+            return std::make_pair(map->WrapLocation(*this, -1, 0), North);
         case NorthWest:
-            return Location(x() - 1, y() + 1, z());
+            return std::make_pair(map->WrapLocation(*this, -1, 1), North);
         default:
-            return Location(x(), y(), z());
+            return std::make_pair(*this, North);
     }
 }
 
-Location Location::_Traverse_Neighbors(Direction direction)
+std::pair<Location, Direction> Location::_Traverse_Neighbors(Direction direction)
 {
     ASSERT(GetTile().m_stats.IsValid());
     THandle<TileNeighbors> neighbors = GetTile().m_stats->m_neighbors;
     ASSERT(neighbors.IsValid());
+
+    Location foundTile;
+    Direction foundDirection;
     switch (direction)
     {
         case North:
-            return neighbors->N;
+            foundTile = neighbors->N;
+            foundDirection = neighbors->N_Direction;
+            break;
         case NorthEast:
-            return neighbors->NE;
+            foundTile = neighbors->NE;
+            foundDirection = neighbors->NE_Direction;
+            break;
         case East:
-            return neighbors->E;
+            foundTile = neighbors->E;
+            foundDirection = neighbors->E_Direction;
+            break;
         case SouthEast:
-            return neighbors->SE;
+            foundTile = neighbors->SE;
+            foundDirection = neighbors->SE_Direction;
+            break;
         case South:
-            return neighbors->S;
+            foundTile = neighbors->S;
+            foundDirection = neighbors->S_Direction;
+            break;
         case SouthWest:
-            return neighbors->SW;
+            foundTile = neighbors->SW;
+            foundDirection = neighbors->SW_Direction;
+            break;
         case West:
-            return neighbors->W;
+            foundTile = neighbors->W;
+            foundDirection = neighbors->W_Direction;
+            break;
         case NorthWest:
-            return neighbors->NW;
+            foundTile = neighbors->NW;
+            foundDirection = neighbors->NW_Direction;
+            break;
     }
+
+    if (!foundTile.GetValid())
+    {
+        return _Traverse_No_Neighbor(direction);
+    }
+    return std::make_pair(foundTile, foundDirection);
 }
 
 THandle<TileNeighbors> Location::GetNeighbors()

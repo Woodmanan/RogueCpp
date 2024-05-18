@@ -153,6 +153,45 @@ void RenderBresenham(Vec2 window, Vec2 endpoint)
     }
 }
 
+Direction ReadDirection()
+{
+    Direction direction = North;
+
+    switch (terminal_read())
+    {
+    case TK_K:
+    case TK_UP:
+        direction = North;
+        break;
+    case TK_U:
+        direction = NorthEast;
+        break;
+    case TK_L:
+    case TK_RIGHT:
+        direction = East;
+        break;
+    case TK_N:
+        direction = SouthEast;
+        break;
+    case TK_J:
+    case TK_DOWN:
+        direction = South;
+        break;
+    case TK_B:
+        direction = SouthWest;
+        break;
+    case TK_H:
+    case TK_LEFT:
+        direction = West;
+        break;
+    case TK_Y:
+        direction = NorthWest;
+        break;
+    }
+
+    return direction;
+}
+
 void ResetMap(THandle<Map> map)
 {
     if (map.IsValid())
@@ -172,6 +211,7 @@ int main(int argc, char* argv[])
     Location playerLoc = Location(1, 1, 0);
     Direction lookDirection = North;
     Location warpPosition;
+    Direction warpDirection;
     int radius = 10;
     int maxPass = 10;
     int currentIndex = -1;
@@ -218,8 +258,6 @@ int main(int argc, char* argv[])
             memory = RogueDataManager::Allocate<TileMemory>(map);
             memory->SetLocalPosition(playerLoc);
         }
-
-        map->WrapMapEdges();
     }
 
     char k;
@@ -261,7 +299,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::West, lookDirection);
+                auto move = playerLoc.Traverse(Direction::West, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::West));
             }
             break;
@@ -273,7 +313,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::North, lookDirection);
+                auto move = playerLoc.Traverse(Direction::North, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::North));
             }
             break;
@@ -285,7 +327,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::South, lookDirection);
+                auto move = playerLoc.Traverse(Direction::South, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::South));
             }
             break;
@@ -297,7 +341,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::East, lookDirection);
+                auto move = playerLoc.Traverse(Direction::East, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::East));
             }
             break;
@@ -308,7 +354,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::NorthWest, lookDirection);
+                auto move = playerLoc.Traverse(Direction::NorthWest, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::NorthWest));
             }
             break;
@@ -319,7 +367,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::NorthEast, lookDirection);
+                auto move = playerLoc.Traverse(Direction::NorthEast, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::NorthEast));
             }
             break;
@@ -330,7 +380,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::SouthWest, lookDirection);
+                auto move = playerLoc.Traverse(Direction::SouthWest, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::SouthWest));
             }
             break;
@@ -341,7 +393,9 @@ int main(int argc, char* argv[])
             }
             else
             {
-                playerLoc = playerLoc.Traverse(Direction::SouthEast, lookDirection);
+                auto move = playerLoc.Traverse(Direction::SouthEast, lookDirection);
+                playerLoc = move.first;
+                lookDirection = Rotate(lookDirection, move.second);
                 memory->Move(VectorFromDirection(Direction::SouthEast));
             }
             break;
@@ -381,48 +435,37 @@ int main(int argc, char* argv[])
                 currentIndex = std::min(currentIndex + 1, 5);
                 map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
                 map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
-                Direction direction = North;
 
                 if (terminal_state(TK_SHIFT))
                 {
-                    switch (terminal_read())
-                    {
-                    case TK_K:
-                    case TK_UP:
-                        direction = North;
-                        break;
-                    case TK_U:
-                        direction = NorthEast;
-                        break;
-                    case TK_L:
-                    case TK_RIGHT:
-                        direction = East;
-                        break;
-                    case TK_N:
-                        direction = SouthEast;
-                        break;
-                    case TK_J:
-                    case TK_DOWN:
-                        direction = South;
-                        break;
-                    case TK_B:
-                        direction = SouthWest;
-                        break;
-                    case TK_H:
-                    case TK_LEFT:
-                        direction = West;
-                        break;
-                    case TK_Y:
-                        direction = NorthWest;
-                        break;
-                    }
-
+                    Direction direction = ReadDirection();
                     map->CreateDirectionalPortal(warpPosition.AsVec2(), playerLoc.AsVec2(), direction);
                 }
                 else
                 {
                     map->CreatePortal(warpPosition.AsVec2(), playerLoc.AsVec2());
                 }
+                warpPosition = Location();
+            }
+            break;
+        case TK_D:
+            if (!warpPosition.GetValid())
+            {
+                warpPosition = playerLoc;
+                warpDirection = ReadDirection();
+            }
+            else
+            {
+                //Establish the warp!
+                currentIndex = std::min(currentIndex + 1, 5);
+                map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
+                map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
+
+                Direction exitDirection = ReadDirection();
+
+                map->CreateBidirectionalPortal(warpPosition.AsVec2(), warpDirection, playerLoc.AsVec2(), exitDirection);
+
+                //Reset
                 warpPosition = Location();
             }
             break;
@@ -481,10 +524,13 @@ int main(int argc, char* argv[])
             renderFlags ^= background;
             break;
         case TK_9:
-            lookDirection = Rotate(lookDirection, NorthWest);
+            lookDirection = Rotate(lookDirection, West);
             break;
         case TK_0:
-            lookDirection = Rotate(lookDirection, NorthEast);
+            lookDirection = Rotate(lookDirection, East);
+            break;
+        case TK_W:
+            memory->Wipe();
             break;
         }
 

@@ -44,7 +44,7 @@ struct Vec3
     short z;
 };
 
-enum Direction
+enum Direction : char
 {
     North = 0,
     NorthEast = 1,
@@ -177,6 +177,16 @@ inline static Direction Rotate(Direction direction, Direction rotation)
     return (Direction) ((direction + rotation) % 8);
 }
 
+inline static Direction FindRotationBetween(Direction direction, Direction newDir)
+{
+    return (Direction)(((newDir - direction) + 8) % 8);
+}
+
+inline static Direction ReverseRotation(Direction rotation)
+{
+    return (Direction)(8 - rotation);
+}
+
 class Location
 {
 public:
@@ -205,12 +215,12 @@ public:
 
     bool InMap();
 
-    Location Traverse(Vec2 offset, Direction rotation = North);
-    Location Traverse(short xOffset, short yOffset, Direction rotation = North);
-    Location Traverse(Direction direction, Direction rotation = North);
+    std::pair<Location, Direction> Traverse(Vec2 offset, Direction rotation = North);
+    std::pair<Location, Direction> Traverse(short xOffset, short yOffset, Direction rotation = North);
+    std::pair<Location, Direction> Traverse(Direction direction, Direction rotation = North);
 
-    Location _Traverse_No_Neighbor(Direction direction);
-    Location _Traverse_Neighbors(Direction direction);
+    std::pair<Location, Direction> _Traverse_No_Neighbor(Direction direction);
+    std::pair<Location, Direction> _Traverse_Neighbors(Direction direction);
 
     THandle<TileNeighbors> GetNeighbors();
 

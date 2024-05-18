@@ -153,6 +153,15 @@ void Map::WrapTile(Vec2 location)
     neighbors->SW = WrapVector(location, -1, -1);
     neighbors->W  = WrapVector(location, -1,  0);
     neighbors->NW = WrapVector(location, -1,  1);
+
+    neighbors->N_Direction = North;
+    neighbors->NE_Direction = North;
+    neighbors->E_Direction = North;
+    neighbors->SE_Direction = North;
+    neighbors->S_Direction = North;
+    neighbors->SW_Direction = North;
+    neighbors->W_Direction = North;
+    neighbors->NW_Direction = North;
 }
 
 Location Map::WrapVector(Vec2 location, int xOffset, int yOffset)
@@ -164,7 +173,15 @@ Location Map::WrapVector(Vec2 location, int xOffset, int yOffset)
     return Location(x, y, z);
 }
 
-void Map::SetNeighbor(Vec2 location, Direction direction, Location neighbor)
+Location Map::WrapLocation(Location location, int xOffset, int yOffset) {
+    int x = location.x() + xOffset;
+    x = (x + m_size.x) % m_size.x;
+    int y = location.y() + yOffset;
+    y = (y + m_size.y) % m_size.y;
+    return Location(x, y, location.z());
+}
+
+void Map::SetNeighbor(Vec2 location, Direction direction, Location neighbor, Direction rotation)
 {
     Tile& tile = GetTile(location);
     THandle<TileNeighbors> neighbors = GetOrAddNeighbors(tile);
@@ -172,27 +189,35 @@ void Map::SetNeighbor(Vec2 location, Direction direction, Location neighbor)
     {
     case North:
         neighbors->N  = neighbor;
+        neighbors->N_Direction = rotation;
         break;
     case NorthEast:
         neighbors->NE = neighbor;
+        neighbors->NE_Direction = rotation;
         break;
     case East:
         neighbors->E  = neighbor;
+        neighbors->E_Direction = rotation;
         break;
     case SouthEast:
         neighbors->SE = neighbor;
+        neighbors->SE_Direction = rotation;
         break;
     case South:
         neighbors->S  = neighbor;
+        neighbors->S_Direction = rotation;
         break;
     case SouthWest:
         neighbors->SW = neighbor;
+        neighbors->SW_Direction = rotation;
         break;
     case West:
         neighbors->W  = neighbor;
+        neighbors->W_Direction = rotation;
         break;
     case NorthWest:
         neighbors->NW = neighbor;
+        neighbors->NW_Direction = rotation;
         break;
     }
 }
@@ -263,6 +288,32 @@ void Map::CreateDirectionalPortal(Vec2 open, Vec2 exit, Direction direction)
     SetNeighbor(exit, Reverse(CW), GetNeighbor(open, Reverse(CW)));
     SetNeighbor(exit, Reverse(direction), GetNeighbor(open, Reverse(direction)));
     SetNeighbor(exit, Reverse(CCW), GetNeighbor(open, Reverse(CCW)));
+}
+
+void Map::CreateBidirectionalPortal(Vec2 open, Direction openDir, Vec2 exit, Direction exitDir)
+{
+    WrapTile(open);
+    WrapTile(exit);
+
+    Direction rotation = FindRotationBetween(openDir, exitDir);
+
+    Location exitLoc = GetNeighbor(exit, exitDir);
+    Location exitLocCL = GetNeighbor(exit, TurnClockwise(exitDir));
+    Location exitLocCCL = GetNeighbor(exit, TurnCounterClockwise(exitDir));
+
+    Direction reverseOpen = Reverse(openDir);
+    Direction reverseExit = Reverse(exitDir);
+    Location openLoc = GetNeighbor(open, reverseOpen);
+    Location openLocCL = GetNeighbor(open, TurnClockwise(reverseOpen));
+    Location openLocCCL = GetNeighbor(open, TurnCounterClockwise(reverseOpen));
+
+    SetNeighbor(open, openDir, exitLoc, rotation);
+    SetNeighbor(open, TurnClockwise(openDir), exitLocCL, rotation);
+    SetNeighbor(open, TurnCounterClockwise(openDir), exitLocCCL, rotation);
+
+    SetNeighbor(exit, reverseExit, openLoc, ReverseRotation(rotation));
+    SetNeighbor(exit, TurnClockwise(reverseExit), openLocCL, ReverseRotation(rotation));
+    SetNeighbor(exit, TurnCounterClockwise(reverseExit), openLocCCL, ReverseRotation(rotation));
 }
 
 namespace RogueSaveManager

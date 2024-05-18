@@ -11,6 +11,7 @@ void View::SetRadius(int radius)
 		int numTiles = diameter * diameter;
 		m_locations.resize(numTiles);
 		m_visibility.resize(numTiles);
+		m_rotations.resize(numTiles);
 		
 #ifdef DEBUG_HOTSPOTS
 		m_heat.resize(numTiles);
@@ -27,6 +28,7 @@ void View::SetRadiusOnlyUpsize(int radius)
 	{
 		m_locations.resize(numTiles);
 		m_visibility.resize(numTiles);
+		m_rotations.resize(numTiles);
 #ifdef DEBUG_HOTSPOTS
 		m_heat.resize(numTiles);
 #endif
@@ -50,6 +52,7 @@ void View::ResetAt(Location location)
 
 	std::fill(m_locations.begin(), m_locations.begin() + numTiles, Location());
 	std::fill(m_visibility.begin(), m_visibility.begin() + numTiles, 0);
+	std::fill(m_rotations.begin(), m_rotations.begin() + numTiles, North);
 
 	m_locations[GetIndexByLocal(0, 0)] = location;
 	m_visibility[GetIndexByLocal(0, 0)] = 1;
@@ -82,9 +85,19 @@ uchar View::GetVisibilityPassIndex(int x, int y) const
 	return m_visibility[GetIndexByLocal(x, y)];
 }
 
+Direction View::GetRotationLocal(int x, int y) const
+{
+	return m_rotations[GetIndexByLocal(x, y)];
+}
+
 void View::SetLocationLocal(int x, int y, Location location)
 {
 	m_locations[GetIndexByLocal(x, y)] = location;
+}
+
+void View::SetRotationLocal(int x, int y, Direction direction)
+{
+	m_rotations[GetIndexByLocal(x, y)] = direction;
 }
 
 void View::Debug_AddHeatLocal(int x, int y)
@@ -165,7 +178,8 @@ namespace LOS
 
 	void CalculateQuadrant(View& view, View& scratch, Direction direction, Direction rotation, uchar maxPass)
 	{
-		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1), rotation);
+		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1));
+		scratch.SetRotationLocal(0, 0, rotation);
 		Scan(view, scratch, direction, start, maxPass);
 	}
 
@@ -182,17 +196,18 @@ namespace LOS
 		for (int col = minCol; col <= maxCol; col++)
 		{
 			Vec2 pos = Transform(direction, col, row.m_depth);
-			Location tile = GetTileByRowParent(view, scratch, direction, row.m_rotation, col, row);
+			auto move = GetTileByRowParent(view, scratch, direction, col, row);
 			view.Debug_AddHeatLocal(pos.x, pos.y);
 
-			//No matter what, write this tile into the scratch pad. Our recursions will either ignore it spatially or need it set.
-			SetTile(scratch, direction, col, row.m_depth, tile);
+			Location tile = move.first;
+			Direction rotation = move.second;
 
 			if ((IsWall(tile) || IsSymmetric(row, col)))
 			{
 				if (ShouldOverwrite(view, pos.x, pos.y, row.m_pass))
 				{
 					SetTile(view, direction, col, row.m_depth, tile);
+					SetRotation(view, direction, col, row.m_depth, rotation);
 					Reveal(view, direction, col, row.m_depth, row.m_pass);
 				}
 			}
@@ -203,7 +218,7 @@ namespace LOS
 			if (AllowsVision(prevTile) && BlocksVision(tile))
 			{
 				//Move to next row!
-				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth), row.m_rotation);
+				Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, Slope(col, row.m_depth));
 				Scan(view, scratch, direction, nextRow, maxPass);
 			}
 			if (IsFloor(tile) && RequiresRecast(tile))
@@ -211,7 +226,7 @@ namespace LOS
 				//This is a portal - scan recursive pass through it's sightlines
 				Fraction min = std::max(row.m_startSlope, Slope(col, row.m_depth));
 				Fraction max = std::min(row.m_endSlope, OppositeSlope(col, row.m_depth));
-				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max, row.m_rotation);
+				Row recurseRow = Row(row.m_pass + 1, row.m_depth + 1, min, max);
 				Scan(view, scratch, direction, recurseRow, maxPass);
 			}
 
@@ -221,12 +236,12 @@ namespace LOS
 		if (!BlocksVision(prevTile))
 		{
 			//Scan next row!
-			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope, row.m_rotation);
+			Row nextRow = Row(row.m_pass, row.m_depth + 1, row.m_startSlope, row.m_endSlope);
 			Scan(view, scratch, direction, nextRow, maxPass);
 		}
 	}
 
-	Location GetTileByRowParent(View& view, View& scratch, Direction direction, Direction rotation, int col, const Row& row)
+	std::pair<Location, Direction> GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row)
 	{
 		Fraction minSlope = row.m_startSlope;
 		Fraction maxSlope = row.m_endSlope;
@@ -248,8 +263,17 @@ namespace LOS
 		ASSERT(std::abs(offset.x) <= 1 && std::abs(offset.y) <= 1);
 
 		Location parent = GetTile(scratch, direction, parentCol, parentRow);
+		Direction parentDir = GetRotation(scratch, direction, parentCol, parentRow);
 
-		return parent.Traverse(offset, rotation);
+		auto childMove = parent.Traverse(offset, parentDir);
+
+		//No matter what, write this tile into the scratch pad. Our recursions will either ignore it spatially or need it set.
+		SetTile(scratch, direction, col, row.m_depth, childMove.first);
+		Direction newRotation = Rotate(parentDir, childMove.second);
+
+		SetRotation(scratch, direction, col, row.m_depth, newRotation);
+
+		return std::make_pair(childMove.first, newRotation);
 	}
 
 	//Determines if a new entry can overwrite an existing one.
@@ -272,6 +296,20 @@ namespace LOS
 		Vec2 pos = Transform(direction, col, row);
 
 		view.SetLocationLocal(pos.x, pos.y, location);
+	}
+
+	Direction GetRotation(View& view, Direction direction, int col, int row)
+	{
+		Vec2 pos = Transform(direction, col, row);
+
+		return view.GetRotationLocal(pos.x, pos.y);
+	}
+
+	void SetRotation(View& view, Direction direction, int col, int row, Direction rotation)
+	{
+		Vec2 pos = Transform(direction, col, row);
+
+		view.SetRotationLocal(pos.x, pos.y, rotation);
 	}
 
 	Vec2 Transform(Direction direction, int col, int row)
