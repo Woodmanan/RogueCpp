@@ -184,7 +184,7 @@ inline static Direction FindRotationBetween(Direction direction, Direction newDi
 
 inline static Direction ReverseRotation(Direction rotation)
 {
-    return (Direction)(8 - rotation);
+    return (Direction)((8 - rotation) % 8);
 }
 
 class Location

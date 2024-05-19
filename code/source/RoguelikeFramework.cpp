@@ -36,7 +36,8 @@ uint32_t render = 0x1;
 uint32_t color = 0x2;
 uint32_t passes = 0x4;
 uint32_t heat = 0x8;
-uint32_t background = 0x10;
+uint32_t rotations = 0x10;
+uint32_t background = 0x20;
 
 void Render_Map(THandle<Map> map, Vec2 window, Location playerLocation)
 {
@@ -129,6 +130,35 @@ void Render_Hotspots(View& view, Vec2 window, Location playerLocation)
     }
 }
 
+char rotationChars[8] = {
+    '0', '1', '2', '3', '4', '5', '6', '7'
+};
+
+void Render_Rotations(View& view, Vec2 window, Location playerLocation)
+{
+    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+
+    for (int i = -maxRadius; i <= maxRadius; i++)
+    {
+        for (int j = -maxRadius; j <= maxRadius; j++)
+        {
+            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+
+            bool visible = view.GetVisibilityLocal(i, j);
+            if (visible)
+            {
+                char direction = view.GetRotationLocal(i, j);
+                char rotationChar = rotationChars[direction];
+                color_t green = color_from_argb(0xFF, 0x17, 0xD9, 0x2A);
+                //color_t red = color_from_argb(0xFF, 0xFF, 0x00, 0x00);
+                //float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
+                terminal_color(green);
+                terminal_put(windowCoord.x, windowCoord.y, rotationChar);
+            }
+        }
+    }
+}
+
 void RenderBresenham(Vec2 window, Vec2 endpoint)
 {
     terminal_color(color_from_argb(255, 100, 0, 100));
@@ -153,7 +183,7 @@ void RenderBresenham(Vec2 window, Vec2 endpoint)
     }
 }
 
-Direction ReadDirection()
+Direction ReadDirection(Direction currentRotation)
 {
     Direction direction = North;
 
@@ -189,7 +219,7 @@ Direction ReadDirection()
         break;
     }
 
-    return direction;
+    return Rotate(direction, currentRotation);
 }
 
 void ResetMap(THandle<Map> map)
@@ -438,7 +468,7 @@ int main(int argc, char* argv[])
 
                 if (terminal_state(TK_SHIFT))
                 {
-                    Direction direction = ReadDirection();
+                    Direction direction = ReadDirection(lookDirection);
                     map->CreateDirectionalPortal(warpPosition.AsVec2(), playerLoc.AsVec2(), direction);
                 }
                 else
@@ -452,7 +482,7 @@ int main(int argc, char* argv[])
             if (!warpPosition.GetValid())
             {
                 warpPosition = playerLoc;
-                warpDirection = ReadDirection();
+                warpDirection = ReadDirection(lookDirection);
             }
             else
             {
@@ -461,7 +491,7 @@ int main(int argc, char* argv[])
                 map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
                 map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
 
-                Direction exitDirection = ReadDirection();
+                Direction exitDirection = ReadDirection(lookDirection);
 
                 map->CreateBidirectionalPortal(warpPosition.AsVec2(), warpDirection, playerLoc.AsVec2(), exitDirection);
 
@@ -509,6 +539,11 @@ int main(int argc, char* argv[])
             else if (renderFlags & heat)
             {
                 renderFlags ^= heat;
+                renderFlags |= rotations;
+            }
+            else if (renderFlags & rotations)
+            {
+                renderFlags ^= rotations;
                 renderFlags ^= render;
             }
             else if (~renderFlags & render)
@@ -569,6 +604,10 @@ int main(int argc, char* argv[])
                 std::snprintf(&buffer[0], 30, "NumTiles: %d (%.0f%%)", maxTiles, ((float) view.Debug_GetSumHeat() * 100) / maxTiles);
                 terminal_print(35, 1, &buffer[0]);
 
+            }
+            if (renderFlags & rotations)
+            {
+                Render_Rotations(view, Vec2(x, y), playerLoc);
             }
             RenderBresenham(Vec2(x, y), bresenhamPoint);
             terminal_color(color_from_argb(255, 255, 0, 255));
