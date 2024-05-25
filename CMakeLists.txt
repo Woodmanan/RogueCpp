@@ -28,5 +28,8 @@ set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)
 
 # TODO: Add tests and install targets if needed.
 
-#Install Libraries?
-
+#Copy BearLibTerminal.dll for builds
+add_custom_command(TARGET RoguelikeFramework POST_BUILD      #Add a post build event
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different        #Executes a copy command
+	"${PROJECT_SOURCE_DIR}/code/libraries/BearLibTerminal/Windows64/BearLibTerminal.dll"
+	$<TARGET_FILE_DIR:RoguelikeFramework>)
