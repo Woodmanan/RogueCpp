@@ -406,4 +406,32 @@ namespace RogueSaveManager
 #endif
         RemoveOffset();
     }
+
+    void Serialize(Color& value)
+    {
+        AddOffset();
+#ifdef _DEBUG
+        Write("r", (uint) value.r);
+        Write("g", (uint) value.g);
+        Write("b", (uint) value.b);
+        Write("a", (uint) value.a);
+#else
+        Write("color_t", value.color);
+#endif
+        RemoveOffset();
+    }
+
+    void Deserialize(Color& value)
+    {
+        AddOffset();
+#ifdef _DEBUG
+        value.r = Read<uint>("r");
+        value.g = Read<uint>("g");
+        value.b = Read<uint>("b");
+        value.a = Read<uint>("a");
+#else
+        Read("color_t", value.color);
+#endif
+        RemoveOffset();
+    }
 }

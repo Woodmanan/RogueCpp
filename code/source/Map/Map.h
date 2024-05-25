@@ -15,7 +15,7 @@ class BackingTile
 {
 public:
     BackingTile() {}
-    BackingTile(char character, color_t foreground, color_t background, bool blocksVision, float movementCost) :
+    BackingTile(char character, Color foreground, Color background, bool blocksVision, float movementCost) :
         m_renderCharacter(character), 
         m_foregroundColor(foreground), 
         m_backgroundColor(background), 
@@ -24,8 +24,8 @@ public:
     {}
 
 	char m_renderCharacter;
-    color_t m_foregroundColor;
-    color_t m_backgroundColor;
+    Color m_foregroundColor;
+    Color m_backgroundColor;
 	bool m_blocksVision;
 	float m_movementCost;
     int m_index = -1;

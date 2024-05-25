@@ -252,16 +252,6 @@ private:
 #endif
 };
 
-namespace RogueSaveManager
-{
-    void Serialize(Vec2& value);
-    void Deserialize(Vec2& value);
-    void Serialize(Vec3& value);
-    void Deserialize(Vec3& value);
-    void Serialize(Location& value);
-    void Deserialize(Location& value);
-}
-
 //Define all the useful math ops here!
 inline Location operator+(Location lhs, Vec2 rhs)
 {
@@ -326,6 +316,53 @@ inline int IntDivisionCeil(int num, int denom)
     }
 }
 
+union Color
+{
+    uchar v[4];
+    struct {
+        uchar b;
+        uchar g;
+        uchar r;
+        uchar a;
+    };
+    uint32_t color;
+
+    Color() : r(255), g(0), b(255), a(255) {}
+
+    Color(uchar _r, uchar _g, uchar _b)
+    {
+        a = 255;
+        r = _r;
+        g = _g;
+        b = _b;
+
+        ASSERT(v[3] == 255);
+        ASSERT(v[2] == _r);
+        ASSERT(v[1] == _g);
+        ASSERT(v[0] == _b);
+    }
+
+    Color(uchar _r, uchar _g, uchar _b, uchar _a)
+    {
+        a = _a;
+        r = _r;
+        g = _g;
+        b = _b;
+
+        ASSERT(v[3] == _a);
+        ASSERT(v[2] == _r);
+        ASSERT(v[1] == _g);
+        ASSERT(v[0] == _b);
+    }
+
+    Color(color_t colorT)
+    {
+        color = colorT;
+    }
+
+    operator color_t() const { return color; }
+};
+
 template<typename T>
 T Lerp(T a, T b, float percent)
 {
@@ -333,11 +370,23 @@ T Lerp(T a, T b, float percent)
     return static_cast<T>(a * (1 - percent) + b * percent);
 }
 
-inline color_t Blend(color_t a, color_t b, float percent)
+inline Color Blend(Color f, Color s, float percent)
 {
-    uint32_t alpha = Lerp((a >> 24) & 0xFF, (b >> 24) & 0xFF, percent) & 0xFF;
-    uint32_t red = Lerp((a >> 16) & 0xFF, (b >> 16) & 0xFF, percent) & 0xFF;
-    uint32_t green = Lerp((a >> 8) & 0xFF, (b >> 8) & 0xFF, percent) & 0xFF;
-    uint32_t blue = Lerp((a >> 0) & 0xFF, (b >> 0) & 0xFF, percent) & 0xFF;
-    return (alpha << 24) | (red << 16) | (green << 8) | blue;
+    uchar r = Lerp(f.r, s.r, percent);
+    uchar g = Lerp(f.g, s.g, percent);
+    uchar b = Lerp(f.b, s.b, percent);
+    uchar a = Lerp(f.a, s.a, percent);
+    return Color(r, g, b, a);
+}
+
+namespace RogueSaveManager
+{
+    void Serialize(Vec2& value);
+    void Deserialize(Vec2& value);
+    void Serialize(Vec3& value);
+    void Deserialize(Vec3& value);
+    void Serialize(Location& value);
+    void Deserialize(Location& value);
+    void Serialize(Color& value);
+    void Deserialize(Color& value);
 }

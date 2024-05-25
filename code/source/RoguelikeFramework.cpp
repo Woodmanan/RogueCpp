@@ -15,22 +15,13 @@
 
 using namespace std;
 
-color_t passColors[5] = {
-    color_from_argb(0xFF, 0x17, 0xD9, 0x2A),
-    color_from_argb(0xFF, 0x59, 0x00, 0xED),
-    color_from_argb(0xFF, 0xFF, 0x70, 0x46),
-    color_from_argb(0xFF, 0xD8, 0xDB, 0xDA),
-    color_from_argb(0xFF, 0xAA, 0x55, 0xAA)
+Color passColors[5] = {
+    Color(0x17, 0xD9, 0x2A),
+    Color(0x59, 0x00, 0xED),
+    Color(0xFF, 0x70, 0x46),
+    Color(0xD8, 0xDB, 0xDA),
+    Color(0xAA, 0x55, 0xAA)
 };
-
-color_t Blend(color_t a, color_t b)
-{
-    uint32_t alpha = (((a >> 24) & 0xFF) + ((b >> 24) & 0xFF)) / 2 & 0xFF;
-    uint32_t red =   (((a >> 16) & 0xFF) + ((b >> 16) & 0xFF)) / 2 & 0xFF;
-    uint32_t green = (((a >>  8) & 0xFF) + ((b >>  8) & 0xFF)) / 2 & 0xFF;
-    uint32_t blue =  (((a >>  0) & 0xFF) + ((b >>  0) & 0xFF)) / 2 & 0xFF;
-    return (alpha << 24) | (red << 16) | (green << 8) | blue;
-}
 
 uint32_t render = 0x1;
 uint32_t color = 0x2;
@@ -49,7 +40,7 @@ void Render_Map(THandle<Map> map, Vec2 window, Location playerLocation)
             Location mapLocation = playerLocation + playerOffset;
             if (mapLocation.GetValid() && mapLocation.InMap())
             {
-                terminal_color(color_from_argb(0xFF, 0x99, 0x99, 0x99));
+                terminal_color(Color(0x99, 0x99, 0x99));
                 terminal_bkcolor(mapLocation->m_backingTile->m_backgroundColor);
                 terminal_put(i, j, mapLocation->m_backingTile->m_renderCharacter);
             }
@@ -73,7 +64,7 @@ void Render_View(View& view, Vec2 window, Location playerLocation)
                 if (visible)
                 {
                     terminal_color(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor);
-                    terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+                    terminal_bkcolor(Color(0, 0, 0));
                     terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
                 }
             }
@@ -97,9 +88,9 @@ void Render_Passes(View& view, Vec2 window, Location playerLocation)
                 if (visible)
                 {
                     int step = view.GetVisibilityPassIndex(i, j) - 1;
-                    color_t color = passColors[step % 5];
+                    Color color = passColors[step % 5];
                     terminal_color(color);
-                    terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+                    terminal_bkcolor(Color(0, 0, 0));
                     terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
                 }
             }
@@ -120,8 +111,8 @@ void Render_Hotspots(View& view, Vec2 window, Location playerLocation)
             bool visible = view.GetVisibilityLocal(i, j);
             if (visible)
             {
-                color_t green = color_from_argb(0xFF, 0x00, 0x11, 0x00);
-                color_t red = color_from_argb(0xFF, 0xFF, 0x00, 0x00);
+                Color green = Color(0x00, 0x11, 0x00);
+                Color red = Color(0xFF, 0x00, 0x00);
                 float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
                 terminal_color(Blend(green, red, heatPercent));
                 terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
@@ -149,9 +140,7 @@ void Render_Rotations(View& view, Vec2 window, Location playerLocation)
             {
                 char direction = view.GetRotationLocal(i, j);
                 char rotationChar = rotationChars[direction];
-                color_t green = color_from_argb(0xFF, 0x17, 0xD9, 0x2A);
-                //color_t red = color_from_argb(0xFF, 0xFF, 0x00, 0x00);
-                //float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
+                Color green = Color(0x17, 0xD9, 0x2A);
                 terminal_color(green);
                 terminal_put(windowCoord.x, windowCoord.y, rotationChar);
             }
@@ -161,8 +150,8 @@ void Render_Rotations(View& view, Vec2 window, Location playerLocation)
 
 void RenderBresenham(Vec2 window, Vec2 endpoint)
 {
-    terminal_color(color_from_argb(255, 100, 0, 100));
-    terminal_bkcolor(color_from_argb(255, 0, 0, 0));
+    terminal_color(Color(100, 0, 100));
+    terminal_bkcolor(Color(0, 0, 0));
     int x0 = 0;
     int y0 = 0;
     int dx = abs(endpoint.x - 0), sx = 0 < endpoint.x ? 1 : -1;
@@ -272,15 +261,15 @@ int main(int argc, char* argv[])
         for (int i = 0; i < 1; i++)
         {
             map = RogueDataManager::Allocate<Map>(size, i, 2);
-            map->LinkBackingTile<BackingTile>('#', color_from_argb(255, 120, 120, 120), color_from_argb(255, 0, 0, 0), true, -1);
-            map->LinkBackingTile<BackingTile>('.', color_from_argb(255, 100, 200, 100), color_from_argb(255, 0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('S', color_from_argb(255, 200, 100, 200), color_from_argb(255, 80, 80, 80), false, 1);
-            map->LinkBackingTile<BackingTile>('0', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('1', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('2', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('3', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('4', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('5', color_from_argb(255, 60, 60, 255), color_from_argb(255, 0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, -1);
+            map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, 1);
+            map->LinkBackingTile<BackingTile>('0', Color(60, 60, 255), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('1', Color(60, 60, 255), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('2', Color(60, 60, 255), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('3', Color(60, 60, 255), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('4', Color(60, 60, 255), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('5', Color(60, 60, 255), Color(0, 0, 0), false, 1);
 
             map->FillTilesExc(Vec2(0, 0), size, 0);
             map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
@@ -593,7 +582,7 @@ int main(int argc, char* argv[])
             {
                 Render_Hotspots(view, Vec2(x, y), playerLoc);
                 std::snprintf(&buffer[0], 15, "Max Heat: %d", view.Debug_GetMaxHeat());
-                terminal_color(color_from_argb(255, 255, 0x55, 0x55));
+                terminal_color(Color(255, 0x55, 0x55));
                 terminal_print(0, 1, &buffer[0]);
 
                 std::snprintf(&buffer[0], 20, "Sum Heat: %d", view.Debug_GetSumHeat());
@@ -610,7 +599,7 @@ int main(int argc, char* argv[])
                 Render_Rotations(view, Vec2(x, y), playerLoc);
             }
             RenderBresenham(Vec2(x, y), bresenhamPoint);
-            terminal_color(color_from_argb(255, 255, 0, 255));
+            terminal_color(Color(255, 0, 255));
             terminal_put(40, 20, '@');
         }
 

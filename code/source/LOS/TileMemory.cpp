@@ -38,8 +38,8 @@ void TileMemory::Wipe()
 
 void TileMemory::Render(Vec2 window)
 {
-	color_t black = color_from_argb(0xFF, 0x00, 0x00, 0x00);
-	color_t empty = color_from_argb(0x00, 0x00, 0x00, 0x00);
+	Color black = Color(0x00, 0x00, 0x00, 0xFF);
+	Color empty = Color(0x00, 0x00, 0x00, 0x00);
 	terminal_bkcolor(empty);
 
 	for (int i = 0; i < window.x; i++)
