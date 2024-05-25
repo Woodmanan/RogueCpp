@@ -10,6 +10,8 @@ class Location;
 template<typename T>
 class THandle;
 
+class Window;
+
 using namespace std;
 
 class TileMemory
@@ -20,7 +22,7 @@ public:
 
 	void Update(View& los);
 	void Wipe();
-	void Render(Vec2 window);
+	void Render(Window& window);
 	void Move(Vec2 offset)
 	{
 		m_localPosition += offset; 

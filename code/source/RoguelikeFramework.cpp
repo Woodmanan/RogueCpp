@@ -10,6 +10,7 @@
 #include "Map/Map.h"
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
+#include "Render/Windows/Window.h"
 #include <format>
 #include <chrono>
 
@@ -30,57 +31,57 @@ uint32_t heat = 0x8;
 uint32_t rotations = 0x10;
 uint32_t background = 0x20;
 
-void Render_Map(THandle<Map> map, Vec2 window, Location playerLocation)
+void Render_Map(THandle<Map> map, Window& window, Location playerLocation)
 {
-    for (int i = 0; i < window.x; i++)
+    for (int i = 0; i < window.m_rect.w; i++)
     {
-        for (int j = 0; j < window.y; j++)
+        for (int j = 0; j < window.m_rect.h; j++)
         {
-            Vec2 playerOffset = Vec2(i, window.y - j) - Vec2(40, 20);
+            Vec2 playerOffset = Vec2(i, window.m_rect.h - j) - (window.m_rect.size / 2);
             Location mapLocation = playerLocation + playerOffset;
             if (mapLocation.GetValid() && mapLocation.InMap())
             {
-                terminal_color(Color(0x99, 0x99, 0x99));
-                terminal_bkcolor(mapLocation->m_backingTile->m_backgroundColor);
-                terminal_put(i, j, mapLocation->m_backingTile->m_renderCharacter);
+                THandle<BackingTile> tile = mapLocation->m_backingTile;
+                window.Put(i, j, tile->m_renderCharacter,
+                    Color(0x99, 0x99, 0x99),
+                    tile->m_backgroundColor);
             }
         }
     }
 }
 
-void Render_View(View& view, Vec2 window, Location playerLocation)
+void Render_View(View& view, Window& window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (view.GetLocationLocal(i, j).GetValid())
             {
                 if (visible)
                 {
-                    terminal_color(view.GetLocationLocal(i, j)->m_backingTile->m_foregroundColor);
-                    terminal_bkcolor(Color(0, 0, 0));
-                    terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
+                    THandle<BackingTile> tile = view.GetLocationLocal(i,j)->m_backingTile;
+                    window.Put(windowCoord.x, windowCoord.y, tile->m_renderCharacter, tile->m_foregroundColor, tile->m_backgroundColor);
                 }
             }
         }
     }
 }
 
-void Render_Passes(View& view, Vec2 window, Location playerLocation)
+void Render_Passes(View& view, Window& window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (view.GetLocationLocal(i, j).GetValid())
@@ -89,24 +90,22 @@ void Render_Passes(View& view, Vec2 window, Location playerLocation)
                 {
                     int step = view.GetVisibilityPassIndex(i, j) - 1;
                     Color color = passColors[step % 5];
-                    terminal_color(color);
-                    terminal_bkcolor(Color(0, 0, 0));
-                    terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
+                    window.Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, color, Color(0, 0, 0));
                 }
             }
         }
     }
 }
 
-void Render_Hotspots(View& view, Vec2 window, Location playerLocation)
+void Render_Hotspots(View& view, Window& window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (visible)
@@ -114,8 +113,9 @@ void Render_Hotspots(View& view, Vec2 window, Location playerLocation)
                 Color green = Color(0x00, 0x11, 0x00);
                 Color red = Color(0xFF, 0x00, 0x00);
                 float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
-                terminal_color(Blend(green, red, heatPercent));
-                terminal_put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter);
+                Color blend = Blend(green, red, heatPercent);
+                Color black = Color(0, 0, 0);
+                window.Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, blend, black);
             }
         }
     }
@@ -125,15 +125,15 @@ char rotationChars[8] = {
     '0', '1', '2', '3', '4', '5', '6', '7'
 };
 
-void Render_Rotations(View& view, Vec2 window, Location playerLocation)
+void Render_Rotations(View& view, Window& window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.x);
+    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + Vec2(40, 20);
+            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (visible)
@@ -141,17 +141,16 @@ void Render_Rotations(View& view, Vec2 window, Location playerLocation)
                 char direction = view.GetRotationLocal(i, j);
                 char rotationChar = rotationChars[direction];
                 Color green = Color(0x17, 0xD9, 0x2A);
-                terminal_color(green);
-                terminal_put(windowCoord.x, windowCoord.y, rotationChar);
+                window.Put(windowCoord.x, windowCoord.y, rotationChar, green, Color(0, 0, 0));
             }
         }
     }
 }
 
-void RenderBresenham(Vec2 window, Vec2 endpoint)
+void RenderBresenham(Window& window, Vec2 endpoint)
 {
-    terminal_color(Color(100, 0, 100));
-    terminal_bkcolor(Color(0, 0, 0));
+    Color fg = Color(100, 0, 100);
+    Color bg = Color(0, 0, 0);
     int x0 = 0;
     int y0 = 0;
     int dx = abs(endpoint.x - 0), sx = 0 < endpoint.x ? 1 : -1;
@@ -159,11 +158,11 @@ void RenderBresenham(Vec2 window, Vec2 endpoint)
     int err = dx + dy, e2; /* error value e_xy */
 
     for (;;) {  /* loop */
-        Vec2 pos = Vec2(40, 20) + Vec2(x0, -y0);
-        terminal_put(pos.x, pos.y, '*');
+        Vec2 pos = (window.m_rect.size / 2) + Vec2(x0, -y0);
+        window.Put(pos.x, pos.y, '*', fg, bg);
         if (x0 == endpoint.x && y0 == endpoint.y)
         {
-            terminal_put(pos.x, pos.y, '+');
+            window.Put(pos.x, pos.y, '+', fg, bg);
             break;
         }
         e2 = 2 * err;
@@ -224,7 +223,7 @@ int main(int argc, char* argv[])
     //Initialize Random
     srand(1);
 
-    Vec2 size(64, 64);
+    Vec2 size(256, 256);
     THandle<Map> map;
     THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
@@ -240,6 +239,8 @@ int main(int argc, char* argv[])
     const int fpsMerge = 60;
     int fpsIndex = 0;
     float FPSBuffer[fpsMerge];
+
+    Window renderWindow({1, 1, 79, 39}, 0);
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
@@ -560,7 +561,7 @@ int main(int argc, char* argv[])
 
         k = TK_G;
         clock = chrono::system_clock::now();
-        char buffer[30];
+        char buffer[50];
 
         terminal_clear();
         LOS::Calculate(view, playerLoc, lookDirection, maxPass);
@@ -570,17 +571,17 @@ int main(int argc, char* argv[])
         {
             if (renderFlags & background)
             {
-                memory->Render(Vec2(x, y));
+                memory->Render(renderWindow);
             }
 
-            Render_View(view, Vec2(x, y), playerLoc);
+            Render_View(view, renderWindow, playerLoc);
             if (renderFlags & color)
             {
-                Render_Passes(view, Vec2(x, y), playerLoc);
+                Render_Passes(view, renderWindow, playerLoc);
             }
             if (renderFlags & heat)
             {
-                Render_Hotspots(view, Vec2(x, y), playerLoc);
+                Render_Hotspots(view, renderWindow, playerLoc);
                 std::snprintf(&buffer[0], 15, "Max Heat: %d", view.Debug_GetMaxHeat());
                 terminal_color(Color(255, 0x55, 0x55));
                 terminal_print(0, 1, &buffer[0]);
@@ -596,14 +597,15 @@ int main(int argc, char* argv[])
             }
             if (renderFlags & rotations)
             {
-                Render_Rotations(view, Vec2(x, y), playerLoc);
+                Render_Rotations(view, renderWindow, playerLoc);
             }
-            RenderBresenham(Vec2(x, y), bresenhamPoint);
-            terminal_color(Color(255, 0, 255));
-            terminal_put(40, 20, '@');
+            RenderBresenham(renderWindow, bresenhamPoint);
+
+            renderWindow.Put(renderWindow.m_rect.w / 2, renderWindow.m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
         }
 
-        std::snprintf(&buffer[0], 15, "FPS: %.1f", FPS);
+        std::snprintf(&buffer[0], 50, "FPS: %.1f (%d x %d) (%d passes)", FPS, view.GetRadius(), view.GetRadius(), maxPass);
+        terminal_color(Color(255, 0, 255));
         terminal_print(0, 0, &buffer[0]);
         terminal_refresh();
         auto currentTime = chrono::system_clock::now();

@@ -289,6 +289,11 @@ inline Vec2 operator-(Vec2 lhs, Vec2 rhs)
     return Vec2(lhs.x - rhs.x, lhs.y - rhs.y);
 }
 
+inline Vec2 operator/(Vec2 lhs, int rhs)
+{
+    return Vec2(lhs.x / rhs, lhs.y / rhs);
+}
+
 inline int IntDivisionFloor(int num, int denom)
 {
     if (num < 0)
@@ -318,7 +323,6 @@ inline int IntDivisionCeil(int num, int denom)
 
 union Color
 {
-    uchar v[4];
     struct {
         uchar b;
         uchar g;
@@ -336,10 +340,7 @@ union Color
         g = _g;
         b = _b;
 
-        ASSERT(v[3] == 255);
-        ASSERT(v[2] == _r);
-        ASSERT(v[1] == _g);
-        ASSERT(v[0] == _b);
+        ASSERT(color == color_from_argb(255, _r, _g, _b));
     }
 
     Color(uchar _r, uchar _g, uchar _b, uchar _a)
@@ -349,10 +350,7 @@ union Color
         g = _g;
         b = _b;
 
-        ASSERT(v[3] == _a);
-        ASSERT(v[2] == _r);
-        ASSERT(v[1] == _g);
-        ASSERT(v[0] == _b);
+        ASSERT(color == color_from_argb(_a, _r, _g, _b));
     }
 
     Color(color_t colorT)

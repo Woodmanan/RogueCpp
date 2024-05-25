@@ -2,6 +2,7 @@
 #include "../Map/Map.h"
 #include "../Data/SaveManager.h"
 #include "../Data/RogueDataManager.h"
+#include "../Render/Windows/Window.h"
 #include "LOS.h"
 #include <algorithm>
 
@@ -36,18 +37,18 @@ void TileMemory::Wipe()
 	std::fill(m_tiles.begin(), m_tiles.end(), Tile());
 }
 
-void TileMemory::Render(Vec2 window)
+void TileMemory::Render(Window& window)
 {
 	Color black = Color(0x00, 0x00, 0x00, 0xFF);
 	Color empty = Color(0x00, 0x00, 0x00, 0x00);
 	terminal_bkcolor(empty);
 
-	for (int i = 0; i < window.x; i++)
+	for (int i = 0; i < window.m_rect.w; i++)
 	{
-		for (int j = 0; j < window.y; j++)
+		for (int j = 0; j < window.m_rect.h; j++)
 		{
-			int x = m_localPosition.x + i - 40;
-			int y = m_localPosition.y - (j - 20);
+			int x = m_localPosition.x + i - window.m_rect.w / 2;
+			int y = m_localPosition.y - (j - window.m_rect.h / 2);
 
 			if (ValidTile(x, y))
 			{
@@ -55,9 +56,8 @@ void TileMemory::Render(Vec2 window)
 
 				if (tile.m_backingTile.IsValid())
 				{
-					terminal_color(Blend(tile.m_backingTile->m_foregroundColor, black, 0.5f));
-					
-					terminal_put(i, j, tile.m_backingTile->m_renderCharacter);
+					Color blend = Blend(tile.m_backingTile->m_foregroundColor, black, 0.5f);
+					window.Put(i, j, tile.m_backingTile->m_renderCharacter, blend, empty);
 				}
 			}
 		}
