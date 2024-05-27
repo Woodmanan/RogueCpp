@@ -13,6 +13,7 @@
 #include "Render/Windows/Window.h"
 #include <format>
 #include <chrono>
+#include "Render/UI/Panel.h"
 
 using namespace std;
 
@@ -223,7 +224,7 @@ int main(int argc, char* argv[])
     //Initialize Random
     srand(1);
 
-    Vec2 size(256, 256);
+    Vec2 size(64, 64);
     THandle<Map> map;
     THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
@@ -240,7 +241,12 @@ int main(int argc, char* argv[])
     int fpsIndex = 0;
     float FPSBuffer[fpsMerge];
 
-    Window renderWindow({1, 1, 79, 39}, 0);
+    Window gameWindow(std::string("Game window"), { 0, 1, 0, 1 });
+    Panel mainGamePanel(std::string("Main Game Panel"), { 0,1,0,1 }, &gameWindow);
+    Window renderWindow(std::string("Render Window"), { 0, 1, 0, 1, 1, -1, 1, -1}, &mainGamePanel);
+    Panel testPanel(std::string("Test Panel"), { 0, .5, .8, 1 }, &renderWindow);
+    Panel testPanel2(std::string("Test Panel 2"), {.5, 1, .8, 1, 1}, &renderWindow);
+    Panel testPanel3(std::string("Test Panel 3"), { 0.5, .5, 0,1, -1, 2, 1, -1 }, &testPanel);
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
@@ -284,8 +290,13 @@ int main(int argc, char* argv[])
     int x = 80, y = 40;
     int pos_x = 40;
     int pos_y = 20;
+    char buffer[50];
+
     terminal_open();
-    terminal_set("window: size=81x41");
+    std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
+    terminal_set(&buffer[0]);
+    terminal_set("input: filter = [keyboard, mouse+]");
+    terminal_set("window.resizeable=true");
     terminal_print(34, 20, "Hello World! I am here!");
     //terminal_print(34, 21, std::to_string(test.GetID()).c_str());
     terminal_refresh();
@@ -298,6 +309,7 @@ int main(int argc, char* argv[])
 
     bool shouldBreak = false;
     while (!shouldBreak) {
+
         if (terminal_has_input())
         {
             k = terminal_read();
@@ -557,13 +569,174 @@ int main(int argc, char* argv[])
         case TK_W:
             memory->Wipe();
             break;
+        case TK_PAGEUP:
+            x++;
+            y++;
+            std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
+            terminal_set(&buffer[0]);
+            break;
+        case TK_PAGEDOWN:
+            x--;
+            y--;
+            std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
+            terminal_set(&buffer[0]);
+            break;
+        case TK_A: //Anchors!
+            Window* selected = nullptr;
+
+            terminal_clear();
+            gameWindow.RenderSelection();
+            Window* hovered = gameWindow.GetSelectedWindow();
+            if (hovered != nullptr)
+            {
+                hovered->RenderAnchors();
+            }
+            terminal_refresh();
+
+            while (selected == nullptr)
+            {
+                if (terminal_has_input())
+                {
+                    switch (terminal_read())
+                    {
+                        case TK_MOUSE_MOVE:
+                        {
+                            terminal_clear();
+                            gameWindow.UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                            gameWindow.RenderSelection();
+                            Window* hovered = gameWindow.GetSelectedWindow();
+                            if (hovered != nullptr)
+                            {
+                                hovered->RenderAnchors();
+                            }
+                            terminal_refresh();
+                            break;
+                        }
+                        case TK_MOUSE_LEFT:
+                            selected = gameWindow.GetSelectedWindow();
+                            break;
+                    }
+                }
+            }
+
+            bool moving = true;
+            while (moving)
+            {
+                terminal_clear();
+                gameWindow.UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                gameWindow.RenderContent(0);
+                terminal_refresh();
+
+                if (terminal_has_input())
+                {
+                    if (terminal_state(TK_SHIFT))
+                    {
+                        switch (terminal_peek())
+                        {
+                            case TK_UP:
+                                selected->m_anchors.minYOffset--;
+                                break;
+                            case TK_DOWN:
+                                selected->m_anchors.maxYOffset++;
+                                break;
+                            case TK_LEFT:
+                                selected->m_anchors.minXOffset--;
+                                break;
+                            case TK_RIGHT:
+                                selected->m_anchors.maxXOffset++;
+                                break;
+                        }
+                    }
+                    else if (terminal_state(TK_CONTROL))
+                    {
+                        switch (terminal_peek())
+                        {
+                        case TK_UP:
+                            selected->m_anchors.maxYOffset--;
+                            break;
+                        case TK_DOWN:
+                            selected->m_anchors.minYOffset++;
+                            break;
+                        case TK_LEFT:
+                            selected->m_anchors.maxXOffset--;
+                            break;
+                        case TK_RIGHT:
+                            selected->m_anchors.minXOffset++;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        switch (terminal_peek())
+                        {
+                            case TK_UP:
+                                selected->m_anchors.minYOffset--;
+                                selected->m_anchors.maxYOffset--;
+                                break;
+                            case TK_DOWN:
+                                selected->m_anchors.minYOffset++;
+                                selected->m_anchors.maxYOffset++;
+                                break;
+                            case TK_LEFT:
+                                selected->m_anchors.minXOffset--;
+                                selected->m_anchors.maxXOffset--;
+                                break;
+                            case TK_RIGHT:
+                                selected->m_anchors.minXOffset++;
+                                selected->m_anchors.maxXOffset++;
+                                break;
+                        }
+                    }
+
+                    switch (terminal_read())
+                    {
+                        case TK_X: {
+                            char buf1[50];
+                            std::snprintf(buf1, 50, "");
+                            terminal_read_str(1, 1, &buf1[0], 50);
+                            float min = std::stof(std::string(buf1));
+                            std::snprintf(buf1, 50, "");
+                            terminal_read_str(1, 1, &buf1[0], 50);
+                            float max = std::stof(std::string(buf1));
+                            selected->m_anchors.minX = min;
+                            selected->m_anchors.maxX = max;
+                            selected->m_anchors.minXOffset = 0;
+                            selected->m_anchors.maxXOffset = 0;
+                            break; 
+                            }
+                        case TK_Y: {
+                            char buf1[50];
+                            std::snprintf(buf1, 50, "");
+                            terminal_read_str(1, 1, &buf1[0], 50);
+                            float min = std::stof(std::string(buf1));
+                            std::snprintf(buf1, 50, "");
+                            terminal_read_str(1, 1, &buf1[0], 50);
+                            float max = std::stof(std::string(buf1));
+                            selected->m_anchors.minY = min;
+                            selected->m_anchors.maxY = max;
+                            selected->m_anchors.minYOffset = 0;
+                            selected->m_anchors.maxYOffset = 0;
+                            break;
+                        }
+                        case TK_Q:
+                            moving = false;
+                            break;
+                    }
+                }
+
+            }
         }
 
         k = TK_G;
-        clock = chrono::system_clock::now();
-        char buffer[50];
 
         terminal_clear();
+
+        auto currentTime = chrono::system_clock::now();
+        auto frameTime = chrono::duration_cast<chrono::duration<float>>(currentTime - clock);
+
+        //Update UI Layout
+        gameWindow.UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+
         LOS::Calculate(view, playerLoc, lookDirection, maxPass);
         memory->Update(view);
 
@@ -604,12 +777,12 @@ int main(int argc, char* argv[])
             renderWindow.Put(renderWindow.m_rect.w / 2, renderWindow.m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
         }
 
+        gameWindow.RenderContent(frameTime.count());
+
         std::snprintf(&buffer[0], 50, "FPS: %.1f (%d x %d) (%d passes)", FPS, view.GetRadius(), view.GetRadius(), maxPass);
         terminal_color(Color(255, 0, 255));
         terminal_print(0, 0, &buffer[0]);
         terminal_refresh();
-        auto currentTime = chrono::system_clock::now();
-        auto frameTime = chrono::duration_cast<chrono::duration<float>>(currentTime - clock);
         clock = currentTime;
 
         FPSBuffer[fpsIndex] = 1.0f / frameTime.count();
