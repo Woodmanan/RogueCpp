@@ -42,9 +42,6 @@ namespace RogueSaveManager {
 	void Deserialize(T& value)
 	{
 #ifdef JSON
-		//T hold = T();
-		//inStream >> hold;
-		//value = hold;
 		inStream >> value;
 #else
 		ASSERT(inStream.is_open());
@@ -182,6 +179,61 @@ namespace RogueSaveManager {
 #ifdef JSON
 		inStream.read(buffer, 2);
 #endif // JSON
+	}
+
+	static void Write(const char* name, std::string& str)
+	{
+		ASSERT(outStream.is_open());
+
+#ifdef JSON
+		WriteTabs();
+		outStream.write(name, strlen(name));
+		outStream << " : ";
+#endif // JSON
+
+		//Serialize size
+		size_t size = str.size();
+#ifdef JSON
+		outStream << size;
+		outStream << ": ";
+#else
+		char* bytePtr = (char*)&size;
+		outStream.write(bytePtr, sizeof(size_t));
+#endif
+
+		outStream.write(str.c_str(), str.size());
+
+#ifdef JSON
+		outStream << ",\n";
+#endif // JSON
+	}
+
+	static void Read(const char* name, std::string& str)
+	{
+		ASSERT(inStream.is_open());
+
+#ifdef JSON
+		ReadTabs();
+		inStream.read(buffer, strlen(name));
+		inStream.read(buffer, 3);
+#endif // JSON
+
+		//Serialize Size
+		size_t size;
+#ifdef JSON
+		inStream >> size;
+		inStream.read(buffer, 2);
+#else
+		char* bytePtr = (char*)&size;
+		inStream.read(bytePtr, sizeof(size_t));
+#endif
+
+		inStream.read(buffer, size);
+		str = std::string(buffer, size);
+
+#ifdef JSON
+		inStream.read(buffer, 2);
+#endif
 	}
 
 	static void OpenWriteSaveFile(const std::string filename)

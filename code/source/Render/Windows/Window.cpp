@@ -246,3 +246,60 @@ Window* Window::GetSelectedWindow()
 
 	return nullptr;
 }
+
+namespace RogueSaveManager
+{
+	void Serialize(Rect& value)
+	{
+		AddOffset();
+		Write("x", value.x);
+		Write("y", value.y);
+		Write("w", value.w);
+		Write("h", value.h);
+		RemoveOffset();
+	}
+
+	void Deserialize(Rect& value)
+	{
+		AddOffset();
+		Read("x", value.x);
+		Read("y", value.y);
+		Read("w", value.w);
+		Read("h", value.h);
+		RemoveOffset();
+	}
+
+	void Serialize(Anchors& value)
+	{
+		AddOffset();
+
+		Write("Min X", value.minX);
+		Write("Max X", value.maxX);
+		Write("Min Y", value.minY);
+		Write("Max Y", value.maxY);
+
+		Write("Min X Offset", value.minXOffset);
+		Write("Max X Offset", value.maxXOffset);
+		Write("Min Y Offset", value.minYOffset);
+		Write("Max Y Offset", value.maxYOffset);
+
+		RemoveOffset();
+	}
+
+	void Deserialize(Anchors& value)
+	{
+		AddOffset();
+
+		Read("Min X", value.minX);
+		Read("Max X", value.maxX);
+		Read("Min Y", value.minY);
+		Read("Max Y", value.maxY);
+
+		Read("Min X Offset", value.minXOffset);
+		Read("Max X Offset", value.maxXOffset);
+		Read("Min Y Offset", value.minYOffset);
+		Read("Max Y Offset", value.maxYOffset);
+
+		RemoveOffset();
+	}
+}

@@ -88,3 +88,11 @@ public:
 	bool ContainsMouse();
 	Window* GetSelectedWindow();
 };
+
+namespace RogueSaveManager
+{
+	void Serialize(Rect& value);
+	void Deserialize(Rect& value);
+	void Serialize(Anchors& value);
+	void Deserialize(Anchors& value);
+}

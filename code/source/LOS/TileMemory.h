@@ -22,7 +22,7 @@ public:
 
 	void Update(View& los);
 	void Wipe();
-	void Render(Window& window);
+	void Render(Window* window);
 	void Move(Vec2 offset)
 	{
 		m_localPosition += offset; 

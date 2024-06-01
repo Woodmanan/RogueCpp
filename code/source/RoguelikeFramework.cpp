@@ -14,6 +14,7 @@
 #include <format>
 #include <chrono>
 #include "Render/UI/Panel.h"
+#include "Render/UI/UIManager.h"
 
 using namespace std;
 
@@ -32,18 +33,18 @@ uint32_t heat = 0x8;
 uint32_t rotations = 0x10;
 uint32_t background = 0x20;
 
-void Render_Map(THandle<Map> map, Window& window, Location playerLocation)
+void Render_Map(THandle<Map> map, Window* window, Location playerLocation)
 {
-    for (int i = 0; i < window.m_rect.w; i++)
+    for (int i = 0; i < window->m_rect.w; i++)
     {
-        for (int j = 0; j < window.m_rect.h; j++)
+        for (int j = 0; j < window->m_rect.h; j++)
         {
-            Vec2 playerOffset = Vec2(i, window.m_rect.h - j) - (window.m_rect.size / 2);
+            Vec2 playerOffset = Vec2(i, window->m_rect.h - j) - (window->m_rect.size / 2);
             Location mapLocation = playerLocation + playerOffset;
             if (mapLocation.GetValid() && mapLocation.InMap())
             {
                 THandle<BackingTile> tile = mapLocation->m_backingTile;
-                window.Put(i, j, tile->m_renderCharacter,
+                window->Put(i, j, tile->m_renderCharacter,
                     Color(0x99, 0x99, 0x99),
                     tile->m_backgroundColor);
             }
@@ -51,15 +52,15 @@ void Render_Map(THandle<Map> map, Window& window, Location playerLocation)
     }
 }
 
-void Render_View(View& view, Window& window, Location playerLocation)
+void Render_View(View& view, Window* window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
+    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
+            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (view.GetLocationLocal(i, j).GetValid())
@@ -67,22 +68,22 @@ void Render_View(View& view, Window& window, Location playerLocation)
                 if (visible)
                 {
                     THandle<BackingTile> tile = view.GetLocationLocal(i,j)->m_backingTile;
-                    window.Put(windowCoord.x, windowCoord.y, tile->m_renderCharacter, tile->m_foregroundColor, tile->m_backgroundColor);
+                    window->Put(windowCoord.x, windowCoord.y, tile->m_renderCharacter, tile->m_foregroundColor, tile->m_backgroundColor);
                 }
             }
         }
     }
 }
 
-void Render_Passes(View& view, Window& window, Location playerLocation)
+void Render_Passes(View& view, Window* window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
+    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
+            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (view.GetLocationLocal(i, j).GetValid())
@@ -91,22 +92,22 @@ void Render_Passes(View& view, Window& window, Location playerLocation)
                 {
                     int step = view.GetVisibilityPassIndex(i, j) - 1;
                     Color color = passColors[step % 5];
-                    window.Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, color, Color(0, 0, 0));
+                    window->Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, color, Color(0, 0, 0));
                 }
             }
         }
     }
 }
 
-void Render_Hotspots(View& view, Window& window, Location playerLocation)
+void Render_Hotspots(View& view, Window* window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
+    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
+            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (visible)
@@ -116,7 +117,7 @@ void Render_Hotspots(View& view, Window& window, Location playerLocation)
                 float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
                 Color blend = Blend(green, red, heatPercent);
                 Color black = Color(0, 0, 0);
-                window.Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, blend, black);
+                window->Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, blend, black);
             }
         }
     }
@@ -126,15 +127,15 @@ char rotationChars[8] = {
     '0', '1', '2', '3', '4', '5', '6', '7'
 };
 
-void Render_Rotations(View& view, Window& window, Location playerLocation)
+void Render_Rotations(View& view, Window* window, Location playerLocation)
 {
-    int maxRadius = std::min(view.GetRadius(), (int)window.m_rect.w);
+    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
     {
         for (int j = -maxRadius; j <= maxRadius; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + (window.m_rect.size) / 2;
+            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
 
             bool visible = view.GetVisibilityLocal(i, j);
             if (visible)
@@ -142,13 +143,13 @@ void Render_Rotations(View& view, Window& window, Location playerLocation)
                 char direction = view.GetRotationLocal(i, j);
                 char rotationChar = rotationChars[direction];
                 Color green = Color(0x17, 0xD9, 0x2A);
-                window.Put(windowCoord.x, windowCoord.y, rotationChar, green, Color(0, 0, 0));
+                window->Put(windowCoord.x, windowCoord.y, rotationChar, green, Color(0, 0, 0));
             }
         }
     }
 }
 
-void RenderBresenham(Window& window, Vec2 endpoint)
+void RenderBresenham(Window* window, Vec2 endpoint)
 {
     Color fg = Color(100, 0, 100);
     Color bg = Color(0, 0, 0);
@@ -159,11 +160,11 @@ void RenderBresenham(Window& window, Vec2 endpoint)
     int err = dx + dy, e2; /* error value e_xy */
 
     for (;;) {  /* loop */
-        Vec2 pos = (window.m_rect.size / 2) + Vec2(x0, -y0);
-        window.Put(pos.x, pos.y, '*', fg, bg);
+        Vec2 pos = (window->m_rect.size / 2) + Vec2(x0, -y0);
+        window->Put(pos.x, pos.y, '*', fg, bg);
         if (x0 == endpoint.x && y0 == endpoint.y)
         {
-            window.Put(pos.x, pos.y, '+', fg, bg);
+            window->Put(pos.x, pos.y, '+', fg, bg);
             break;
         }
         e2 = 2 * err;
@@ -241,12 +242,20 @@ int main(int argc, char* argv[])
     int fpsIndex = 0;
     float FPSBuffer[fpsMerge];
 
-    Window gameWindow(std::string("Game window"), { 0, 1, 0, 1 });
-    Panel mainGamePanel(std::string("Main Game Panel"), { 0,1,0,1 }, &gameWindow);
-    Window renderWindow(std::string("Render Window"), { 0, 1, 0, 1, 1, -1, 1, -1}, &mainGamePanel);
-    Panel testPanel(std::string("Test Panel"), { 0, .5, .8, 1 }, &renderWindow);
-    Panel testPanel2(std::string("Test Panel 2"), {.5, 1, .8, 1, 1}, &renderWindow);
-    Panel testPanel3(std::string("Test Panel 3"), { 0.5, .5, 0,1, -1, 2, 1, -1 }, &testPanel);
+    UIManager uiManager;
+
+    Window* gameWindow = uiManager.CreateWindow<Window>(std::string("Game window"), Anchors({ 0, 1, 0, 1 }));
+
+    //Window gameWindow(std::string("Game window"), { 0, 1, 0, 1 });
+    Panel* mainGamePanel = uiManager.CreateWindow<Panel>(std::string("Main Game Panel"), Anchors{ 0,1,0,1 }, gameWindow);
+    Window* renderWindow = uiManager.CreateWindow<Window>(std::string("Render Window"), Anchors{ 0, 1, 0, 1, 1, -1, 1, -1}, mainGamePanel);
+    renderWindow->m_layer = 0;
+
+    Panel* testPanel = uiManager.CreateWindow<Panel>(std::string("Test Panel"), Anchors{ 0, .5, .8, 1 }, renderWindow);
+    Panel* testPanel2 = uiManager.CreateWindow<Panel>(std::string("Test Panel 2"), Anchors{.5, 1, .8, 1, 1}, renderWindow);
+    Panel* testPanel3 = uiManager.CreateWindow<Panel>(std::string("Test Panel 3"), Anchors{ 0.5, .5, 0,1, -1, 2, 1, -1 }, testPanel);
+
+     uiManager.ApplySettingsToAllWindows();
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
@@ -320,6 +329,7 @@ int main(int argc, char* argv[])
             if (terminal_state(TK_SHIFT))
             {
                 RogueSaveManager::DeleteSaveFile("MySaveFile.rsf");
+                RogueSaveManager::DeleteSaveFile("UISettings.rsf");
             }
             shouldBreak = true;
             break;
@@ -585,8 +595,8 @@ int main(int argc, char* argv[])
             Window* selected = nullptr;
 
             terminal_clear();
-            gameWindow.RenderSelection();
-            Window* hovered = gameWindow.GetSelectedWindow();
+            gameWindow->RenderSelection();
+            Window* hovered = gameWindow->GetSelectedWindow();
             if (hovered != nullptr)
             {
                 hovered->RenderAnchors();
@@ -602,9 +612,9 @@ int main(int argc, char* argv[])
                         case TK_MOUSE_MOVE:
                         {
                             terminal_clear();
-                            gameWindow.UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
-                            gameWindow.RenderSelection();
-                            Window* hovered = gameWindow.GetSelectedWindow();
+                            gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                            gameWindow->RenderSelection();
+                            Window* hovered = gameWindow->GetSelectedWindow();
                             if (hovered != nullptr)
                             {
                                 hovered->RenderAnchors();
@@ -613,7 +623,7 @@ int main(int argc, char* argv[])
                             break;
                         }
                         case TK_MOUSE_LEFT:
-                            selected = gameWindow.GetSelectedWindow();
+                            selected = gameWindow->GetSelectedWindow();
                             break;
                     }
                 }
@@ -623,8 +633,8 @@ int main(int argc, char* argv[])
             while (moving)
             {
                 terminal_clear();
-                gameWindow.UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
-                gameWindow.RenderContent(0);
+                gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                gameWindow->RenderContent(0);
                 terminal_refresh();
 
                 if (terminal_has_input())
@@ -690,37 +700,59 @@ int main(int argc, char* argv[])
 
                     switch (terminal_read())
                     {
-                        case TK_X: {
-                            char buf1[50];
-                            std::snprintf(buf1, 50, "");
-                            terminal_read_str(1, 1, &buf1[0], 50);
-                            float min = std::stof(std::string(buf1));
-                            std::snprintf(buf1, 50, "");
-                            terminal_read_str(1, 1, &buf1[0], 50);
-                            float max = std::stof(std::string(buf1));
-                            selected->m_anchors.minX = min;
-                            selected->m_anchors.maxX = max;
-                            selected->m_anchors.minXOffset = 0;
-                            selected->m_anchors.maxXOffset = 0;
-                            break; 
+                    case TK_X: {
+                        char buf1[50];
+                        std::snprintf(buf1, 50, "");
+                        terminal_read_str(1, 1, &buf1[0], 50);
+                        float min = std::stof(std::string(buf1));
+                        std::snprintf(buf1, 50, "");
+                        terminal_read_str(1, 1, &buf1[0], 50);
+                        float max = std::stof(std::string(buf1));
+                        selected->m_anchors.minX = min;
+                        selected->m_anchors.maxX = max;
+                        selected->m_anchors.minXOffset = 0;
+                        selected->m_anchors.maxXOffset = 0;
+                        break;
+                    }
+                    case TK_Y: {
+                        char buf1[50];
+                        std::snprintf(buf1, 50, "");
+                        terminal_read_str(1, 1, &buf1[0], 50);
+                        float min = std::stof(std::string(buf1));
+                        std::snprintf(buf1, 50, "");
+                        terminal_read_str(1, 1, &buf1[0], 50);
+                        float max = std::stof(std::string(buf1));
+                        selected->m_anchors.minY = min;
+                        selected->m_anchors.maxY = max;
+                        selected->m_anchors.minYOffset = 0;
+                        selected->m_anchors.maxYOffset = 0;
+                        break;
+                    }
+                    case TK_Q:
+                        moving = false;
+                        uiManager.CreateSettingsForAllWindows();
+                        uiManager.SaveSettings();
+                        break;
+                    case TK_P:
+                        while (true)
+                        {
+                            terminal_clear();
+                            gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                            gameWindow->RenderSelection();
+                            Window* hovered = gameWindow->GetSelectedWindow();
+                            if (hovered != nullptr)
+                            {
+                                hovered->RenderAnchors();
                             }
-                        case TK_Y: {
-                            char buf1[50];
-                            std::snprintf(buf1, 50, "");
-                            terminal_read_str(1, 1, &buf1[0], 50);
-                            float min = std::stof(std::string(buf1));
-                            std::snprintf(buf1, 50, "");
-                            terminal_read_str(1, 1, &buf1[0], 50);
-                            float max = std::stof(std::string(buf1));
-                            selected->m_anchors.minY = min;
-                            selected->m_anchors.maxY = max;
-                            selected->m_anchors.minYOffset = 0;
-                            selected->m_anchors.maxYOffset = 0;
-                            break;
+                            terminal_refresh();
+
+                            if (terminal_has_input() && terminal_read() == TK_MOUSE_LEFT)
+                            {
+                                selected->SetParent(hovered);
+                                break;
+                            }
                         }
-                        case TK_Q:
-                            moving = false;
-                            break;
+                        break;
                     }
                 }
 
@@ -735,7 +767,7 @@ int main(int argc, char* argv[])
         auto frameTime = chrono::duration_cast<chrono::duration<float>>(currentTime - clock);
 
         //Update UI Layout
-        gameWindow.UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+        gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
 
         LOS::Calculate(view, playerLoc, lookDirection, maxPass);
         memory->Update(view);
@@ -774,10 +806,10 @@ int main(int argc, char* argv[])
             }
             RenderBresenham(renderWindow, bresenhamPoint);
 
-            renderWindow.Put(renderWindow.m_rect.w / 2, renderWindow.m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
+            renderWindow->Put(renderWindow->m_rect.w / 2, renderWindow->m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
         }
 
-        gameWindow.RenderContent(frameTime.count());
+        gameWindow->RenderContent(frameTime.count());
 
         std::snprintf(&buffer[0], 50, "FPS: %.1f (%d x %d) (%d passes)", FPS, view.GetRadius(), view.GetRadius(), maxPass);
         terminal_color(Color(255, 0, 255));

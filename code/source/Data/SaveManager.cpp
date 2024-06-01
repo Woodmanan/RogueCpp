@@ -3,7 +3,7 @@
 namespace RogueSaveManager {
 	std::ofstream outStream;
 	std::ifstream inStream;
-	char buffer[50];
+	char buffer[200];
 
 	void WriteTabs()
 	{
