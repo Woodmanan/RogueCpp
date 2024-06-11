@@ -13,7 +13,9 @@
 #include "Render/Windows/Window.h"
 #include <format>
 #include <chrono>
+#include "Render/UI/Bar.h"
 #include "Render/UI/Panel.h"
+#include "Render/UI/Label.h"
 #include "Render/UI/UIManager.h"
 
 using namespace std;
@@ -255,7 +257,14 @@ int main(int argc, char* argv[])
     Panel* testPanel2 = uiManager.CreateWindow<Panel>(std::string("Test Panel 2"), Anchors{.5, 1, .8, 1, 1}, renderWindow);
     Panel* testPanel3 = uiManager.CreateWindow<Panel>(std::string("Test Panel 3"), Anchors{ 0.5, .5, 0,1, -1, 2, 1, -1 }, testPanel);
 
-     uiManager.ApplySettingsToAllWindows();
+    Label* xlabel = uiManager.CreateWindow<Label>(std::string("XLabel"), Anchors{ 0,0,1,1,1,3,-3, -2 }, testPanel2);
+    Bar* xbar = uiManager.CreateWindow<Bar>(std::string("XBar"), Anchors{ 0, 1, 1, 1, 3, -1, -3, -2 }, testPanel2);
+    Label* ylabel = uiManager.CreateWindow<Label>(std::string("YLabel"), Anchors{ 0,0,1,1,1,3,-2, -1 }, testPanel2);
+    Bar* ybar = uiManager.CreateWindow<Bar>(std::string("YBar"), Anchors{ 0, 1, 1, 1, 3, -1, -2, -1 }, testPanel2);
+
+    Label* fpsLabel = uiManager.CreateWindow<Label>(std::string("Fps"), Anchors{ 0,1,0,0, 0,0,0,1 }, renderWindow);
+
+    uiManager.ApplySettingsToAllWindows();
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
@@ -300,6 +309,7 @@ int main(int argc, char* argv[])
     int pos_x = 40;
     int pos_y = 20;
     char buffer[50];
+    wchar_t wbuffer[50];
 
     terminal_open();
     std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
@@ -809,11 +819,23 @@ int main(int argc, char* argv[])
             renderWindow->Put(renderWindow->m_rect.w / 2, renderWindow->m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
         }
 
+
+        xbar->SetColor(Color(255, 100, 0));
+        xbar->SetFill(((float)playerLoc.x()) / (map->m_size.x - 1), 0.03f);
+        xlabel->SetString("x:");
+        xlabel->SetAlignment(TK_ALIGN_DEFAULT);
+
+        ybar->SetColor(Color(255, 100, 0));
+        ybar->SetFill(((float)playerLoc.y()) / (map->m_size.y - 1), 0.03f);
+        ylabel->SetString("y:");
+        ylabel->SetAlignment(TK_ALIGN_DEFAULT);
         gameWindow->RenderContent(frameTime.count());
 
         std::snprintf(&buffer[0], 50, "FPS: %.1f (%d x %d) (%d passes)", FPS, view.GetRadius(), view.GetRadius(), maxPass);
         terminal_color(Color(255, 0, 255));
-        terminal_print(0, 0, &buffer[0]);
+        fpsLabel->SetAlignment(TK_ALIGN_DEFAULT);
+        fpsLabel->SetString(buffer);
+
         terminal_refresh();
         clock = currentTime;
 

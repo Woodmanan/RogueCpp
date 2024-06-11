@@ -368,6 +368,20 @@ T Lerp(T a, T b, float percent)
     return static_cast<T>(a * (1 - percent) + b * percent);
 }
 
+template<typename T>
+T Clamp(T value, T min, T max)
+{
+    ASSERT(min <= max);
+    if (value < min) { value = min; }
+    if (value > max) value = max;
+    return value;
+}
+
+inline float Clamp(float value)
+{
+    return Clamp(value, 0.0f, 1.0f);
+}
+
 inline Color Blend(Color f, Color s, float percent)
 {
     uchar r = Lerp(f.r, s.r, percent);
