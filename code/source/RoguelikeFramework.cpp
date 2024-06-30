@@ -17,6 +17,7 @@
 #include "Render/UI/Panel.h"
 #include "Render/UI/Label.h"
 #include "Render/UI/UIManager.h"
+#include "Core/Materials/Materials.h"
 
 using namespace std;
 
@@ -227,7 +228,7 @@ int main(int argc, char* argv[])
     //Initialize Random
     srand(1);
 
-    Vec2 size(64, 64);
+    Vec2 size(128, 64);
     THandle<Map> map;
     THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
@@ -263,8 +264,43 @@ int main(int argc, char* argv[])
     Bar* ybar = uiManager.CreateWindow<Bar>(std::string("YBar"), Anchors{ 0, 1, 1, 1, 3, -1, -2, -1 }, testPanel2);
 
     Label* fpsLabel = uiManager.CreateWindow<Label>(std::string("Fps"), Anchors{ 0,1,0,0, 0,0,0,1 }, renderWindow);
-
     uiManager.ApplySettingsToAllWindows();
+
+    { // Materials Testing
+        MaterialDefinition metal;
+        metal.name = "Metal";
+        metal.phase = Phase::Solid;
+        metal.density = 1000;
+
+        MaterialDefinition water;
+        water.name = "Water";
+        water.phase = Phase::Liquid;
+        water.density = 100;
+
+        MaterialDefinition air;
+        air.name = "Air";
+        air.phase = Phase::Gas;
+        air.density = 10;
+
+        MaterialDefinition nitrogen;
+        nitrogen.name = "Nitrogen";
+        nitrogen.phase = Gas;
+        nitrogen.density = 10;
+
+        MaterialManager::Get()->AddMaterialDefinition(metal);
+        MaterialManager::Get()->AddMaterialDefinition(water);
+        MaterialManager::Get()->AddMaterialDefinition(air);
+        MaterialManager::Get()->AddMaterialDefinition(nitrogen);
+
+        MaterialContainer container;
+        container.AddMaterial(0, 1.0f, false);
+        container.AddMaterial(2, 1.0f, false);
+        container.AddMaterial(1, 1.0f, false);
+        container.AddMaterial(2, 1.0f, false);
+        container.AddMaterial(3, 1.0f, false);
+        container.AddMaterial(2, 1.0f, false);
+        container.AddMaterial(1, 1.0f, false);
+    }
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
