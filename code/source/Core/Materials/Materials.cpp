@@ -19,7 +19,7 @@ void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMa
 void MaterialContainer::AddMaterial(const Material& material, int index)
 {
 	std::cout << "Adding " << material.m_mass << " kgs of " << material.GetMaterial().name << std::endl;
-	if (m_matSize == maxIndices)
+	if (m_materials.size() == maxIndices)
 	{
 		ASSERT(false);
 		return;
@@ -27,41 +27,36 @@ void MaterialContainer::AddMaterial(const Material& material, int index)
 
 	if (index == -1)
 	{
-		index = m_matSize;
+		m_materials.push_back(material);
 	}
-
-	for (int matIndex = m_matSize - 1; matIndex >= index; matIndex--)
+	else
 	{
-		m_materials[matIndex + 1] = m_materials[matIndex];
+		m_materials.insert(material, index);
 	}
 
-	m_materials[index] = material;
-	m_matSize++;
 	SortLayers();
 }
 
 void MaterialContainer::SortLayers()
 {
+	m_layers.clear();
 	int currentLayer = 0;
-	for (int i = 0; i < m_matSize; i++)
+	for (int i = 0; i < m_materials.size(); i++)
 	{
 		if (m_materials[i].GetStatic())
 		{
 			if (i - currentLayer > 0)
 			{
-				m_layers[currentLayer] = i;
+				m_layers.push_back(i);
 				currentLayer++;
 			}
 		}
 	}
 
-	if (currentLayer == -1) { currentLayer++; }
-	m_layers[currentLayer] = m_matSize;
-
-	m_layerSize = currentLayer + 1;
+	m_layers.push_back(m_materials.size());
 
 	int lastIndex = 0;
-	for (int i = 0; i < m_layerSize; i++)
+	for (int i = 0; i < m_layers.size(); i++)
 	{
 		SortLayerByDensity(lastIndex, m_layers[i]);
 		lastIndex = m_layers[i];
@@ -74,7 +69,7 @@ void MaterialContainer::CollapseDuplicates()
 {
 	int realIndex = 0;
 	int layerStart = 0;
-	for (int layer = 0; layer < m_layerSize; layer++)
+	for (int layer = 0; layer < m_layers.size(); layer++)
 	{
 		int layerEnd = m_layers[layer];
 		for (int mat = layerStart; mat < layerEnd; mat++)
@@ -97,14 +92,14 @@ void MaterialContainer::CollapseDuplicates()
 		m_layers[layer] = realIndex;
 	}
 	
-	m_matSize = realIndex;
+	m_materials.resize(realIndex);
 }
 
 void MaterialContainer::Debug_Print()
 {
 	std::cout << "Printing container contents:" << std::endl;
 	int layerStart = 0;
-	for (int layer = 0; layer < m_layerSize; layer++)
+	for (int layer = 0; layer < m_layers.size(); layer++)
 	{
 		int layerEnd = m_layers[layer];
 		std::cout << "\tSort layer from [" << layerStart << ", " << layerEnd << ")" << std::endl;
@@ -152,6 +147,99 @@ void MaterialContainer::SortLayerByDensity(int startIndex, int endIndex)
 				return rhsDensity > lhsDensity;
 			});
 	}
+}
+
+void MixtureContainer::LoadMixture(MaterialContainer& one, MaterialContainer& two)
+{
+	m_materials.clear();
+	m_mixture.clear();
+	FixedArray<Material, maxIndices> oneMaterials;
+	FixedArray<Material, maxIndices> twoMaterials;
+
+	int oneMax = LoadContainer(one, oneMaterials);
+	int twoMax = LoadContainer(two, twoMaterials);
+
+	int oneIdx = 0;
+	int twoIdx = 0;
+
+	while (oneIdx < oneMax && twoIdx < twoMax)
+	{
+		const Material& matOne = oneMaterials[oneIdx];
+		const Material& matTwo = twoMaterials[twoIdx];
+
+		if (matOne.m_materialID == matTwo.m_materialID)
+		{
+			m_materials.push_back(Material(matOne.m_materialID, matOne.m_mass + matTwo.m_mass, false));
+			m_mixture.push_back(matOne.m_mass / m_materials.last().m_mass);
+			oneIdx++;
+			twoIdx++;
+		}
+		else if (matOne.m_materialID < matTwo.m_materialID)
+		{
+
+			m_materials.push_back(Material(matOne.m_materialID, matOne.m_mass, false));
+			m_mixture.push_back(1);
+			oneIdx++;
+		}
+		else
+		{
+			m_materials.push_back(Material(matTwo.m_materialID, matTwo.m_mass, false));
+			m_mixture.push_back(0);
+			twoIdx++;
+		}
+	}
+
+	//Add in all remaining elements in order
+	for (int index = oneIdx; index < oneMax; index++)
+	{
+		const Material& matOne = oneMaterials[index];
+		m_materials.push_back(Material(matOne.m_materialID, matOne.m_mass, false));
+		m_mixture.push_back(1);
+	}
+
+	for (int index = twoIdx; index < twoMax; index++)
+	{
+		const Material& matTwo = twoMaterials[index];
+		m_materials.push_back(Material(matTwo.m_materialID, matTwo.m_mass, false));
+		m_mixture.push_back(0);
+	}
+
+	ASSERT(m_materials.size() == m_mixture.size());
+}
+
+void MixtureContainer::LoadMixture(MaterialContainer& single, int layer)
+{
+	int below = layer - 1;
+
+	const int minIdx = (layer >= 0) ? single.m_layers[below] : 0;
+	const int maxIdx = single.m_layers[layer];
+
+	m_materials.clear();
+	m_mixture.clear();
+
+	for (int i = minIdx; i < maxIdx; i++)
+	{
+		const Material& mat = single.m_materials[minIdx + i];
+		m_materials.push_back(Material(mat.m_materialID, mat.m_mass, false));
+		m_mixture.push_back(1);
+	}
+}
+
+int MixtureContainer::LoadContainer(MaterialContainer& container, FixedArray<Material, MixtureContainer::maxIndices>& sortedArray)
+{
+	int startIndex = container.m_layers.size() - 2;
+	int endIndex = container.m_layers.size() - 1;
+
+	int matStartIndex = (startIndex >= 0) ? container.m_layers[startIndex] : 0;
+	int matEndIndex = container.m_layers[endIndex];
+
+	for (int matIndex = matStartIndex; matIndex < matEndIndex; matIndex++)
+	{
+		sortedArray.push_back(container.m_materials[matIndex]);
+	}
+
+	std::sort(sortedArray.begin(), sortedArray.end());
+	return sortedArray.size();
 }
 
 void Reaction::SortReactantsByID()
@@ -210,4 +298,9 @@ void MaterialManager::SortReactions()
 
 			return lhs.m_reactants.size() > rhs.m_reactants.size();
 		});
+}
+
+void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two)
+{
+
 }

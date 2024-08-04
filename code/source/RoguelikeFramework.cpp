@@ -287,6 +287,11 @@ int main(int argc, char* argv[])
         nitrogen.phase = Gas;
         nitrogen.density = 10;
 
+        MaterialDefinition rust;
+        rust.name = "Rust";
+        rust.phase = Solid;
+        rust.density = 505;
+
         MaterialManager::Get()->AddMaterialDefinition(metal);
         MaterialManager::Get()->AddMaterialDefinition(water);
         MaterialManager::Get()->AddMaterialDefinition(air);
@@ -300,6 +305,11 @@ int main(int argc, char* argv[])
         container.AddMaterial(3, 1.0f, false);
         container.AddMaterial(2, 1.0f, false);
         container.AddMaterial(1, 1.0f, false);
+
+        MixtureContainer mixture;
+        mixture.LoadMixture(container, container);
+
+
     }
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
