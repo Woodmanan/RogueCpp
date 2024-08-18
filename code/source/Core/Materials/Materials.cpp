@@ -18,6 +18,8 @@ void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMa
 
 void MaterialContainer::AddMaterial(const Material& material, int index)
 {
+	if (material.m_mass == 0) { return; }
+
 	std::cout << "Adding " << material.m_mass << " kgs of " << material.GetMaterial().name << std::endl;
 	if (m_materials.size() == maxIndices)
 	{
@@ -35,6 +37,34 @@ void MaterialContainer::AddMaterial(const Material& material, int index)
 	}
 
 	SortLayers();
+}
+
+void MaterialContainer::RemoveMaterial(const MaterialDefinition& material, float mass)
+{
+	if (mass == 0) { return; }
+
+	int layerMin = (m_layers.size() >= 2) ? m_layers[m_layers.size() - 2] : 0;
+	int layerMax = m_layers[m_layers.size() - 1];
+
+	for (int i = layerMin; i < layerMax; i++)
+	{
+		if (m_materials[i].m_materialID != material.ID) { continue; }
+		
+		if (m_materials[i].m_mass > mass)
+		{
+			m_materials[i].m_mass -= mass;
+			return;
+		}
+		else
+		{
+			m_materials.remove(i);
+			SortLayers();
+			return;
+		}
+	}
+
+	//Removed material wasn't in the last layer!
+	HALT();
 }
 
 void MaterialContainer::SortLayers()
@@ -127,6 +157,13 @@ void MaterialContainer::Debug_Print()
 
 void MaterialContainer::SortLayerByDensity(int startIndex, int endIndex)
 {
+	if (startIndex == 0 && endIndex == 0)
+	{
+		m_layers.resize(1);
+		m_layers[0] = 0;
+		return;
+	}
+
 	ASSERT(startIndex != endIndex);
 	std::cout << "Sort layer from [" << startIndex << ", " << endIndex << ")" << std::endl;
 	if (m_materials[startIndex].m_static)
@@ -227,6 +264,7 @@ void MixtureContainer::LoadMixture(MaterialContainer& single, int layer)
 
 int MixtureContainer::LoadContainer(MaterialContainer& container, FixedArray<Material, MixtureContainer::maxIndices>& sortedArray)
 {
+	ASSERT(container.m_layers.size() > 0);
 	int startIndex = container.m_layers.size() - 2;
 	int endIndex = container.m_layers.size() - 1;
 
@@ -242,6 +280,20 @@ int MixtureContainer::LoadContainer(MaterialContainer& container, FixedArray<Mat
 	return sortedArray.size();
 }
 
+int MixtureContainer::GetIndexOf(const MaterialDefinition& material)
+{
+	for (int i = 0; i < m_materials.size(); i++)
+	{
+		if (m_materials[i].m_materialID == material.ID)
+		{
+			return i;
+		}
+	}
+
+	HALT();
+	return -1;
+}
+
 void Reaction::SortReactantsByID()
 {
 	//Add extra empty results if needed. Used to maintain reactant->result relationships
@@ -253,7 +305,7 @@ void Reaction::SortReactantsByID()
 	//Bubble sort!
 	for (int i = 0; i < m_reactants.size(); i++)
 	{
-		for (int j = m_reactants.size() - 1; j >= i; j++)
+		for (int j = m_reactants.size() - 1; j > i; j--)
 		{
 			if (m_reactants[j].m_materialID < m_reactants[j - 1].m_materialID)
 			{
@@ -277,7 +329,68 @@ void MaterialManager::AddMaterialDefinition(MaterialDefinition material)
 
 void MaterialManager::AddReaction(Reaction reaction)
 {
+	reaction.SortReactantsByID();
+	m_reactions.push_back(reaction);
+}
 
+void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two)
+{
+	//Having an empty container invalidates a reaction - self reaction will catch it!
+	if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return; }
+
+	MixtureContainer mixture;
+	mixture.LoadMixture(one, two);
+
+	for (Reaction& reaction : m_reactions)
+	{
+		if (ReactionMatchesMixture(reaction, mixture))
+		{
+ 			ExecuteReaction(reaction, mixture, one, two);
+			return;
+		}
+	}
+}
+
+void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two)
+{
+	float reactionMultiple = GetReactionMultiple(reaction, mixture);
+	std::cout << "Starting a reaction! (x" << reactionMultiple << ")" << std::endl;
+
+	for (Material& reactant : reaction.m_reactants)
+	{
+		const MaterialDefinition& definition = reactant.GetMaterial();
+		int index = mixture.GetIndexOf(definition);
+
+		float oneAmount = mixture.m_mixture[index];
+		float twoAmount = 1 - oneAmount;
+		ASSERT((oneAmount + twoAmount) == 1);
+
+		one.RemoveMaterial(definition, oneAmount * reactant.m_mass * reactionMultiple);
+		two.RemoveMaterial(definition, twoAmount * reactant.m_mass * reactionMultiple);
+	}
+
+	for (int i = 0; i < reaction.m_products.size(); i++)
+	{
+		if (reaction.m_products[i].m_materialID == -1) { continue; }
+
+		float oneAmount = .5f;
+		float twoAmount = .5f;
+
+		if (i < reaction.m_reactants.size())
+		{
+			const MaterialDefinition& definition = reaction.m_reactants[i].GetMaterial();
+			int index = mixture.GetIndexOf(definition);
+
+			oneAmount = mixture.m_mixture[index];
+			twoAmount = 1 - oneAmount;
+		}
+
+		ASSERT((oneAmount + twoAmount) == 1);
+		Material& material = reaction.m_products[i];
+
+		one.AddMaterial(Material(material.m_materialID, material.m_mass * oneAmount * reactionMultiple, false));
+		two.AddMaterial(Material(material.m_materialID, material.m_mass * twoAmount * reactionMultiple, false));
+	}
 }
 
 const MaterialDefinition& MaterialManager::GetMaterialByID(int index)
@@ -300,7 +413,46 @@ void MaterialManager::SortReactions()
 		});
 }
 
-void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two)
+bool MaterialManager::ReactionMatchesMixture(Reaction& reaction, MixtureContainer& mixture)
 {
+	auto mixtureIterator = mixture.m_materials.begin();
 
+	for (const Material& reactant : reaction.m_reactants)
+	{
+		while (mixtureIterator->m_materialID < reactant.m_materialID)
+		{
+			mixtureIterator++;
+			if (mixtureIterator == mixture.m_materials.end()) { return false; }
+		}
+
+		if (mixtureIterator->m_materialID == reactant.m_materialID)
+		{
+			if (reactant.m_mass > mixtureIterator->m_mass) { return false; }
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+float MaterialManager::GetReactionMultiple(Reaction& reaction, MixtureContainer& mixture)
+{
+	float maxAmount = INFINITY;
+	auto mixtureIterator = mixture.m_materials.begin();
+
+	for (const Material& reactant : reaction.m_reactants)
+	{
+		while (mixtureIterator->m_materialID < reactant.m_materialID)
+		{
+			mixtureIterator++;
+		}
+
+		maxAmount = std::min(maxAmount, mixtureIterator->m_mass / reactant.m_mass);
+	}
+
+	ASSERT(maxAmount >= 1);
+	return maxAmount;
 }

@@ -296,20 +296,29 @@ int main(int argc, char* argv[])
         MaterialManager::Get()->AddMaterialDefinition(water);
         MaterialManager::Get()->AddMaterialDefinition(air);
         MaterialManager::Get()->AddMaterialDefinition(nitrogen);
+        MaterialManager::Get()->AddMaterialDefinition(rust);
 
         MaterialContainer container;
-        container.AddMaterial(0, 1.0f, false);
+        container.AddMaterial(0, 10.0f, false);
         container.AddMaterial(2, 1.0f, false);
-        container.AddMaterial(1, 1.0f, false);
         container.AddMaterial(2, 1.0f, false);
         container.AddMaterial(3, 1.0f, false);
         container.AddMaterial(2, 1.0f, false);
-        container.AddMaterial(1, 1.0f, false);
 
-        MixtureContainer mixture;
-        mixture.LoadMixture(container, container);
+        MaterialContainer waterContainer;
+        waterContainer.AddMaterial(1, 4.0f, false);
 
+        Reaction rusting;
+        rusting.m_minHeat = 0;
+        rusting.m_deltaHeat = 100;
+        rusting.m_reactants.push_back(Material(1, 1, false));
+        rusting.m_reactants.push_back(Material(0, 2, false));
+        rusting.m_products.push_back(Material());
+        rusting.m_products.push_back(Material(4, 2.5f, false));
 
+        MaterialManager::Get()->AddReaction(rusting);
+
+        MaterialManager::Get()->EvaluateReaction(container, waterContainer);
     }
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))

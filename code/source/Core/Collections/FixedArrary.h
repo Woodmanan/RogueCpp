@@ -78,6 +78,16 @@ public:
 		m_size++;
 	}
 
+	void remove(size_t index)
+	{
+		ASSERT(index < m_size);
+		for (int i = index; i < m_size - 1; i++)
+		{
+			m_data[i] = m_data[i + 1];
+		}
+		m_size--;
+	}
+
 	void clear()
 	{
 		m_size = 0;

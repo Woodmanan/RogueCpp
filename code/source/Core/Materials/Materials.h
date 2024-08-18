@@ -48,8 +48,11 @@ struct MaterialContainer
 	FixedArray<Material, maxIndices> m_materials;
 	FixedArray<int, maxIndices> m_layers;
 
+	float m_heat = 0;
+
 	void AddMaterial(int materialIndex, float mass, bool staticMaterial, int index = -1);
 	void AddMaterial(const Material& material, int index = -1);
+	void RemoveMaterial(const MaterialDefinition& material, float mass);
 	void SortLayers();
 	void CollapseDuplicates();
 
@@ -64,9 +67,12 @@ struct MixtureContainer
 	FixedArray<Material, maxIndices> m_materials;
 	FixedArray<float, maxIndices> m_mixture;
 
+	float m_heat;
+
 	void LoadMixture(MaterialContainer& one, MaterialContainer& two);
 	void LoadMixture(MaterialContainer& single, int layer);
 	int LoadContainer(MaterialContainer& container, FixedArray<Material, maxIndices>& sortedArray);
+	int GetIndexOf(const MaterialDefinition& material);
 };
 
 struct Reaction
@@ -92,6 +98,8 @@ struct Reaction
 			}
 		}
 
+		if (lhs.m_minHeat > rhs.m_minHeat) { return true; }
+
 		return false;
 	}
 };
@@ -104,6 +112,7 @@ public:
 	void AddReaction(Reaction reaction);
 
 	void EvaluateReaction(MaterialContainer& one, MaterialContainer& two);
+	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two);
 
 	const MaterialDefinition& GetMaterialByID(int index);
 
@@ -119,6 +128,8 @@ public:
 	
 private:
 	void SortReactions();
+	bool ReactionMatchesMixture(Reaction& reaction, MixtureContainer& mixture);
+	float GetReactionMultiple(Reaction& reaction, MixtureContainer& mixture);
 
 	static MaterialManager* manager;
 	vector<MaterialDefinition> m_materialDefinitions;
