@@ -1,9 +1,17 @@
 #include "Materials.h"
 #include "../../Debug/Debug.h"
+#include "../../Utils/Utils.h"
+#include "../../Utils/FileUtils.h"
+#include "../../Data/SaveManager.h"
 #include <iostream>
 #include <algorithm>
 
-MaterialManager* MaterialManager::manager = nullptr;
+MaterialManager* MaterialManager::manager = new MaterialManager();
+
+MaterialManager::MaterialManager()
+{
+	RogueResources::Register("Mat", GetMember(this, &MaterialManager::PackMaterial), GetMember(this, &MaterialManager::LoadMaterial));
+}
 
 const MaterialDefinition& Material::GetMaterial() const
 {
@@ -399,6 +407,61 @@ const MaterialDefinition& MaterialManager::GetMaterialByID(int index)
 	return m_materialDefinitions[index];
 }
 
+void MaterialManager::PackMaterial(RogueResources::PackContext& packContext)
+{
+	std::ifstream stream;
+	stream.open(packContext.source);
+
+	SkipLine(stream);
+
+	std::vector<MaterialDefinition> materials;
+
+	while (stream.is_open())
+	{
+		std::string line;
+		std::getline(stream, line);
+		if (line.empty()) { break; }
+
+		std::vector<std::string> tokens = string_split(line, ",");
+
+		ASSERT(tokens.size() == 8);
+
+		if (tokens[0].empty()) { continue; }
+
+		//Name,Density,Melting Point,Boiling Point,Specific Heat,Thermal Conductivity,Electrical Resistance,Moh's Hardness
+
+		MaterialDefinition definition;
+		definition.ID					= -1;
+		definition.name					= tokens[0];
+		definition.density				= string_to_float(tokens[1]);
+		definition.meltingPoint			= string_to_float(tokens[2]);
+		definition.boilingPoint			= string_to_float(tokens[3]);
+		definition.specificHeat			= string_to_float(tokens[4]);
+		definition.thermalConductivity	= string_to_float(tokens[5]);
+		definition.electricalResistance = string_to_float(tokens[6]);
+		definition.hardness				= string_to_float(tokens[7]);
+
+		materials.push_back(definition);
+	}
+
+	stream.close();
+
+	RogueSaveManager::OpenWriteSaveFileByPath(packContext.destination);
+	RogueSaveManager::Write("Materials", materials);
+	RogueSaveManager::CloseWriteSaveFile();
+}
+
+std::shared_ptr<void> MaterialManager::LoadMaterial(RogueResources::LoadContext& loadContext)
+{
+	std::vector<MaterialDefinition>* materials = new std::vector<MaterialDefinition>();
+
+	RogueSaveManager::OpenReadSaveFileByPath(loadContext.source);
+	RogueSaveManager::Read("Materials", *materials);
+	RogueSaveManager::CloseReadSaveFile();
+
+	return std::shared_ptr<std::vector<MaterialDefinition>>(materials);
+}
+
 void MaterialManager::SortReactions()
 {
 	sort(m_reactions.begin(), m_reactions.end(), [](const Reaction& lhs, const Reaction& rhs)
@@ -455,4 +518,37 @@ float MaterialManager::GetReactionMultiple(Reaction& reaction, MixtureContainer&
 
 	ASSERT(maxAmount >= 1);
 	return maxAmount;
+}
+
+namespace RogueSaveManager
+{
+	void Serialize(MaterialDefinition& value)
+	{
+		AddOffset();
+		Write("ID", value.ID);
+		Write("Name", value.name);
+		Write("Density", value.density);
+		Write("Melting Point", value.meltingPoint);
+		Write("Boiling Point", value.boilingPoint);
+		Write("Specific Heat", value.specificHeat);
+		Write("Thermal Conductivity", value.thermalConductivity);
+		Write("Electrical Resistance", value.electricalResistance);
+		Write("Hardness", value.hardness);
+		RemoveOffset();
+	}
+
+	void Deserialize(MaterialDefinition& value)
+	{
+		AddOffset();
+		Read("ID", value.ID);
+		Read("Name", value.name);
+		Read("Density", value.density);
+		Read("Melting Point", value.meltingPoint);
+		Read("Boiling Point", value.boilingPoint);
+		Read("Specific Heat", value.specificHeat);
+		Read("Thermal Conductivity", value.thermalConductivity);
+		Read("Electrical Resistance", value.electricalResistance);
+		Read("Hardness", value.hardness);
+		RemoveOffset();
+	}
 }

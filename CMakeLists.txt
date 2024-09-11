@@ -2,9 +2,12 @@
 # project specific logic here.
 #
 cmake_minimum_required (VERSION 3.8)
-set(CMAKE_CXX_STANDARD 20)
 
-project ("RoguelikeFramework")
+project ("RoguelikeFramework" LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_EXTENSIONS ON)
+
 
 add_library(BearLibTerminal SHARED IMPORTED)
 set_property(TARGET BearLibTerminal PROPERTY
@@ -22,8 +25,8 @@ add_executable (RoguelikeFramework ${RoguelikeFramework_SRC})
 
 target_link_libraries(RoguelikeFramework PUBLIC BearLibTerminal)
 
-set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")
-set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)
+#set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")
+#set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)
 
 
 # TODO: Add tests and install targets if needed.
@@ -33,3 +36,10 @@ add_custom_command(TARGET RoguelikeFramework POST_BUILD      #Add a post build e
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different        #Executes a copy command
 	"${PROJECT_SOURCE_DIR}/code/libraries/BearLibTerminal/Windows64/BearLibTerminal.dll"
 	$<TARGET_FILE_DIR:RoguelikeFramework>)
+
+
+#Copy Resources folder
+add_custom_command(TARGET RoguelikeFramework POST_BUILD      #Add a post build event
+	COMMAND ${CMAKE_COMMAND} -E copy_directory        #Executes a copy command
+	"${PROJECT_SOURCE_DIR}/resources"
+	"$<TARGET_FILE_DIR:RoguelikeFramework>/resources")

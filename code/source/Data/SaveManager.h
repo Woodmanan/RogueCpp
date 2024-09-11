@@ -236,14 +236,14 @@ namespace RogueSaveManager {
 #endif
 	}
 
-	static void OpenWriteSaveFile(const std::string filename)
+	static void OpenWriteSaveFileByPath(const std::filesystem::path path)
 	{
 		ASSERT(!inStream.is_open());
 		offset = 0;
 #ifdef JSON
-		outStream.open(filename);
+		outStream.open(path);
 #else
-		outStream.open(filename, std::ios::binary);
+		outStream.open(path, std::ios::binary);
 #endif
 		ASSERT(outStream.is_open());
 		for (int i = 0; i < strlen(header); i++)
@@ -254,20 +254,25 @@ namespace RogueSaveManager {
 		Write("Version", version);
 	}
 
+	static void OpenWriteSaveFile(const std::string filename)
+	{
+		OpenWriteSaveFileByPath(std::filesystem::path(filename));
+	}
+
 	static void CloseWriteSaveFile()
 	{
 		ASSERT(outStream.is_open());
 		outStream.close();
 	}
 
-	static void OpenReadSaveFile(const std::string filename)
+	static void OpenReadSaveFileByPath(const std::filesystem::path path)
 	{
 		ASSERT(!outStream.is_open());
 		offset = 0;
 #ifdef JSON
-		inStream.open(filename);
+		inStream.open(path);
 #else
-		inStream.open(filename, std::ios::binary);
+		inStream.open(path, std::ios::binary);
 #endif
 		ASSERT(inStream.is_open());
 		char buf[5];
@@ -287,6 +292,11 @@ namespace RogueSaveManager {
 		{
 			HALT();
 		}
+	}
+
+	static void OpenReadSaveFile(const std::string filename)
+	{
+		OpenReadSaveFileByPath(std::filesystem::path(filename));
 	}
 
 	static void CloseReadSaveFile()

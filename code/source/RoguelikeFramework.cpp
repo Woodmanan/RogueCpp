@@ -7,6 +7,7 @@
 #include "Data/RogueDataManager.h"
 #include "Data/SaveManager.h"
 #include "Data/RegisterSaveTypes.h"
+#include "Data/Resouces.h"
 #include "Map/Map.h"
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
@@ -266,59 +267,17 @@ int main(int argc, char* argv[])
     Label* fpsLabel = uiManager.CreateWindow<Label>(std::string("Fps"), Anchors{ 0,1,0,0, 0,0,0,1 }, renderWindow);
     uiManager.ApplySettingsToAllWindows();
 
+    std::vector<RogueResources::ResourcePointer> materials = RogueResources::LoadFromConfig("Mat", "materials");
+
     { // Materials Testing
-        MaterialDefinition metal;
-        metal.name = "Metal";
-        metal.phase = Phase::Solid;
-        metal.density = 1000;
-
-        MaterialDefinition water;
-        water.name = "Water";
-        water.phase = Phase::Liquid;
-        water.density = 100;
-
-        MaterialDefinition air;
-        air.name = "Air";
-        air.phase = Phase::Gas;
-        air.density = 10;
-
-        MaterialDefinition nitrogen;
-        nitrogen.name = "Nitrogen";
-        nitrogen.phase = Gas;
-        nitrogen.density = 10;
-
-        MaterialDefinition rust;
-        rust.name = "Rust";
-        rust.phase = Solid;
-        rust.density = 505;
-
-        MaterialManager::Get()->AddMaterialDefinition(metal);
-        MaterialManager::Get()->AddMaterialDefinition(water);
-        MaterialManager::Get()->AddMaterialDefinition(air);
-        MaterialManager::Get()->AddMaterialDefinition(nitrogen);
-        MaterialManager::Get()->AddMaterialDefinition(rust);
-
-        MaterialContainer container;
-        container.AddMaterial(0, 10.0f, false);
-        container.AddMaterial(2, 1.0f, false);
-        container.AddMaterial(2, 1.0f, false);
-        container.AddMaterial(3, 1.0f, false);
-        container.AddMaterial(2, 1.0f, false);
-
-        MaterialContainer waterContainer;
-        waterContainer.AddMaterial(1, 4.0f, false);
-
-        Reaction rusting;
-        rusting.m_minHeat = 0;
-        rusting.m_deltaHeat = 100;
-        rusting.m_reactants.push_back(Material(1, 1, false));
-        rusting.m_reactants.push_back(Material(0, 2, false));
-        rusting.m_products.push_back(Material());
-        rusting.m_products.push_back(Material(4, 2.5f, false));
-
-        MaterialManager::Get()->AddReaction(rusting);
-
-        MaterialManager::Get()->EvaluateReaction(container, waterContainer);
+        for (RogueResources::ResourcePointer& matArray : materials)
+        {
+            RogueResources::TResourcePointer<std::vector<MaterialDefinition>> pointer = matArray;
+            for (auto it = pointer->begin(); it != pointer->end(); it++)
+            {
+                MaterialManager::Get()->AddMaterialDefinition(*it);
+            }
+        }
     }
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))

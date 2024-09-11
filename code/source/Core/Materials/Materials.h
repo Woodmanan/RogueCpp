@@ -1,5 +1,6 @@
 #pragma once
 #include "../Collections/FixedArrary.h"
+#include "../../Data/Resouces.h"
 
 #include <string>
 #include <vector>
@@ -18,8 +19,13 @@ struct MaterialDefinition
 {
 	int ID;
 	string name;
-	Phase phase;
 	float density;
+	float meltingPoint;
+	float boilingPoint;
+	float specificHeat;
+	float thermalConductivity;
+	float electricalResistance;
+	float hardness;
 };
 
 struct Material
@@ -106,8 +112,9 @@ struct Reaction
 
 class MaterialManager
 {
-
 public:
+	MaterialManager();
+
 	void AddMaterialDefinition(MaterialDefinition material);
 	void AddReaction(Reaction reaction);
 
@@ -115,6 +122,9 @@ public:
 	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two);
 
 	const MaterialDefinition& GetMaterialByID(int index);
+
+	void PackMaterial(RogueResources::PackContext& packContext);
+	std::shared_ptr<void> LoadMaterial(RogueResources::LoadContext& loadContext);
 
 	static MaterialManager* Get()
 	{
@@ -135,3 +145,9 @@ private:
 	vector<MaterialDefinition> m_materialDefinitions;
 	vector<Reaction> m_reactions;
 };
+
+namespace RogueSaveManager
+{
+	void Serialize(MaterialDefinition& value);
+	void Deserialize(MaterialDefinition& value);
+}
