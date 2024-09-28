@@ -83,11 +83,13 @@ struct MixtureContainer
 
 struct Reaction
 {
-	float m_minHeat;
-	float m_deltaHeat;
+	std::string name;
 
 	vector<Material> m_reactants;
 	vector<Material> m_products;
+
+	float m_minHeat;
+	float m_deltaHeat;
 
 	void SortReactantsByID();
 	void Debug_Print();
@@ -114,6 +116,7 @@ class MaterialManager
 {
 public:
 	MaterialManager();
+	void Init();
 
 	void AddMaterialDefinition(MaterialDefinition material);
 	void AddReaction(Reaction reaction);
@@ -122,9 +125,13 @@ public:
 	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two);
 
 	const MaterialDefinition& GetMaterialByID(int index);
+	const MaterialDefinition& GetMaterialByName(const std::string& name);
 
 	void PackMaterial(RogueResources::PackContext& packContext);
 	std::shared_ptr<void> LoadMaterial(RogueResources::LoadContext& loadContext);
+
+	void PackReaction(RogueResources::PackContext& packContext);
+	std::shared_ptr<void> LoadReaction(RogueResources::LoadContext& loadContext);
 
 	static MaterialManager* Get()
 	{
@@ -150,4 +157,8 @@ namespace RogueSaveManager
 {
 	void Serialize(MaterialDefinition& value);
 	void Deserialize(MaterialDefinition& value);
+	void Serialize(Material& value);
+	void Deserialize(Material& value);
+	void Serialize(Reaction& value);
+	void Deserialize(Reaction& value);
 }

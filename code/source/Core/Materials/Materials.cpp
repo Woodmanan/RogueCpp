@@ -11,6 +11,30 @@ MaterialManager* MaterialManager::manager = new MaterialManager();
 MaterialManager::MaterialManager()
 {
 	RogueResources::Register("Mat", GetMember(this, &MaterialManager::PackMaterial), GetMember(this, &MaterialManager::LoadMaterial));
+	RogueResources::Register("Reaction", GetMember(this, &MaterialManager::PackReaction), GetMember(this, &MaterialManager::LoadReaction));
+}
+
+void MaterialManager::Init()
+{
+	std::vector<RogueResources::ResourcePointer> materials = RogueResources::LoadFromConfig("Mat", "materials");
+	for (RogueResources::ResourcePointer& matArray : materials)
+	{
+		RogueResources::TResourcePointer<std::vector<MaterialDefinition>> pointer = matArray;
+		for (auto it = pointer->begin(); it != pointer->end(); it++)
+		{
+			AddMaterialDefinition(*it);
+		}
+	}
+
+	std::vector<RogueResources::ResourcePointer> reactions = RogueResources::LoadFromConfig("Reaction", "reactions");
+	for (RogueResources::ResourcePointer& array : reactions)
+	{
+		RogueResources::TResourcePointer<std::vector<Reaction>> pointer = array;
+		for (auto it = pointer->begin(); it != pointer->end(); it++)
+		{
+			AddReaction(*it);
+		}
+	}
 }
 
 const MaterialDefinition& Material::GetMaterial() const
@@ -404,7 +428,21 @@ void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixt
 const MaterialDefinition& MaterialManager::GetMaterialByID(int index)
 {
 	ASSERT(index >= 0 && index < m_materialDefinitions.size());
+	ASSERT(m_materialDefinitions[index].ID == index);
 	return m_materialDefinitions[index];
+}
+
+const MaterialDefinition& MaterialManager::GetMaterialByName(const std::string& name)
+{
+	for (int index = 0; index < m_materialDefinitions.size(); index++)
+	{
+		if (m_materialDefinitions[index].name == name)
+		{
+			return m_materialDefinitions[index];
+		}
+	}
+
+	HALT();
 }
 
 void MaterialManager::PackMaterial(RogueResources::PackContext& packContext)
@@ -460,6 +498,80 @@ std::shared_ptr<void> MaterialManager::LoadMaterial(RogueResources::LoadContext&
 	RogueSaveManager::CloseReadSaveFile();
 
 	return std::shared_ptr<std::vector<MaterialDefinition>>(materials);
+}
+
+void MaterialManager::PackReaction(RogueResources::PackContext& packContext)
+{
+	std::ifstream stream;
+	stream.open(packContext.source);
+
+	SkipLine(stream);
+
+	std::vector<Reaction> reactions;
+
+	while (stream.is_open())
+	{
+		std::string line;
+		std::getline(stream, line);
+		if (line.empty()) { break; }
+
+		std::vector<std::string> tokens = string_split(line, ",");
+
+		ASSERT(tokens.size() == 5);
+
+		if (tokens[0].empty()) { continue; }
+
+		Reaction nextReaction;
+
+		//Name,Inputs,Outputs,MinTemp,DeltaTemp
+		nextReaction.name = tokens[0];
+
+		std::vector<std::string> inputs = string_split(tokens[1], " + ");
+		std::vector<std::string> outputs = string_split(tokens[2], " + ");
+
+		for (std::string& input : inputs)
+		{
+			std::vector<std::string> item = string_split(input, " ");
+			ASSERT(item.size() == 2);
+			nextReaction.m_reactants.push_back(Material(GetMaterialByName(item[1]).ID, string_to_float(item[0]), false));
+		}
+
+		for (std::string& output : outputs)
+		{
+			if (output.size() == 1 && output[0] == '_') //Catch wildcard output
+			{
+				nextReaction.m_products.push_back(Material(-1, -1, false));
+				continue;
+			}
+
+			std::vector<std::string> item = string_split(output, " ");
+			ASSERT(item.size() == 2);
+			nextReaction.m_products.push_back(Material(GetMaterialByName(item[1]).ID, string_to_float(item[0]), false));
+		}
+
+		nextReaction.m_minHeat = string_to_float(tokens[3]);
+		nextReaction.m_deltaHeat = string_to_float(tokens[4]);
+		nextReaction.SortReactantsByID();
+		
+		reactions.push_back(nextReaction);
+	}
+
+	stream.close();
+
+	RogueSaveManager::OpenWriteSaveFileByPath(packContext.destination);
+	RogueSaveManager::Write("Reactions", reactions);
+	RogueSaveManager::CloseWriteSaveFile();
+}
+
+std::shared_ptr<void> MaterialManager::LoadReaction(RogueResources::LoadContext& loadContext)
+{
+	std::vector<Reaction>* reactions = new std::vector<Reaction>();
+
+	RogueSaveManager::OpenReadSaveFileByPath(loadContext.source);
+	RogueSaveManager::Read("Materials", *reactions);
+	RogueSaveManager::CloseReadSaveFile();
+
+	return std::shared_ptr<std::vector<Reaction>>(reactions);
 }
 
 void MaterialManager::SortReactions()
@@ -549,6 +661,46 @@ namespace RogueSaveManager
 		Read("Thermal Conductivity", value.thermalConductivity);
 		Read("Electrical Resistance", value.electricalResistance);
 		Read("Hardness", value.hardness);
+		RemoveOffset();
+	}
+
+	void Serialize(Material& value)
+	{
+		AddOffset();
+		Write("ID", value.m_materialID);
+		Write("Mass", value.m_mass);
+		Write("Static", value.m_static);
+		RemoveOffset();
+	}
+
+	void Deserialize(Material& value)
+	{
+		AddOffset();
+		Read("ID", value.m_materialID);
+		Read("Mass", value.m_mass);
+		Read("Static", value.m_static);
+		RemoveOffset();
+	}
+
+	void Serialize(Reaction& value)
+	{
+		AddOffset();
+		Write("Name", value.name);
+		Write("Reactants", value.m_reactants);
+		Write("Products", value.m_products);
+		Write("Min Heat", value.m_minHeat);
+		Write("Delta Heat", value.m_deltaHeat);
+		RemoveOffset();
+	}
+
+	void Deserialize(Reaction& value)
+	{
+		AddOffset();
+		Read("Name", value.name);
+		Read("Reactants", value.m_reactants);
+		Read("Products", value.m_products);
+		Read("Min Heat", value.m_minHeat);
+		Read("Delta Heat", value.m_deltaHeat);
 		RemoveOffset();
 	}
 }

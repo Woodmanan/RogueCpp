@@ -224,6 +224,11 @@ void ResetMap(THandle<Map> map)
     }
 }
 
+void InitManagers()
+{
+    MaterialManager::Get()->Init();
+}
+
 int main(int argc, char* argv[])
 {
     //Initialize Random
@@ -267,18 +272,7 @@ int main(int argc, char* argv[])
     Label* fpsLabel = uiManager.CreateWindow<Label>(std::string("Fps"), Anchors{ 0,1,0,0, 0,0,0,1 }, renderWindow);
     uiManager.ApplySettingsToAllWindows();
 
-    std::vector<RogueResources::ResourcePointer> materials = RogueResources::LoadFromConfig("Mat", "materials");
-
-    { // Materials Testing
-        for (RogueResources::ResourcePointer& matArray : materials)
-        {
-            RogueResources::TResourcePointer<std::vector<MaterialDefinition>> pointer = matArray;
-            for (auto it = pointer->begin(); it != pointer->end(); it++)
-            {
-                MaterialManager::Get()->AddMaterialDefinition(*it);
-            }
-        }
-    }
+    InitManagers();
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
     {
