@@ -272,6 +272,23 @@ int main(int argc, char* argv[])
     Label* fpsLabel = uiManager.CreateWindow<Label>(std::string("Fps"), Anchors{ 0,1,0,0, 0,0,0,1 }, renderWindow);
     uiManager.ApplySettingsToAllWindows();
 
+    std::vector<int> test;
+    test.push_back(1);
+    test.push_back(3);
+    test.push_back(5);
+    test.push_back(7);
+
+    RogueSaveManager::OpenWriteSaveFile("Test.rsf");
+    RogueSaveManager::Write("Test", test);
+    RogueSaveManager::CloseWriteSaveFile();
+
+    Material load;
+
+    RogueSaveManager::OpenReadSaveFile("Test.rsf");
+    RogueSaveManager::Read("Test", test);
+    RogueSaveManager::CloseReadSaveFile();
+
+
     InitManagers();
 
     if (RogueSaveManager::FileExists("MySaveFile.rsf"))
@@ -293,16 +310,22 @@ int main(int argc, char* argv[])
     {
         for (int i = 0; i < 1; i++)
         {
+            MaterialContainer groundMat;
+            groundMat.AddMaterial("Dirt", 1000);
+            MaterialContainer wallMat;
+            wallMat.AddMaterial("Dirt", 1000);
+            wallMat.AddMaterial("Stone", 1000, true);
+
             map = RogueDataManager::Allocate<Map>(size, i, 2);
-            map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, -1);
-            map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, 1);
-            map->LinkBackingTile<BackingTile>('0', Color(60, 60, 255), Color(0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('1', Color(60, 60, 255), Color(0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('2', Color(60, 60, 255), Color(0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('3', Color(60, 60, 255), Color(0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('4', Color(60, 60, 255), Color(0, 0, 0), false, 1);
-            map->LinkBackingTile<BackingTile>('5', Color(60, 60, 255), Color(0, 0, 0), false, 1);
+            map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, -1, wallMat);
+            map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('0', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('1', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('2', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('3', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('4', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
+            map->LinkBackingTile<BackingTile>('5', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
 
             map->FillTilesExc(Vec2(0, 0), size, 0);
             map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);

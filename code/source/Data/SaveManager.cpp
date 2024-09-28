@@ -7,25 +7,28 @@ namespace RogueSaveManager {
 
 	void WriteTabs()
 	{
+#ifdef JSON
 		for (int i = 0; i < offset; i++)
 		{
 			outStream.write(tabString, 4);
 		}
+#endif
 	}
 
 	void ReadTabs()
 	{
+#ifdef JSON
 		for (int i = 0; i < offset; i++)
 		{
 			inStream.read(buffer, 4);
 		}
+#endif
 	}
 
 	void WriteNewline()
 	{
 #ifdef JSON
 		outStream.write("\n", 1);
-		WriteTabs();
 #endif // JSON
 	}
 
@@ -33,7 +36,6 @@ namespace RogueSaveManager {
 	{
 #ifdef JSON
 		inStream.read(buffer, 1);
-		ReadTabs();
 #endif
 	}
 
@@ -42,12 +44,10 @@ namespace RogueSaveManager {
 #ifdef JSON
 		if (outStream.is_open())
 		{
-			//WriteTabs();
 			outStream << "{\n";
 		}
 		if (inStream.is_open())
 		{
-			//ReadTabs();
 			inStream.read(buffer, 2);
 		}
 #endif
@@ -68,6 +68,28 @@ namespace RogueSaveManager {
 			ReadTabs();
 			inStream.read(buffer, 1);
 		}
+#endif
+	}
+
+	void AddListSeparator(bool isLast)
+	{
+#ifdef JSON
+		if (!isLast)
+		{
+			outStream << ",";
+		}
+		WriteNewline();
+#endif
+	}
+
+	void RemoveListSeparator(bool isLast)
+	{
+#ifdef JSON
+		if (!isLast)
+		{
+			inStream.read(buffer, 1);
+		}
+		ReadNewline();
 #endif
 	}
 }

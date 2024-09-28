@@ -326,6 +326,7 @@ namespace RogueSaveManager
         Write("BGColor", value.m_backgroundColor);
 		Write("Blocks Vision", value.m_blocksVision);
 		Write("Movement Cost", value.m_movementCost);
+        Write("Base Materials", value.m_baseMaterials);
         Write("Index", value.m_index);
 		RemoveOffset();
 	}
@@ -338,6 +339,7 @@ namespace RogueSaveManager
         Read("BGColor", value.m_backgroundColor);
         Read("Blocks Vision", value.m_blocksVision);
         Read("Movement Cost", value.m_movementCost);
+        Read("Base Materials", value.m_baseMaterials);
         Read("Index", value.m_index);
         RemoveOffset();
     }
@@ -346,6 +348,7 @@ namespace RogueSaveManager
     {
         AddOffset();
         Write("Neighbors", value.m_neighbors);
+        Write("Materials", value.m_materialContainer);
         RemoveOffset();
     }
 
@@ -353,6 +356,7 @@ namespace RogueSaveManager
     {
         AddOffset();
         Read("Neighbors", value.m_neighbors);
+        Read("Materials", value.m_materialContainer);
         RemoveOffset();
     }
 

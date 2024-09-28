@@ -16,7 +16,7 @@ namespace RogueSaveManager {
 	const char* const tabString = "    ";
 	extern char buffer[]; //Buffer for storing garbage while we read files
 
-	const short version = 1;
+	const short version = 2;
 	const char* const header = "RSFL";
 
 
@@ -56,6 +56,8 @@ namespace RogueSaveManager {
 	void ReadNewline();
 	void AddOffset();
 	void RemoveOffset();
+	void AddListSeparator(bool isLast);
+	void RemoveListSeparator(bool isLast);
 
 	template <typename T>
 	static void Write(const char* name, T value)
@@ -85,10 +87,16 @@ namespace RogueSaveManager {
 #endif // JSON
 		AddOffset();
 		Write("Count", values.size());
+		WriteTabs();
+		AddOffset();
 		for (int i = 0; i < values.size(); i++)
 		{
+			WriteTabs();
 			Serialize(values[i]);
+			AddListSeparator(i == values.size() - 1);
 		}
+		RemoveOffset();
+		WriteNewline();
 		RemoveOffset();
 #ifdef JSON
 		outStream << ",\n";
@@ -127,10 +135,16 @@ namespace RogueSaveManager {
 		size_t size;
 		Read("Count", size);
 		values.resize(size);
+		ReadTabs();
+		AddOffset();
 		for (int i = 0; i < size; i++)
 		{
+			ReadTabs();
 			Deserialize(values[i]);
+			RemoveListSeparator(i == values.size() - 1);
 		}
+		RemoveOffset();
+		ReadNewline();
 		RemoveOffset();
 
 #ifdef JSON

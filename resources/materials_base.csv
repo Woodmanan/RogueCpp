@@ -1,7 +1,9 @@
 Name,Density,Melting Point,Boiling Point,Specific Heat,Thermal Conductivity,Electrical Resistance,Moh's Hardness
 Copper,8.935,1357,2835,0.385,401,16.78,3
-Iron,7.874,1811,,0.451,,,
-,,,,,,,
-,,,,,,,
-,,,,,,,
-Water,1,273,373,4.2,0.6,,
+Iron,7.874,1811,,0.451,,,4.5
+Oxygen,,,,,,,
+Steel,7.8,,,0.48,45,,4.5
+Wood,0.65,99999,99999,1.2,0.14,,2
+Water,1,273,373,4.2,0.6,,0
+Dirt,1.25,1470,1710,0.2,0.5,400,0
+Stone,2.6,1350,3700,1,1.8,5000,5

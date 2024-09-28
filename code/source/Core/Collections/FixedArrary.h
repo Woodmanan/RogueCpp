@@ -119,3 +119,43 @@ private:
 	std::array<T, N> m_data;
 	size_t m_size = 0;
 };
+
+namespace RogueSaveManager
+{
+	template<class T, size_t N>
+	void Serialize(FixedArray<T, N>& values)
+	{
+		AddOffset();
+		Write("Count", values.size());
+		WriteTabs();
+		AddOffset();
+		for (size_t index = 0; index < values.size(); index++)
+		{
+			WriteTabs();
+			Serialize(values[index]);
+			AddListSeparator(index == values.size() - 1);
+		}
+		RemoveOffset();
+		WriteNewline();
+		RemoveOffset();
+	}
+
+	template<class T, size_t N>
+	void Deserialize(FixedArray<T, N>& values)
+	{
+		AddOffset();
+		size_t size = Read<size_t>("Count");
+		values.resize(size);
+		ReadTabs();
+		AddOffset();
+		for (int index = 0; index < size; index++)
+		{
+			ReadTabs();
+			Deserialize(values[index]);
+			RemoveListSeparator(index == values.size() - 1);
+		}
+		RemoveOffset();
+		ReadNewline();
+		RemoveOffset();
+	}
+}

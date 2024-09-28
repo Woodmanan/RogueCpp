@@ -57,6 +57,7 @@ struct MaterialContainer
 	float m_heat = 0;
 
 	void AddMaterial(int materialIndex, float mass, bool staticMaterial, int index = -1);
+	void AddMaterial(const std::string& name, float mass, bool staticMaterial = false);
 	void AddMaterial(const Material& material, int index = -1);
 	void RemoveMaterial(const MaterialDefinition& material, float mass);
 	void SortLayers();
@@ -161,4 +162,6 @@ namespace RogueSaveManager
 	void Deserialize(Material& value);
 	void Serialize(Reaction& value);
 	void Deserialize(Reaction& value);
+	void Serialize(MaterialContainer& value);
+	void Deserialize(MaterialContainer& value);
 }

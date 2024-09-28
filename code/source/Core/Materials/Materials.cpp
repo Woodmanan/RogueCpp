@@ -48,6 +48,13 @@ void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMa
 	AddMaterial(mat, index);
 }
 
+void MaterialContainer::AddMaterial(const std::string& name, float mass, bool staticMaterial)
+{
+	int ID = MaterialManager::Get()->GetMaterialByName(name).ID;
+	Material mat = Material(ID, mass, staticMaterial);
+	AddMaterial(mat, -1);
+}
+
 void MaterialContainer::AddMaterial(const Material& material, int index)
 {
 	if (material.m_mass == 0) { return; }
@@ -667,6 +674,11 @@ namespace RogueSaveManager
 	void Serialize(Material& value)
 	{
 		AddOffset();
+		if (debug)
+		{
+			std::string name = (value.m_materialID == -1) ? "Remove" : MaterialManager::Get()->GetMaterialByID(value.m_materialID).name;
+			Write("Name", name);
+		}
 		Write("ID", value.m_materialID);
 		Write("Mass", value.m_mass);
 		Write("Static", value.m_static);
@@ -676,6 +688,11 @@ namespace RogueSaveManager
 	void Deserialize(Material& value)
 	{
 		AddOffset();
+		if (debug)
+		{
+			std::string name;
+			Read("Name", name);
+		}
 		Read("ID", value.m_materialID);
 		Read("Mass", value.m_mass);
 		Read("Static", value.m_static);
@@ -701,6 +718,24 @@ namespace RogueSaveManager
 		Read("Products", value.m_products);
 		Read("Min Heat", value.m_minHeat);
 		Read("Delta Heat", value.m_deltaHeat);
+		RemoveOffset();
+	}
+
+	void Serialize(MaterialContainer& value)
+	{
+		AddOffset();
+		Write("Materials", value.m_materials);
+		Write("Layers", value.m_layers);
+		Write("Heat", value.m_heat);
+		RemoveOffset();
+	}
+
+	void Deserialize(MaterialContainer& value)
+	{
+		AddOffset();
+		Read("Materials", value.m_materials);
+		Read("Layers", value.m_layers);
+		Read("Heat", value.m_heat);
 		RemoveOffset();
 	}
 }

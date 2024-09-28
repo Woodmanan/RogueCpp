@@ -2,6 +2,7 @@
 
 #include "../Data/RogueDataManager.h"
 #include "../Core/CoreDataTypes.h"
+#include "../Core/Materials/Materials.h"
 #include "..\..\libraries\BearLibTerminal\Include\C\BearLibTerminal.h"
 #include <type_traits>
 
@@ -15,12 +16,13 @@ class BackingTile
 {
 public:
     BackingTile() {}
-    BackingTile(char character, Color foreground, Color background, bool blocksVision, float movementCost) :
-        m_renderCharacter(character), 
-        m_foregroundColor(foreground), 
-        m_backgroundColor(background), 
-        m_blocksVision(blocksVision), 
-        m_movementCost(movementCost)
+    BackingTile(char character, Color foreground, Color background, bool blocksVision, float movementCost, MaterialContainer materials) :
+        m_renderCharacter(character),
+        m_foregroundColor(foreground),
+        m_backgroundColor(background),
+        m_blocksVision(blocksVision),
+        m_movementCost(movementCost),
+        m_baseMaterials(materials)
     {}
 
 	char m_renderCharacter;
@@ -28,6 +30,7 @@ public:
     Color m_backgroundColor;
 	bool m_blocksVision;
 	float m_movementCost;
+    MaterialContainer m_baseMaterials;
     int m_index = -1;
 };
 
@@ -35,6 +38,7 @@ class TileStats
 {
 public:
     THandle<TileNeighbors> m_neighbors;
+    THandle<MaterialContainer> m_materialContainer;
 };
 
 class TileNeighbors
