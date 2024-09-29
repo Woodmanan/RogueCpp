@@ -2,6 +2,7 @@
 #include "../../../libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
 #include <algorithm>
 #include "../RenderTools.h"
+#include "../../Debug/Profiling.h"
 
 //Lightweight window interface for better control over BearLibTerminal
 
@@ -69,6 +70,7 @@ void Window::RemoveChild(Window* child)
 
 void Window::RenderContent(float deltaTime)
 {
+	ROGUE_PROFILE;
 	OnDrawContent(deltaTime);
 	for (Window* child : m_children)
 	{

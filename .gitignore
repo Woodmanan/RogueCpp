@@ -35,5 +35,8 @@
 .vs/*
 .vscode/*
 
+# 3rd party libraries
+code/libraries/*
+
 # Build folders
 out/*

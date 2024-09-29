@@ -59,7 +59,6 @@ void MaterialContainer::AddMaterial(const Material& material, int index)
 {
 	if (material.m_mass == 0) { return; }
 
-	std::cout << "Adding " << material.m_mass << " kgs of " << material.GetMaterial().name << std::endl;
 	if (m_materials.size() == maxIndices)
 	{
 		ASSERT(false);
@@ -164,36 +163,6 @@ void MaterialContainer::CollapseDuplicates()
 	m_materials.resize(realIndex);
 }
 
-void MaterialContainer::Debug_Print()
-{
-	std::cout << "Printing container contents:" << std::endl;
-	int layerStart = 0;
-	for (int layer = 0; layer < m_layers.size(); layer++)
-	{
-		int layerEnd = m_layers[layer];
-		std::cout << "\tSort layer from [" << layerStart << ", " << layerEnd << ")" << std::endl;
-		for (int material = layerStart; material < layerEnd; material++)
-		{
-			std::cout << "\t\t" << material << ": ";
-			if (m_materials[material].m_materialID < 0)
-			{
-				std::cout << "[invalid id: " << m_materials[material].m_materialID << "]";
-			}
-			else
-			{
-				const MaterialDefinition& fullMat = m_materials[material].GetMaterial();
-				std::cout << fullMat.name << " (" << fullMat.density << " kg/m^3)";
-			}
-			std::cout << ", " << m_materials[material].m_mass << " kgs";
-			if (m_materials[material].GetStatic())
-			{
-				std::cout << " [Static]";
-			}
-			std::cout << std::endl;
-		}
-	}
-}
-
 void MaterialContainer::SortLayerByDensity(int startIndex, int endIndex)
 {
 	if (startIndex == 0 && endIndex == 0)
@@ -204,7 +173,6 @@ void MaterialContainer::SortLayerByDensity(int startIndex, int endIndex)
 	}
 
 	ASSERT(startIndex != endIndex);
-	std::cout << "Sort layer from [" << startIndex << ", " << endIndex << ")" << std::endl;
 	if (m_materials[startIndex].m_static)
 	{
 		startIndex++;
@@ -393,7 +361,6 @@ void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer
 void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two)
 {
 	float reactionMultiple = GetReactionMultiple(reaction, mixture);
-	std::cout << "Starting a reaction! (x" << reactionMultiple << ")" << std::endl;
 
 	for (Material& reactant : reaction.m_reactants)
 	{
@@ -491,7 +458,7 @@ void MaterialManager::PackMaterial(RogueResources::PackContext& packContext)
 
 	stream.close();
 
-	RogueSaveManager::OpenWriteSaveFileByPath(packContext.destination);
+	RogueResources::OpenWritePackFile(packContext.destination);
 	RogueSaveManager::Write("Materials", materials);
 	RogueSaveManager::CloseWriteSaveFile();
 }
@@ -500,7 +467,7 @@ std::shared_ptr<void> MaterialManager::LoadMaterial(RogueResources::LoadContext&
 {
 	std::vector<MaterialDefinition>* materials = new std::vector<MaterialDefinition>();
 
-	RogueSaveManager::OpenReadSaveFileByPath(loadContext.source);
+	RogueResources::OpenReadPackFile(loadContext.source);
 	RogueSaveManager::Read("Materials", *materials);
 	RogueSaveManager::CloseReadSaveFile();
 
@@ -509,6 +476,9 @@ std::shared_ptr<void> MaterialManager::LoadMaterial(RogueResources::LoadContext&
 
 void MaterialManager::PackReaction(RogueResources::PackContext& packContext)
 {
+	//Just for linking dependency! If Init order is correct we should be fine to just use the material manager
+	std::vector<RogueResources::ResourcePointer> materials = RogueResources::LoadFromConfig("Mat", "materials");
+
 	std::ifstream stream;
 	stream.open(packContext.source);
 
@@ -565,7 +535,7 @@ void MaterialManager::PackReaction(RogueResources::PackContext& packContext)
 
 	stream.close();
 
-	RogueSaveManager::OpenWriteSaveFileByPath(packContext.destination);
+	RogueResources::OpenWritePackFile(packContext.destination);
 	RogueSaveManager::Write("Reactions", reactions);
 	RogueSaveManager::CloseWriteSaveFile();
 }
@@ -574,7 +544,7 @@ std::shared_ptr<void> MaterialManager::LoadReaction(RogueResources::LoadContext&
 {
 	std::vector<Reaction>* reactions = new std::vector<Reaction>();
 
-	RogueSaveManager::OpenReadSaveFileByPath(loadContext.source);
+	RogueResources::OpenReadPackFile(loadContext.source);
 	RogueSaveManager::Read("Materials", *reactions);
 	RogueSaveManager::CloseReadSaveFile();
 

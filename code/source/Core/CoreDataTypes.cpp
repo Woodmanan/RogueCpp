@@ -1,6 +1,7 @@
 #include "CoreDataTypes.h"
 #include "../Data/SaveManager.h"
 #include "../Map/Map.h"
+#include "../Debug/Profiling.h"
 
 std::istream& operator >> (std::istream& in, Direction& direction)
 {
@@ -218,6 +219,7 @@ std::pair<Location, Direction> Location::Traverse(short xOffset, short yOffset, 
 
 std::pair<Location, Direction> Location::Traverse(Direction direction, Direction rotation)
 {
+    ROGUE_PROFILE_SECTION("LOS::Traverse");
     Direction finalDirection = Rotate(direction, rotation);
 
     if (!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid())
@@ -232,6 +234,7 @@ std::pair<Location, Direction> Location::Traverse(Direction direction, Direction
 
 std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction direction)
 {
+    ROGUE_PROFILE_SECTION("LOS::_Traverse_No_Neighbor");
     ASSERT((!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid()));
     Map* map = RogueDataManager::Get()->ResolveByTypeIndex<Map>(z());
     ASSERT(map != nullptr);
@@ -261,6 +264,7 @@ std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction directi
 
 std::pair<Location, Direction> Location::_Traverse_Neighbors(Direction direction)
 {
+    ROGUE_PROFILE_SECTION("LOS::_Traverse_Neighbors");
     ASSERT(GetTile().m_stats.IsValid());
     THandle<TileNeighbors> neighbors = GetTile().m_stats->m_neighbors;
     ASSERT(neighbors.IsValid());

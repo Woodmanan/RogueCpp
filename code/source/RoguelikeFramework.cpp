@@ -19,6 +19,7 @@
 #include "Render/UI/Label.h"
 #include "Render/UI/UIManager.h"
 #include "Core/Materials/Materials.h"
+#include "Debug/Profiling.h"
 
 using namespace std;
 
@@ -39,6 +40,7 @@ uint32_t background = 0x20;
 
 void Render_Map(THandle<Map> map, Window* window, Location playerLocation)
 {
+    ROGUE_PROFILE;
     for (int i = 0; i < window->m_rect.w; i++)
     {
         for (int j = 0; j < window->m_rect.h; j++)
@@ -58,6 +60,7 @@ void Render_Map(THandle<Map> map, Window* window, Location playerLocation)
 
 void Render_View(View& view, Window* window, Location playerLocation)
 {
+    ROGUE_PROFILE;
     int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
@@ -81,6 +84,7 @@ void Render_View(View& view, Window* window, Location playerLocation)
 
 void Render_Passes(View& view, Window* window, Location playerLocation)
 {
+    ROGUE_PROFILE;
     int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
@@ -105,6 +109,7 @@ void Render_Passes(View& view, Window* window, Location playerLocation)
 
 void Render_Hotspots(View& view, Window* window, Location playerLocation)
 {
+    ROGUE_PROFILE;
     int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
@@ -133,6 +138,7 @@ char rotationChars[8] = {
 
 void Render_Rotations(View& view, Window* window, Location playerLocation)
 {
+    ROGUE_PROFILE;
     int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
 
     for (int i = -maxRadius; i <= maxRadius; i++)
@@ -155,6 +161,7 @@ void Render_Rotations(View& view, Window* window, Location playerLocation)
 
 void RenderBresenham(Window* window, Vec2 endpoint)
 {
+    ROGUE_PROFILE;
     Color fg = Color(100, 0, 100);
     Color bg = Color(0, 0, 0);
     int x0 = 0;
@@ -216,16 +223,9 @@ Direction ReadDirection(Direction currentRotation)
     return Rotate(direction, currentRotation);
 }
 
-void ResetMap(THandle<Map> map)
-{
-    if (map.IsValid())
-    {
-
-    }
-}
-
 void InitManagers()
 {
+    ROGUE_PROFILE;
     MaterialManager::Get()->Init();
 }
 
@@ -269,7 +269,6 @@ int main(int argc, char* argv[])
     Label* ylabel = uiManager.CreateWindow<Label>(std::string("YLabel"), Anchors{ 0,0,1,1,1,3,-2, -1 }, testPanel2);
     Bar* ybar = uiManager.CreateWindow<Bar>(std::string("YBar"), Anchors{ 0, 1, 1, 1, 3, -1, -2, -1 }, testPanel2);
 
-    Label* fpsLabel = uiManager.CreateWindow<Label>(std::string("Fps"), Anchors{ 0,1,0,0, 0,0,0,1 }, renderWindow);
     uiManager.ApplySettingsToAllWindows();
 
     std::vector<int> test;
@@ -288,12 +287,11 @@ int main(int argc, char* argv[])
     RogueSaveManager::Read("Test", test);
     RogueSaveManager::CloseReadSaveFile();
 
-
     InitManagers();
 
-    if (RogueSaveManager::FileExists("MySaveFile.rsf"))
+    if (RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf"))
     {
-        RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf");
+        ROGUE_PROFILE_SECTION("Load Save File");
         RogueSaveManager::Read("Map", map);
         RogueSaveManager::Read("Memory", memory);
         RogueSaveManager::Read("Player", playerLoc);
@@ -348,18 +346,16 @@ int main(int argc, char* argv[])
     terminal_set("input: filter = [keyboard, mouse+]");
     terminal_set("window.resizeable=true");
     terminal_print(34, 20, "Hello World! I am here!");
-    //terminal_print(34, 21, std::to_string(test.GetID()).c_str());
     terminal_refresh();
 
     View view;
     view.SetRadius(radius);
 
     auto clock = chrono::system_clock::now();
-    float FPS = 0.0f;
 
     bool shouldBreak = false;
+    long frame = 0;
     while (!shouldBreak) {
-
         if (terminal_has_input())
         {
             k = terminal_read();
@@ -555,6 +551,7 @@ int main(int argc, char* argv[])
         case TK_S:
             if (terminal_state(TK_SHIFT))
             {
+                ROGUE_PROFILE_SECTION("Create Save File");
                 RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
                 RogueSaveManager::Write("Map", map);
                 RogueSaveManager::Write("Memory", memory);
@@ -862,24 +859,13 @@ int main(int argc, char* argv[])
         ylabel->SetAlignment(TK_ALIGN_DEFAULT);
         gameWindow->RenderContent(frameTime.count());
 
-        std::snprintf(&buffer[0], 50, "FPS: %.1f (%d x %d) (%d passes)", FPS, view.GetRadius(), view.GetRadius(), maxPass);
-        terminal_color(Color(255, 0, 255));
-        fpsLabel->SetAlignment(TK_ALIGN_DEFAULT);
-        fpsLabel->SetString(buffer);
-
-        terminal_refresh();
+        {
+            ROGUE_PROFILE_SECTION("Render");
+            terminal_refresh();
+        }
         clock = currentTime;
 
-        FPSBuffer[fpsIndex] = 1.0f / frameTime.count();
-        fpsIndex = (fpsIndex + 1) % fpsMerge;
-
-        FPS = 0.0f;
-        for (int i = 0; i < fpsMerge; i++)
-        {
-            FPS += FPSBuffer[i];
-        }
-
-        FPS = FPS / fpsMerge;
+        ROGUE_PROFILE_FRAME();
     }
     terminal_close();
 

@@ -63,7 +63,6 @@ struct MaterialContainer
 	void SortLayers();
 	void CollapseDuplicates();
 
-	void Debug_Print();
 private:
 	void SortLayerByDensity(int startIndex, int endIndex);
 };

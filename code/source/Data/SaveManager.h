@@ -268,6 +268,16 @@ namespace RogueSaveManager {
 		Write("Version", version);
 	}
 
+	static bool FileExists(const std::string filename)
+	{
+		return std::filesystem::exists(filename);
+	}
+
+	static bool FilePathExists(const std::filesystem::path path)
+	{
+		return std::filesystem::exists(path);
+	}
+
 	static void OpenWriteSaveFile(const std::string filename)
 	{
 		OpenWriteSaveFileByPath(std::filesystem::path(filename));
@@ -279,8 +289,13 @@ namespace RogueSaveManager {
 		outStream.close();
 	}
 
-	static void OpenReadSaveFileByPath(const std::filesystem::path path)
+	static bool OpenReadSaveFileByPath(const std::filesystem::path path)
 	{
+		if (!FilePathExists(path))
+		{
+			return false;
+		}
+
 		ASSERT(!outStream.is_open());
 		offset = 0;
 #ifdef JSON
@@ -298,30 +313,27 @@ namespace RogueSaveManager {
 		ReadNewline();
 		if (strncmp(buf, header, 4) != 0)
 		{
-			HALT();
+			return false;
 		}
 		short fileVersion;
 		Read("Version", fileVersion);
 		if (fileVersion != version)
 		{
-			HALT();
+			return false;
 		}
+
+		return true;
 	}
 
-	static void OpenReadSaveFile(const std::string filename)
+	static bool OpenReadSaveFile(const std::string filename)
 	{
-		OpenReadSaveFileByPath(std::filesystem::path(filename));
+		return OpenReadSaveFileByPath(std::filesystem::path(filename));
 	}
 
 	static void CloseReadSaveFile()
 	{
 		ASSERT(inStream.is_open());
 		inStream.close();
-	}
-
-	static bool FileExists(const std::string filename)
-	{
-		return std::filesystem::exists(filename);
 	}
 
 	static void DeleteSaveFile(const std::string filename)

@@ -17,6 +17,7 @@
 namespace RogueResources
 {
 	typedef size_t HashID;
+	const int resourceVersion = 1;
 
 	struct ResourceHandle
 	{
@@ -61,6 +62,7 @@ namespace RogueResources
 	std::filesystem::path GetPacked(const HashID ID);
 	std::filesystem::path GetResources();
 
+	bool IsNewer(std::filesystem::path current, std::filesystem::path dependency);
 	bool RequiresPack(std::filesystem::path source, std::filesystem::path packed);
 	bool RequiresLoad(HashID ID);
 	//bool RequiresRepack(const HashID ID);
@@ -97,4 +99,24 @@ namespace RogueResources
 	ResourcePointer GetLoadedResource(HashID ID);
 
 	void Register(const std::string type, std::function<void(PackContext&)> pack, std::function<std::shared_ptr<void>(LoadContext&)> load);
+
+	//File saving shenanigans
+	struct ResourceHeader
+	{
+		int version = resourceVersion;
+		std::vector<HashID> dependencies;
+	};
+
+	void LinkAsDependency(HashID hash);
+	void OpenPackDependencies();
+	void ClosePackDependencies();
+	bool OpenReadPackFile(std::filesystem::path packed);
+	void OpenWritePackFile(std::filesystem::path path);
+	bool AreDependenciesUpToDate(std::filesystem::path packed);
+}
+
+namespace RogueSaveManager
+{
+	void Serialize(RogueResources::ResourceHeader& value);
+	void Deserialize(RogueResources::ResourceHeader& value);
 }

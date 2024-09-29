@@ -1,11 +1,14 @@
 #include "Resouces.h"
 #include <filesystem>
 #include "../Utils/Utils.h"
+#include "../Debug/Profiling.h"
+#include "../Data/SaveManager.h"
 
 namespace RogueResources
 {
 	std::map<std::string, std::function<void(PackContext&)>> packFunctions = std::map<std::string, std::function<void(PackContext&)>>();
 	std::map<std::string, std::function<std::shared_ptr<void>(LoadContext&)>> loadFunctions = std::map<std::string, std::function<std::shared_ptr<void>(LoadContext&)>>();
+	std::vector<ResourceHeader> contexts = std::vector<ResourceHeader>();
 
 	ResourcePointer::ResourcePointer()
 	{
@@ -57,7 +60,7 @@ namespace RogueResources
 	std::filesystem::path GetPacked(const HashID ID)
 	{
 		std::filesystem::create_directory("./packed");
-		return std::filesystem::path(string_format("./packed/%u.pck", ID));
+		return std::filesystem::path(string_format("./packed/%zu.pck", ID));
 	}
 
 	std::filesystem::path GetResources()
@@ -69,11 +72,25 @@ namespace RogueResources
 #endif
 	}
 
+	bool IsNewer(std::filesystem::path current, std::filesystem::path dependency)
+	{
+		return std::filesystem::last_write_time(current) < std::filesystem::last_write_time(dependency);
+	}
+
 	bool RequiresPack(std::filesystem::path source, std::filesystem::path packed)
 	{
+		ROGUE_PROFILE_SECTION("Check Requires Pack");
+
+		if (!std::filesystem::exists(source)) { return false; }
+
 		if (!std::filesystem::exists(packed)) { return true; }
 
-		return std::filesystem::last_write_time(source) > std::filesystem::last_write_time(packed);
+		if (IsNewer(packed, source))
+		{
+			return true;
+		}
+
+		return !AreDependenciesUpToDate(packed);
 	}
 
 	bool RequiresLoad(HashID ID)
@@ -83,23 +100,30 @@ namespace RogueResources
 
 	ResourcePointer Load(const std::string type, const std::string name)
 	{
+		ROGUE_PROFILE_SECTION("Load Resource");
 		HashID ID = GetHashID(type, name);
+		LinkAsDependency(ID);
+
 		std::filesystem::path sourcePath = GetSource(name);
 		std::filesystem::path packedPath = GetPacked(ID);
 		bool repacked = false;
 
-		if (!std::filesystem::exists(sourcePath))
+		if (!std::filesystem::exists(sourcePath) && !std::filesystem::exists(packedPath))
 		{
 			return ResourcePointer();
 		}
 
 		if (RequiresPack(sourcePath, packedPath))
 		{
+			ROGUE_PROFILE_SECTION("Pack Resource");
 			ASSERT(GetPackFunctions().contains(type));
+
 			DEBUG_PRINT("Packing from %s to %s", sourcePath.string().c_str(), packedPath.string().c_str());
+			OpenPackDependencies();
 			PackContext packContext = { sourcePath, packedPath };
 			GetPackFunctions()[type](packContext);
 			repacked = true;
+			ClosePackDependencies();
 
 			//If you hit this, it means you are modifying sourcepath in some way.
 			ASSERT(!RequiresPack(sourcePath, packedPath));
@@ -107,6 +131,7 @@ namespace RogueResources
 
 		if (repacked || RequiresLoad(ID))
 		{
+			ROGUE_PROFILE_SECTION("Load From File");
 			ASSERT(GetLoadFunctions().contains(type));
 			DEBUG_PRINT("Loading %s as \"%s\" with handle %zu", name.c_str(), type.c_str(), ID);
 			LoadContext loadContext = { packedPath };
@@ -120,6 +145,7 @@ namespace RogueResources
 
 	std::vector<ResourcePointer> LoadFromConfig(const std::string type, const std::string tag)
 	{
+		ROGUE_PROFILE_SECTION("Load From Config");
 		std::vector<ResourcePointer> pointers = std::vector<ResourcePointer>();
 
 		std::filesystem::path resourceFolder = GetResources();
@@ -233,6 +259,7 @@ namespace RogueResources
 
 	ResourcePointer GetLoadedResource(HashID ID)
 	{
+		ROGUE_PROFILE_SECTION("Get Preloaded Resource");
 		ASSERT(GetLoadedResources().contains(ID));
 
 		ResourcePointer pointer = ResourcePointer(ID, GetLoadedResources()[ID]);
@@ -243,5 +270,86 @@ namespace RogueResources
 	{
 		GetPackFunctions()[type] = pack;
 		GetLoadFunctions()[type] = load;
+	}
+
+	void LinkAsDependency(HashID hash)
+	{
+		if (contexts.size() > 0)
+		{
+			contexts[contexts.size() - 1].dependencies.push_back(hash);
+		}
+	}
+
+	void OpenPackDependencies()
+	{
+		contexts.push_back(ResourceHeader());
+	}
+
+	void ClosePackDependencies()
+	{
+		contexts.pop_back();
+	}
+
+	bool OpenReadPackFile(std::filesystem::path packed)
+	{
+		if (RogueSaveManager::OpenReadSaveFileByPath(packed))
+		{
+			ResourceHeader header;
+			RogueSaveManager::Read("Header", header);
+			return true;
+		}
+
+		return false;
+	}
+
+	void OpenWritePackFile(std::filesystem::path path)
+	{
+		RogueSaveManager::OpenWriteSaveFileByPath(path);
+		RogueSaveManager::Write("Header", contexts[contexts.size() - 1]);
+	}
+
+	bool AreDependenciesUpToDate(std::filesystem::path packed)
+	{
+		ROGUE_PROFILE_SECTION("Check Dependency Status");
+		if (RogueSaveManager::OpenReadSaveFileByPath(packed))
+		{
+			ResourceHeader header;
+			RogueSaveManager::Read("Header", header);
+			RogueSaveManager::CloseReadSaveFile();
+
+			if (header.version != resourceVersion)
+			{
+				return false;
+			}
+
+			for (HashID ID : header.dependencies)
+			{
+				if (IsNewer(packed, GetPacked(ID)))
+				{
+					return false;
+				}
+			}
+		}
+
+		return true;
+	}
+}
+
+namespace RogueSaveManager
+{
+	void Serialize(RogueResources::ResourceHeader& value)
+	{
+		AddOffset();
+		Write("Resource Version", value.version);
+		Write("Dependencies", value.dependencies);
+		RemoveOffset();
+	}
+
+	void Deserialize(RogueResources::ResourceHeader& value)
+	{
+		AddOffset();
+		Read("Resource Version", value.version);
+		Read("Dependencies", value.dependencies);
+		RemoveOffset();
 	}
 }

@@ -15,15 +15,23 @@ set_property(TARGET BearLibTerminal PROPERTY
 set_property(TARGET BearLibTerminal PROPERTY
              IMPORTED_IMPLIB ${CMAKE_SOURCE_DIR}\\code\\libraries\\BearLibTerminal\\Windows64\\BearLibTerminal.lib)
 
+option(TRACY_ENABLE "" ON)
+#option(TRACY_ON_DEMAND "" ON)
+add_subdirectory(code/libraries/tracy)
+
 # Add source to this project's executable.
 file(GLOB_RECURSE RoguelikeFramework_SRC
      "${PROJECT_SOURCE_DIR}/code/source/*.cpp"
      "${PROJECT_SOURCE_DIR}/code/source/*.h"
      "${PROJECT_SOURCE_DIR}/code/libraries/BearLibTerminal/*.h"
 )
+
+add_compile_definitions("DEBUG=$<CONFIG:Debug>")
+add_compile_definitions("REL_WITH_DEBUG=$<CONFIG:RelWithDebInfo>")
 add_executable (RoguelikeFramework ${RoguelikeFramework_SRC})
 
 target_link_libraries(RoguelikeFramework PUBLIC BearLibTerminal)
+target_link_libraries(RoguelikeFramework PUBLIC Tracy::TracyClient)
 
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)

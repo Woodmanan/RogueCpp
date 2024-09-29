@@ -2,6 +2,7 @@
 #include <vector>
 #include "RogueArena.h"
 #include "SaveManager.h"
+#include "../Debug/Debug.h"
 
 using namespace std;
 
@@ -290,7 +291,7 @@ public:
 #define REGISTER_SAVE_TYPE(index, ClassName, name, size)\
 	class ClassName;\
 	template<> int RogueSaveable<ClassName>::ID = index;\
-    template<> RegisterHelper<ClassName>::RegisterHelper (int) { std::cout << index << ": "<< name << " Registered: " << to_string(size) << std::endl; RogueDataManager::Get()->RegisterArena<ClassName>(size); }\
+    template<> RegisterHelper<ClassName>::RegisterHelper (int) { DEBUG_PRINT("%d: %s (Registered %d)", index, name, size); RogueDataManager::Get()->RegisterArena<ClassName>(size); }\
     template<> RegisterHelper<ClassName> RegisterHelper<ClassName>::_helper(size);
 
 namespace RogueSaveManager

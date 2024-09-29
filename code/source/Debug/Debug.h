@@ -3,7 +3,7 @@
 
 #define UNUSED(...) do { __noop(__VA_ARGS__); } while(false)
 
-#ifdef _DEBUG
+#if DEBUG
 #define BREAK() __debugbreak()
 #define ASSERT(x) (!(x)) ? BREAK() : (void)0
 #define DEBUG_PRINT(x, ...) string_format_print(x, __VA_ARGS__)

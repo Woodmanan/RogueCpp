@@ -1,5 +1,6 @@
 #include "LOS.h"
 #include "../Map/Map.h"
+#include "../Debug/Profiling.h"
 #include <algorithm>
 
 void View::SetRadius(int radius)
@@ -39,6 +40,7 @@ void View::SetRadiusOnlyUpsize(int radius)
 
 int View::GetIndexByLocal(int x, int y) const
 {
+	ROGUE_PROFILE_SECTION("View::GetIndexByLocal");
 	ASSERT(x >= -m_radius && x <= m_radius);
 	ASSERT(y >= -m_radius && y <= m_radius);
 
@@ -82,6 +84,7 @@ bool View::GetVisibilityLocal(int x, int y) const
 
 uchar View::GetVisibilityPassIndex(int x, int y) const
 {
+	ROGUE_PROFILE_SECTION("View::GetVisibilityPassIndex");
 	return m_visibility[GetIndexByLocal(x, y)];
 }
 
@@ -161,6 +164,7 @@ namespace LOS
 {
 	void Calculate(View& view, Location location, Direction rotation, uchar maxPass)
 	{
+		ROGUE_PROFILE_SECTION("LOS::Calculate");
 		//Set scratch to match, iff it's smaller than needed
 		static View scratch;
 		scratch.SetRadiusOnlyUpsize(view.GetRadius());
@@ -178,6 +182,7 @@ namespace LOS
 
 	void CalculateQuadrant(View& view, View& scratch, Direction direction, Direction rotation, uchar maxPass)
 	{
+		ROGUE_PROFILE_SECTION("LOS::CalculateQuadrant");
 		Row start = Row(1, 1, Fraction(-1, 1), Fraction(1, 1));
 		scratch.SetRotationLocal(0, 0, rotation);
 		Scan(view, scratch, direction, start, maxPass);
@@ -185,6 +190,7 @@ namespace LOS
 
 	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass)
 	{
+		ROGUE_PROFILE_SECTION("LOS::Scan");
 		if (row.m_depth > view.GetRadius()) { return; }
 		if (row.m_pass > maxPass) { return; }
 
@@ -243,6 +249,7 @@ namespace LOS
 
 	std::pair<Location, Direction> GetTileByRowParent(View& view, View& scratch, Direction direction, int col, const Row& row)
 	{
+		ROGUE_PROFILE_SECTION("LOS::GetTileByRowParent");
 		Fraction minSlope = row.m_startSlope;
 		Fraction maxSlope = row.m_endSlope;
 
@@ -286,6 +293,7 @@ namespace LOS
 
 	Location GetTile(View& view, Direction direction, int col, int row)
 	{
+		ROGUE_PROFILE_SECTION("LOS::GetTile");
 		Vec2 pos = Transform(direction, col, row);
 
 		return view.GetLocationLocal(pos.x, pos.y);
@@ -293,6 +301,7 @@ namespace LOS
 
 	void SetTile(View& view, Direction direction, int col, int row, Location location)
 	{
+		ROGUE_PROFILE_SECTION("LOS::SetTile");
 		Vec2 pos = Transform(direction, col, row);
 
 		view.SetLocationLocal(pos.x, pos.y, location);
@@ -300,6 +309,7 @@ namespace LOS
 
 	Direction GetRotation(View& view, Direction direction, int col, int row)
 	{
+		ROGUE_PROFILE_SECTION("LOS::GetRotation");
 		Vec2 pos = Transform(direction, col, row);
 
 		return view.GetRotationLocal(pos.x, pos.y);
@@ -307,6 +317,7 @@ namespace LOS
 
 	void SetRotation(View& view, Direction direction, int col, int row, Direction rotation)
 	{
+		ROGUE_PROFILE_SECTION("LOS::SetRotation");
 		Vec2 pos = Transform(direction, col, row);
 
 		view.SetRotationLocal(pos.x, pos.y, rotation);
@@ -314,6 +325,7 @@ namespace LOS
 
 	Vec2 Transform(Direction direction, int col, int row)
 	{
+		ROGUE_PROFILE_SECTION("LOS::Transform");
 		int x = 0;
 		int y = 0;
 
@@ -382,6 +394,7 @@ namespace LOS
 
 	void Reveal(View& view, Direction direction, int col, int row, uchar pass)
 	{
+		ROGUE_PROFILE_SECTION("LOS::Reveal");
 		Vec2 pos = Transform(direction, col, row);
 
 #ifdef DEBUG_HOTSPOTS
