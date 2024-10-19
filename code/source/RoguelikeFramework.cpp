@@ -7,7 +7,7 @@
 #include "Data/RogueDataManager.h"
 #include "Data/SaveManager.h"
 #include "Data/RegisterSaveTypes.h"
-#include "Data/Resouces.h"
+#include "Data/Resources.h"
 #include "Map/Map.h"
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
@@ -20,6 +20,7 @@
 #include "Render/UI/UIManager.h"
 #include "Core/Materials/Materials.h"
 #include "Debug/Profiling.h"
+#include "Render/VulkanTest.h"
 
 using namespace std;
 
@@ -231,6 +232,20 @@ void InitManagers()
 
 int main(int argc, char* argv[])
 {
+    { //Vulkan Test!
+        HelloVulkanApplication app;
+        
+        try {
+            app.Run();
+        }
+        catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+            return EXIT_FAILURE;
+        }
+
+        return EXIT_SUCCESS;
+    }
+
     //Initialize Random
     srand(1);
 

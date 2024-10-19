@@ -1,7 +1,7 @@
 #include "CoreDataTypes.h"
-#include "../Data/SaveManager.h"
-#include "../Map/Map.h"
-#include "../Debug/Profiling.h"
+#include "Data/SaveManager.h"
+#include "Map/Map.h"
+#include "Debug/Profiling.h"
 
 std::istream& operator >> (std::istream& in, Direction& direction)
 {

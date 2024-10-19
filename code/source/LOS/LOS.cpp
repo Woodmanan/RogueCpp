@@ -1,6 +1,6 @@
 #include "LOS.h"
-#include "../Map/Map.h"
-#include "../Debug/Profiling.h"
+#include "Map/Map.h"
+#include "Debug/Profiling.h"
 #include <algorithm>
 
 void View::SetRadius(int radius)

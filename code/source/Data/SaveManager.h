@@ -3,7 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <filesystem>
-#include "../Debug/Debug.h"
+#include "Debug/Debug.h"
 
 #ifdef _DEBUG
 #define JSON
@@ -16,7 +16,7 @@ namespace RogueSaveManager {
 	const char* const tabString = "    ";
 	extern char buffer[]; //Buffer for storing garbage while we read files
 
-	const short version = 2;
+	const short version = 3;
 	const char* const header = "RSFL";
 
 
@@ -58,6 +58,9 @@ namespace RogueSaveManager {
 	void RemoveOffset();
 	void AddListSeparator(bool isLast);
 	void RemoveListSeparator(bool isLast);
+
+	int HexToInt(char hex);
+	char IntToHex(int val);
 
 	template <typename T>
 	static void Write(const char* name, T value)
@@ -162,39 +165,6 @@ namespace RogueSaveManager {
 		return hold;
 	}
 
-	static void WriteBits(const char* name, char* bytes, int count)
-	{
-		ASSERT(outStream.is_open());
-#ifdef JSON
-		WriteTabs();
-		outStream.write(name, strlen(name));
-		outStream << " : ";
-#endif // JSON
-
-		outStream.write(bytes, count);
-
-#ifdef JSON
-		outStream << ",\n";
-#endif // JSON
-	}
-
-	static void ReadBits(const char* name, char* bytes, int count)
-	{
-		ASSERT(inStream.is_open());
-
-#ifdef JSON
-		ReadTabs();
-		inStream.read(buffer, strlen(name));
-		inStream.read(buffer, 3);
-#endif // JSON
-
-		inStream.read(bytes, count);
-
-#ifdef JSON
-		inStream.read(buffer, 2);
-#endif // JSON
-	}
-
 	static void Write(const char* name, std::string& str)
 	{
 		ASSERT(outStream.is_open());
@@ -248,6 +218,116 @@ namespace RogueSaveManager {
 #ifdef JSON
 		inStream.read(buffer, 2);
 #endif
+	}
+
+	static void WriteRawBuffer(char* data, size_t len)
+	{
+#ifdef JSON
+		for (size_t i = 0; i < len; i++)
+		{
+			if (i % 10 == 0) WriteTabs();
+
+			char asChar = data[i];
+			unsigned char uChar = asChar;
+			int val = (int)uChar;
+			ASSERT(val >= 0 && val <= 255);
+			outStream << IntToHex(val >> 4) << IntToHex(val & 0xF);
+
+			if ((i + 1) == len || ((i + 1) % 10) == 0)
+			{
+				WriteNewline();
+			}
+			else
+			{
+				outStream << ' ';
+			}
+		}
+#else
+		outStream.write(data, len);
+#endif
+	}
+
+	template <typename T>
+	static void WriteAsBuffer(const char* name, std::vector<T> values)
+	{
+		ASSERT(outStream.is_open());
+#ifdef JSON
+		WriteTabs();
+		outStream.write(name, strlen(name));
+		outStream << " : ";
+#endif // JSON
+		AddOffset();
+		Write("Size", values.size());
+		WriteTabs();
+#ifdef JSON
+		outStream.write("Contents", strlen("Contents"));
+		outStream << " : ";
+#endif // JSON
+		AddOffset();
+		WriteRawBuffer((char*)values.data(), values.size() * sizeof(T));
+		RemoveOffset();
+		WriteNewline();
+		RemoveOffset();
+#ifdef JSON
+		outStream << ",\n";
+#endif // JSON
+	}
+
+	static void ReadRawBuffer(char* data, size_t len)
+	{
+#ifdef JSON
+		char str[3] = { 0 };
+		for (size_t i = 0; i < len; i++)
+		{
+			if (i % 10 == 0) ReadTabs();
+			inStream.read(str, 2);
+			int val = (HexToInt(str[0]) << 4) | HexToInt(str[1]);
+			ASSERT(val >= 0 && val <= 255);
+			unsigned char uChar = (unsigned char)val;
+			data[i] = uChar;
+
+			if ((i + 1) == len || ((i + 1) % 10) == 0)
+			{
+				ReadNewline();
+			}
+			else
+			{
+				inStream.read(str, 1);
+			}
+		}
+#else
+		inStream.read(data, len);
+#endif
+	}
+
+	template <typename T>
+	static void ReadAsBuffer(const char* name, std::vector<T>& values)
+	{
+		ASSERT(inStream.is_open());
+
+#ifdef JSON
+		ReadTabs();
+		inStream.read(buffer, strlen(name));
+		inStream.read(buffer, 3);
+#endif // JSON
+		AddOffset();
+		size_t size;
+		Read("Size", size);
+		values.resize(size);
+		ReadTabs();
+#ifdef JSON
+		inStream.read(buffer, strlen("Contents"));
+		inStream.read(buffer, 3);
+#endif // JSON
+		AddOffset();
+		ReadRawBuffer((char*) values.data(), size * sizeof(T));
+		RemoveOffset();
+		ReadNewline();
+		RemoveOffset();
+
+#ifdef JSON
+		inStream.read(buffer, 2);
+#endif // JSON
 	}
 
 	static void OpenWriteSaveFileByPath(const std::filesystem::path path)

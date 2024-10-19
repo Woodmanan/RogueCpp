@@ -1,6 +1,6 @@
 #pragma once
-#include "SaveManager.h"
-#include "RogueDataManager.h"
+#include "Data/SaveManager.h"
+#include "Data/RogueDataManager.h"
 
 REGISTER_SAVE_TYPE(1, BackingTile, "Backing Tile", 20);
 REGISTER_SAVE_TYPE(2, TileStats, "Tile Stats", 2000);

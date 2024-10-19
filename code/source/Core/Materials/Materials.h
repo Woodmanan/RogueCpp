@@ -1,6 +1,6 @@
 #pragma once
-#include "../Collections/FixedArrary.h"
-#include "../../Data/Resouces.h"
+#include "Core/Collections/FixedArrary.h"
+#include "Data/Resources.h"
 
 #include <string>
 #include <vector>

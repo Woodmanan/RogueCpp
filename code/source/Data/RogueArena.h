@@ -1,5 +1,5 @@
 #pragma once
-#include "../Debug/Debug.h"
+#include "Debug/Debug.h"
 #include "SaveManager.h"
 #include <malloc.h>
 #include <algorithm>

@@ -7,13 +7,22 @@ project ("RoguelikeFramework" LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_C_COMPILER_WORKS 1)
 
+find_package(Vulkan REQUIRED FATAL_ERROR)
 
 add_library(BearLibTerminal SHARED IMPORTED)
 set_property(TARGET BearLibTerminal PROPERTY
              IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}\\code\\libraries\\BearLibTerminal\\Windows64\\BearLibTerminal.dll)
 set_property(TARGET BearLibTerminal PROPERTY
              IMPORTED_IMPLIB ${CMAKE_SOURCE_DIR}\\code\\libraries\\BearLibTerminal\\Windows64\\BearLibTerminal.lib)
+
+add_library(glfw SHARED IMPORTED)
+set_property(TARGET glfw PROPERTY
+             IMPORTED_LOCATION ${CMAKE_SOURCE_DIR}\\code\\libraries\\glfw-3.4.bin.WIN64\\lib-vc2019\\glfw3.dll)
+set_property(TARGET glfw PROPERTY
+             IMPORTED_IMPLIB ${CMAKE_SOURCE_DIR}\\code\\libraries\\glfw-3.4.bin.WIN64\\lib-vc2019\\glfw3.lib)
+
 
 option(TRACY_ENABLE "" ON)
 #option(TRACY_ON_DEMAND "" ON)
@@ -32,6 +41,13 @@ add_executable (RoguelikeFramework ${RoguelikeFramework_SRC})
 
 target_link_libraries(RoguelikeFramework PUBLIC BearLibTerminal)
 target_link_libraries(RoguelikeFramework PUBLIC Tracy::TracyClient)
+target_link_libraries(RoguelikeFramework PUBLIC ${Vulkan_LIBRARIES})
+target_link_libraries(RoguelikeFramework PUBLIC glfw)
+
+target_include_directories(RoguelikeFramework PUBLIC "C:/VulkanSDK/1.3.290.0/Include")
+target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/glfw-3.4.bin.WIN64/include")
+target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/source")
+target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/stb")
 
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)
@@ -43,6 +59,12 @@ target_link_libraries(RoguelikeFramework PUBLIC Tracy::TracyClient)
 add_custom_command(TARGET RoguelikeFramework POST_BUILD      #Add a post build event
 	COMMAND ${CMAKE_COMMAND} -E copy_if_different        #Executes a copy command
 	"${PROJECT_SOURCE_DIR}/code/libraries/BearLibTerminal/Windows64/BearLibTerminal.dll"
+	$<TARGET_FILE_DIR:RoguelikeFramework>)
+
+#Copy glfw3.dll for builds
+add_custom_command(TARGET RoguelikeFramework POST_BUILD      #Add a post build event
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different        #Executes a copy command
+	"${PROJECT_SOURCE_DIR}/code/libraries/glfw-3.4.bin.WIN64/lib-vc2019/glfw3.dll"
 	$<TARGET_FILE_DIR:RoguelikeFramework>)
 
 

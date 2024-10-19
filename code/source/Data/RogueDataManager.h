@@ -1,8 +1,8 @@
 #pragma once
 #include <vector>
-#include "RogueArena.h"
-#include "SaveManager.h"
-#include "../Debug/Debug.h"
+#include "Data/RogueArena.h"
+#include "Data/SaveManager.h"
+#include "Debug/Debug.h"
 
 using namespace std;
 

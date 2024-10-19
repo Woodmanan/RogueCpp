@@ -1,5 +1,5 @@
 #pragma once
-#include "../../Core/CoreDataTypes.h"
+#include "Core/CoreDataTypes.h"
 #include <vector>
 
 union Rect

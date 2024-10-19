@@ -1,8 +1,8 @@
-#include "Resouces.h"
+#include "Resources.h"
 #include <filesystem>
-#include "../Utils/Utils.h"
-#include "../Debug/Profiling.h"
-#include "../Data/SaveManager.h"
+#include "Utils/Utils.h"
+#include "Debug/Profiling.h"
+#include "Data/SaveManager.h"
 
 namespace RogueResources
 {

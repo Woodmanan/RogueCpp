@@ -1,8 +1,8 @@
 #include "Window.h"
 #include "../../../libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
 #include <algorithm>
-#include "../RenderTools.h"
-#include "../../Debug/Profiling.h"
+#include "Render/RenderTools.h"
+#include "Debug/Profiling.h"
 
 //Lightweight window interface for better control over BearLibTerminal
 

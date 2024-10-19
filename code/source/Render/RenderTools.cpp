@@ -1,6 +1,6 @@
 #include "RenderTools.h"
 #include "../../libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
-#include "../Core/CoreDataTypes.h"
+#include "Core/CoreDataTypes.h"
 
 namespace RenderTools
 {

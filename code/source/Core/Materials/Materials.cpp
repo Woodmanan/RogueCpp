@@ -1,8 +1,8 @@
 #include "Materials.h"
-#include "../../Debug/Debug.h"
-#include "../../Utils/Utils.h"
-#include "../../Utils/FileUtils.h"
-#include "../../Data/SaveManager.h"
+#include "Debug/Debug.h"
+#include "Utils/Utils.h"
+#include "Utils/FileUtils.h"
+#include "Data/SaveManager.h"
 #include <iostream>
 #include <algorithm>
 

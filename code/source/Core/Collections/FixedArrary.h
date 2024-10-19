@@ -1,5 +1,5 @@
 #pragma once
-#include "../../Debug/Debug.h"
+#include "Debug/Debug.h"
 
 #include <array>
 #include <initializer_list>

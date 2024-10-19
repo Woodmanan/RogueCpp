@@ -1,8 +1,8 @@
 #include "TileMemory.h"
-#include "../Map/Map.h"
-#include "../Data/SaveManager.h"
-#include "../Data/RogueDataManager.h"
-#include "../Render/Windows/Window.h"
+#include "Map/Map.h"
+#include "Data/SaveManager.h"
+#include "Data/RogueDataManager.h"
+#include "Render/Windows/Window.h"
 #include "LOS.h"
 #include <algorithm>
 

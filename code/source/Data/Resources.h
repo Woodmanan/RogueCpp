@@ -6,7 +6,7 @@
 #include <functional>
 #include <memory>
 #include <map>
-#include "../Debug/Debug.h"
+#include "Debug/Debug.h"
 
 //Resource management and loading system.
 
