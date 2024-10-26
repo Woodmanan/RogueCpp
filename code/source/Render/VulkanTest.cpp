@@ -166,14 +166,38 @@ void HelloVulkanApplication::PickPhysicalDevice()
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
+	std::vector<VkPhysicalDevice> suitableDevices;
 	for (const auto& device : devices)
 	{
 		if (IsDeviceSuitable(device))
 		{
-			physicalDevice = device;
-			break;
+			suitableDevices.push_back(device);
 		}
 	}
+
+	ASSERT(suitableDevices.size() > 0);
+
+	int choice = 0;
+	float score = RateDevice(suitableDevices[0]);
+
+	for (int i = 1; i < suitableDevices.size(); i++)
+	{
+		float deviceScore = RateDevice(suitableDevices[i]);
+		if (deviceScore > score)
+		{
+			choice = i;
+			score = deviceScore;
+		}
+	}
+
+	physicalDevice = suitableDevices[choice];
+
+#if (DEBUG || REL_WITH_DEBUG)
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+	DEBUG_PRINT("Chose %s for rendering.", properties.deviceName);
+#endif
 
 	if (physicalDevice == VK_NULL_HANDLE) {
 		throw std::runtime_error("failed to find a suitable GPU!");
@@ -200,6 +224,24 @@ bool HelloVulkanApplication::IsDeviceSuitable(VkPhysicalDevice device)
 
 	//TODO: Rank properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && features.geometryShader;
 	return indices.IsComplete() && extensionsSupported && swapChainAdequate && features.samplerAnisotropy;
+}
+
+float HelloVulkanApplication::RateDevice(VkPhysicalDevice device)
+{
+	float score = 0;
+
+	VkPhysicalDeviceProperties properties{};
+	vkGetPhysicalDeviceProperties(device, &properties);
+
+	// Discrete GPUs have a significant performance advantage
+	if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+		score += 1000;
+	}
+
+	// Maximum possible size of textures affects graphics quality
+	score += properties.limits.maxImageDimension2D;
+
+	return score;
 }
 
 void HelloVulkanApplication::CreateLogicalDevice()

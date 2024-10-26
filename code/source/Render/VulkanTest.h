@@ -159,6 +159,7 @@ private:
 
 	void PickPhysicalDevice();
 	bool IsDeviceSuitable(VkPhysicalDevice device);
+	float RateDevice(VkPhysicalDevice device);
 	void CreateLogicalDevice();
 	void CreateSwapChain();
 	void CreateImageViews();
