@@ -6,6 +6,7 @@
 #include "Utils/Utils.h"
 #include "Data/Resources.h"
 #include "Render/Images/ImageManager.h"
+#include "Render/Fonts/FontManager.h"
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
@@ -43,6 +44,7 @@ void HelloVulkanApplication::InitVulkan()
 	CreateGraphicsPipeline();
 	CreateFrameBuffers();
 	CreateCommandPool();
+	CreateFont();
 	CreateTextureImage();
 	CreateTextureImageView();
 	CreateTextureSampler();
@@ -629,10 +631,24 @@ void HelloVulkanApplication::CreateCommandPool()
 	}
 }
 
+void HelloVulkanApplication::CreateFont()
+{
+	font = RogueResources::Load<RogueFont>("Font", "square.ttf");
+	font->SetSize(0, 64);
+
+	for (wchar_t c : preloadChars)
+	{
+		font->LoadGlyph(c);
+	}
+}
+
 void HelloVulkanApplication::CreateTextureImage()
 {
-	auto image = RogueResources::Load<RogueImage>("Image", "statue.jpg");
-	VkDeviceSize imageSize = image->m_width * image->m_height * 4;
+	//auto image = RogueResources::Load<RogueImage>("Image", "test.png");
+
+	auto image = &font->LoadGlyph(L'F');
+
+	VkDeviceSize imageSize = image->GetByteSize();
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
@@ -663,8 +679,8 @@ void HelloVulkanApplication::CreateTextureSampler()
 {
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;//VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_NEAREST;// VK_FILTER_LINEAR;
 
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;

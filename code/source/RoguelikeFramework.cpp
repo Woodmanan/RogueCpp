@@ -21,6 +21,7 @@
 #include "Core/Materials/Materials.h"
 #include "Debug/Profiling.h"
 #include "Render/VulkanTest.h"
+#include "Render/Fonts/FontManager.h"
 
 using namespace std;
 

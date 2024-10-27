@@ -4,12 +4,14 @@
 #include "GLFW/glfw3.h"
 #include "glm/glm.hpp"
 #include "Debug/Debug.h"
+#include "Render/Fonts/FontManager.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
 #include <optional>
 #include <fstream>
+#include <string>
 
 struct Vertex {
 	glm::vec2 pos;
@@ -61,6 +63,7 @@ public:
 	const uint32_t WIDTH = 800;
 	const uint32_t HEIGHT = 600;
 	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const std::wstring preloadChars = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()[]{}\\|/<>,.:;?-=_+~";
 
 	const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -140,6 +143,8 @@ private:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
+	RogueResources::TResourcePointer<RogueFont> font;
+
 	//Rendering Sync tools
 	int currentFrame = 0;
 	std::vector<VkSemaphore> imageAvailableSemaphores;
@@ -168,6 +173,7 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateFrameBuffers();
 	void CreateCommandPool();
+	void CreateFont();
 	void CreateTextureImage();
 	void CreateTextureImageView();
 	void CreateTextureSampler();

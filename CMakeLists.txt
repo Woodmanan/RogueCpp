@@ -43,11 +43,13 @@ target_link_libraries(RoguelikeFramework PUBLIC BearLibTerminal)
 target_link_libraries(RoguelikeFramework PUBLIC Tracy::TracyClient)
 target_link_libraries(RoguelikeFramework PUBLIC ${Vulkan_LIBRARIES})
 target_link_libraries(RoguelikeFramework PUBLIC glfw)
+target_link_libraries(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/freetype2/release static/vs2015-2022/win64/freetype.lib")
 
 target_include_directories(RoguelikeFramework PUBLIC "C:/VulkanSDK/1.3.290.0/Include")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/glfw-3.4.bin.WIN64/include")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/source")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/stb")
+target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/freetype2/include")
 
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)

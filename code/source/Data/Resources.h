@@ -43,6 +43,7 @@ namespace RogueResources
 	class TResourcePointer : public ResourcePointer
 	{
 	public:
+		TResourcePointer() {}
 		TResourcePointer(const ResourcePointer& other)
 		{
 			m_ID = other.m_ID;
