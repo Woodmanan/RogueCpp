@@ -2,6 +2,7 @@
 #include "Debug/Debug.h"
 #include "Data/Resources.h"
 #include "Data/SaveManager.h"
+#include "Core/CoreDataTypes.h"
 
 struct RogueImage
 {
@@ -10,21 +11,12 @@ struct RogueImage
 	int m_textureChannels = 0;
 	std::vector<unsigned char> m_pixels;
 
-	int GetLineSize() const
-	{
-		return m_width * m_textureChannels;
-	}
+	int GetLineSize() const;
+	int GetByteSize() const;
+	uchar* GetScanline(int row);
+	uchar* GetPixel(int row, int col);
 
-	int GetByteSize() const
-	{
-		return m_height * GetLineSize();
-	}
-
-	unsigned char* GetScanline(int row)
-	{
-		int rowSize = m_width * m_textureChannels;
-		return m_pixels.data() + (rowSize * row);
-	}
+	void InsertImage(RogueImage& image, Vec2 position);
 };
 
 class ImageManager
@@ -34,7 +26,10 @@ public:
 	void PackImage(RogueResources::PackContext& packContext);
 	std::shared_ptr<void> LoadImage(RogueResources::LoadContext& loadContext);
 
-	ImageManager* Get() { return manager; }
+	RogueImage* CreateEmptyImage(int x, int y, int texChannels);
+	RogueImage* CreateAtlas(std::vector<RogueImage*>& images, std::vector<Vec2>& positions, int size);
+
+	static ImageManager* Get() { return manager; }
 
 private:
 	static ImageManager* manager;

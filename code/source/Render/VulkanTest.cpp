@@ -633,7 +633,7 @@ void HelloVulkanApplication::CreateCommandPool()
 
 void HelloVulkanApplication::CreateFont()
 {
-	font = RogueResources::Load<RogueFont>("Font", "square.ttf");
+	font = RogueResources::Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
 	font->SetSize(0, 64);
 
 	for (wchar_t c : preloadChars)
@@ -645,8 +645,10 @@ void HelloVulkanApplication::CreateFont()
 void HelloVulkanApplication::CreateTextureImage()
 {
 	//auto image = RogueResources::Load<RogueImage>("Image", "test.png");
+	
+	font->CreateAtlas();
 
-	auto image = &font->LoadGlyph(L'F');
+	auto image = font->GetAtlas();
 
 	VkDeviceSize imageSize = image->GetByteSize();
 
@@ -1321,6 +1323,7 @@ void HelloVulkanApplication::UpdateUniformBuffer(int currentFrame)
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+	time = 0;
 
 	UniformBufferObject ubo{};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));

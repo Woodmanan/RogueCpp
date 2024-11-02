@@ -50,6 +50,7 @@ target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/source")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/stb")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/freetype2/include")
+target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/rectpack2D")
 
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD_REQUIRED TRUE)

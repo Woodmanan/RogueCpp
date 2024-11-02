@@ -2,8 +2,49 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb/stb_image.h"
 #include "Debug/Profiling.h"
+#include "rectpack2D/src/finders_interface.h"
+
+using namespace rectpack2D;
 
 ImageManager* ImageManager::manager = new ImageManager();
+
+int RogueImage::GetLineSize() const
+{
+	return m_width * m_textureChannels;
+}
+
+int RogueImage::GetByteSize() const
+{
+	return m_height * GetLineSize();
+}
+
+uchar* RogueImage::GetScanline(int row)
+{
+	ASSERT(row >= 0 && row < m_height);
+	int rowSize = m_width * m_textureChannels;
+	return m_pixels.data() + (rowSize * row);
+}
+
+uchar* RogueImage::GetPixel(int row, int col)
+{
+	uchar* scanline = GetScanline(row);
+	return scanline + (col * m_textureChannels);
+}
+
+void RogueImage::InsertImage(RogueImage& image, Vec2 position)
+{
+	ASSERT(m_textureChannels == image.m_textureChannels); //We don't support copying from different channels yet.
+	ASSERT(position.x >= 0 && position.y >= 0);
+	ASSERT(position.x + image.m_width < m_width && position.y + image.m_height < m_height);
+
+	for (int imgY = 0; imgY < image.m_height; imgY++)
+	{
+		for (int imgX = 0; imgX < image.m_width; imgX++)
+		{
+			memcpy(GetPixel(imgY + position.y, imgX + position.x), image.GetPixel(imgY, imgX), m_textureChannels);
+		}
+	}
+}
 
 ImageManager::ImageManager()
 {
@@ -52,6 +93,60 @@ std::shared_ptr<void> ImageManager::LoadImage(RogueResources::LoadContext& loadC
 	stbi_image_free(pixels);
 
 	return std::shared_ptr<RogueImage>(image);
+}
+
+RogueImage* ImageManager::CreateEmptyImage(int x, int y, int texChannels)
+{
+	RogueImage* image = new RogueImage();
+	image->m_width = x;
+	image->m_height = y;
+	image->m_textureChannels = texChannels;
+	image->m_pixels.resize(x * y * texChannels);
+	return image;
+}
+
+RogueImage* ImageManager::CreateAtlas(std::vector<RogueImage*>& images, std::vector<Vec2>& positions, int size)
+{
+	constexpr bool allow_flip = false;
+	const auto runtime_flipping_mode = flipping_option::DISABLED;
+	using spaces_type = rectpack2D::empty_spaces<allow_flip, default_empty_spaces>;
+	using rect_type = output_rect_t<spaces_type>;
+	auto report_successful = [](rect_type&) {
+		return callback_result::CONTINUE_PACKING;
+	};
+
+	auto report_unsuccessful = [](rect_type&) {
+		return callback_result::ABORT_PACKING;
+	};
+
+	const auto discard_step = -4;
+
+	std::vector<rect_type> rectangles;
+	for (const RogueImage* img : images)
+	{
+		rectangles.emplace_back(rect_xywh(0, 0, img->m_width, img->m_height));
+	}
+
+	const auto result_size = find_best_packing<spaces_type>(
+		rectangles,
+		make_finder_input(
+			size,
+			discard_step,
+			report_successful,
+			report_unsuccessful,
+			runtime_flipping_mode
+		)
+	);
+
+	RogueImage* image = CreateEmptyImage(size, size, 4);
+	for (int i = 0; i < rectangles.size(); i++)
+	{
+		rect_type rect = rectangles[i];
+		positions.push_back(Vec2(rect.x, rect.y));
+		image->InsertImage(*images[i], Vec2(rect.x, rect.y));
+	}
+
+	return image;
 }
 
 namespace RogueSaveManager

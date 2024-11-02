@@ -14,6 +14,10 @@ RogueFont::~RogueFont()
 {
 	FT_Done_Face(m_face);
 	m_buffer.clear();
+	if (m_atlas != nullptr)
+	{
+		delete m_atlas;
+	}
 }
 
 bool RogueFont::SetSize(uint xSize, uint ySize)
@@ -71,6 +75,40 @@ const RogueImage& RogueFont::LoadGlyph(FT_ULong glyph)
 	}
 
 	return m_glyphs[glyph];
+}
+
+bool RogueFont::CreateAtlas()
+{
+	ROGUE_PROFILE_SECTION("RogueFont::CreateAtlas");
+	if (m_atlas != nullptr) { delete m_atlas; }
+
+	m_glyphIndices.clear();
+	m_uvStarts.clear();
+	m_uvEnds.clear();
+
+	std::vector<Vec2> atlasPositions;
+
+	std::vector<RogueImage*> images;
+
+	int index = 0;
+	for (auto it : m_glyphs)
+	{
+		m_glyphIndices[it.first] = index;
+		index++;
+		images.push_back(&m_glyphs[it.first]);
+	}
+
+	m_atlas = ImageManager::Get()->CreateAtlas(images, atlasPositions, atlasSize);
+
+	for (int i = 0; i < index; i++)
+	{
+		Vec2 rStart = atlasPositions[i];
+		Vec2 rEnd = rStart + Vec2(images[i]->m_width, images[i]->m_height);
+		m_uvStarts.push_back({ ((float) rStart.x) / atlasSize, ((float) rStart.y) / atlasSize });
+		m_uvEnds.push_back({ ((float)rEnd.x) / atlasSize, ((float)rEnd.y) / atlasSize });
+	}
+
+	return m_atlas != nullptr;
 }
 
 void RogueFont::AddImageForGlyph(FT_ULong glyph, FT_Bitmap& bitmap)
