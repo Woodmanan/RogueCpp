@@ -11,6 +11,7 @@ class THandle;
 typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned int uint;
+typedef uint16_t uint16;
 
 #ifdef _DEBUG
 #define LINK_TILE

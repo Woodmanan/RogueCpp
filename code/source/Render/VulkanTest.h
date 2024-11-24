@@ -2,9 +2,11 @@
 #include "vulkan/vulkan.hpp"
 #define GLFW_INCLUDE_VULKAN
 #include "GLFW/glfw3.h"
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include "glm/glm.hpp"
 #include "Debug/Debug.h"
 #include "Render/Fonts/FontManager.h"
+#include "Core/CoreDataTypes.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -13,10 +15,15 @@
 #include <fstream>
 #include <string>
 
+const uint MAX_DIM = 64;
+const uint MAX_TILES = MAX_DIM * MAX_DIM;
+const uint MAX_CHARACTERS = 128;
+const float offset = 0.1;
+
 struct Vertex {
-	glm::vec2 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
+	alignas(16) glm::vec2 pos;
+	alignas(16) glm::vec2 texCoord;
+	alignas(16) glm::uint index;
 
 	static VkVertexInputBindingDescription getBindingDescription() {
 		VkVertexInputBindingDescription bindingDescription{};
@@ -37,22 +44,30 @@ struct Vertex {
 
 		attributeDescriptions[1].binding = 0;
 		attributeDescriptions[1].location = 1;
-		attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		attributeDescriptions[1].offset = offsetof(Vertex, color);
+		attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+		attributeDescriptions[1].offset = offsetof(Vertex, texCoord);
 
 		attributeDescriptions[2].binding = 0;
 		attributeDescriptions[2].location = 2;
-		attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-		attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+		attributeDescriptions[2].format = VK_FORMAT_R32_UINT;
+		attributeDescriptions[2].offset = offsetof(Vertex, index);
 
 		return attributeDescriptions;
 	}
 };
 
-struct UniformBufferObject {
-	alignas(16) glm::mat4 model;
-	alignas(16) glm::mat4 view;
-	alignas(16) glm::mat4 proj;
+struct UniformTileObject {
+	glm::uint tileIndices[MAX_TILES];
+	glm::vec2 lowerUVs[MAX_CHARACTERS];
+	glm::vec2 upperUVs[MAX_CHARACTERS];
+};
+
+struct FGColorsObject {
+	glm::vec4 colors[MAX_TILES];
+};
+
+struct BGColorsObject {
+	glm::vec4 colors[MAX_TILES];
 };
 
 class HelloVulkanApplication
@@ -60,29 +75,26 @@ class HelloVulkanApplication
 public:
 	void Run();
 
-	const uint32_t WIDTH = 800;
-	const uint32_t HEIGHT = 600;
+	const uint WINDOW_WIDTH = 800;
+	const uint WINDOW_HEIGHT = 600;
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 	const std::wstring preloadChars = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()[]{}\\|/<>,.:;?-=_+~";
-
+	
 	const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 	};
 
 	const std::vector<const char*> deviceExtensions = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
+	VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME
 	};
 
-	const std::vector<Vertex> vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}
-	};
+	const uint TERMINAL_WIDTH = 81;
+	const uint TERMINAL_HEIGHT = 41;
 
-	const std::vector<uint16_t> indices = {
-	0, 1, 2, 2, 3, 0
-	};
+	std::vector<Vertex> vertices;
+	std::vector<uint16_t> indices;
 
 #if (DEBUG || REL_WITH_DEBUG)
 	const bool enableValidationLayers = true;
@@ -129,9 +141,17 @@ private:
 	VkBuffer indexBuffer;
 	VkDeviceMemory indexBufferMemory;
 
-	std::vector<VkBuffer> uniformBuffers;
-	std::vector<VkDeviceMemory> uniformBuffersMemory;
-	std::vector<void*> uniformBuffersMapped;
+	std::vector<VkBuffer> tileUniformBuffers;
+	std::vector<VkDeviceMemory> tileUniformBuffersMemory;
+	std::vector<void*> tileUniformBuffersMapped;
+
+	std::vector<VkBuffer> fgColorBuffers;
+	std::vector<VkDeviceMemory> fgColorBuffersMemory;
+	std::vector<void*> fgColorBuffersMapped;
+
+	std::vector<VkBuffer> bgColorBuffers;
+	std::vector<VkDeviceMemory> bgColorBuffersMemory;
+	std::vector<void*> bgColorBuffersMapped;
 
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
@@ -144,6 +164,9 @@ private:
 	VkSampler textureSampler;
 
 	RogueResources::TResourcePointer<RogueFont> font;
+	UniformTileObject tileData;
+	FGColorsObject fgColorData;
+	BGColorsObject bgColorData;
 
 	//Rendering Sync tools
 	int currentFrame = 0;
@@ -177,6 +200,7 @@ private:
 	void CreateTextureImage();
 	void CreateTextureImageView();
 	void CreateTextureSampler();
+	void CreateVertices();
 	void CreateVertexBuffer();
 	void CreateIndexBuffer();
 	void CreateUniformBuffers();

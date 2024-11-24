@@ -141,8 +141,8 @@ void RogueFont::SetRow(RogueImage& image, int row, unsigned char* scanline, unsi
 			unsigned char value = scanline[i];
 			unsigned char* pixel = imageScanline + (i * image.m_textureChannels);
 			pixel[0] = value;
-			pixel[1] = 0;
-			pixel[2] = 0;
+			pixel[1] = value;
+			pixel[2] = value;
 			pixel[3] = value;
 		}
 		break;

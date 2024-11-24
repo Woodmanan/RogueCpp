@@ -24,7 +24,7 @@ void HelloVulkanApplication::InitWindow()
 	glfwInit();
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+	window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rogue Cpp", nullptr, nullptr);
 	ASSERT(window != nullptr);
 	
 	glfwSetWindowUserPointer(window, this);
@@ -48,6 +48,7 @@ void HelloVulkanApplication::InitVulkan()
 	CreateTextureImage();
 	CreateTextureImageView();
 	CreateTextureSampler();
+	CreateVertices();
 	CreateVertexBuffer();
 	CreateIndexBuffer();
 	CreateUniformBuffers();
@@ -414,23 +415,35 @@ void HelloVulkanApplication::CreateRenderPass()
 void HelloVulkanApplication::CreateDescriptorSetLayout()
 {
 	//Can be used to describe a list of bindings - useful later for array of descriptors
-	VkDescriptorSetLayoutBinding uboLayoutBinding{};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
+	VkDescriptorSetLayoutBinding tileLayoutBinding{};
+	tileLayoutBinding.binding = 0;
+	tileLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	tileLayoutBinding.descriptorCount = 1;
+	tileLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	tileLayoutBinding.pImmutableSamplers = nullptr; // Optional
 
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	VkDescriptorSetLayoutBinding fgColorBinding{};
+	fgColorBinding.binding = 1;
+	fgColorBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	fgColorBinding.descriptorCount = 1;
+	fgColorBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	fgColorBinding.pImmutableSamplers = nullptr; // Optional
 
-	uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
+	VkDescriptorSetLayoutBinding bgColorBinding{};
+	bgColorBinding.binding = 2;
+	bgColorBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	bgColorBinding.descriptorCount = 1;
+	bgColorBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	bgColorBinding.pImmutableSamplers = nullptr; // Optional
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 1;
+	samplerLayoutBinding.binding = 3;
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+	std::array<VkDescriptorSetLayoutBinding, 4> bindings = { tileLayoutBinding, fgColorBinding, bgColorBinding, samplerLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -443,8 +456,8 @@ void HelloVulkanApplication::CreateDescriptorSetLayout()
 
 void HelloVulkanApplication::CreateGraphicsPipeline()
 {
-	auto vertShaderCode = readFile("resources/shaders/vert.spv");
-	auto fragShaderCode = readFile("resources/shaders/frag.spv");
+	auto vertShaderCode = readFile("../../../resources/shaders/vert.spv");
+	auto fragShaderCode = readFile("../../../resources/shaders/frag.spv");
 
 	VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
 	VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
@@ -633,7 +646,7 @@ void HelloVulkanApplication::CreateCommandPool()
 
 void HelloVulkanApplication::CreateFont()
 {
-	font = RogueResources::Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
+	font = RogueResources::Load<RogueFont>("Font", "square.ttf");
 	font->SetSize(0, 64);
 
 	for (wchar_t c : preloadChars)
@@ -646,9 +659,18 @@ void HelloVulkanApplication::CreateTextureImage()
 {
 	//auto image = RogueResources::Load<RogueImage>("Image", "test.png");
 	
-	font->CreateAtlas();
+	tileData = UniformTileObject();
+	fgColorData = FGColorsObject();
+	bgColorData = BGColorsObject();
 
+	font->CreateAtlas();
 	auto image = font->GetAtlas();
+
+	for (size_t i = 0; i < std::min<size_t>(MAX_CHARACTERS, font->m_uvStarts.size()); i++)
+	{
+		tileData.lowerUVs[i] = font->m_uvStarts[i];
+		tileData.upperUVs[i] = font->m_uvEnds[i];
+	}
 
 	VkDeviceSize imageSize = image->GetByteSize();
 
@@ -709,6 +731,42 @@ void HelloVulkanApplication::CreateTextureSampler()
 	}
 }
 
+void HelloVulkanApplication::CreateVertices()
+{
+	vertices.clear();
+	indices.clear();
+	uint index = 0;
+
+	for (uint y = 0; y < TERMINAL_HEIGHT; y++)
+	{
+		for (uint x = 0; x < TERMINAL_WIDTH; x++)
+		{
+			uint16 vertexIndex = vertices.size();
+			float minX = (((float)x) / TERMINAL_WIDTH) * 2 - 1;
+			float maxX = (((float)x + 1) / TERMINAL_WIDTH) * 2 - 1;
+			float minY = (((float)y) / TERMINAL_HEIGHT) * 2 - 1;
+			float maxY = (((float)y + 1) / TERMINAL_HEIGHT) * 2 - 1;
+
+			vertices.push_back({ {minX, minY}, {-offset, -offset}, index });
+			vertices.push_back({ {maxX, minY}, {1.0f + offset, -offset}, index });
+			vertices.push_back({ {maxX, maxY}, {1.0f + offset, 1.0f + offset}, index });
+			vertices.push_back({ {minX, maxY}, {-offset, 1.0f + offset}, index });
+
+			indices.push_back(vertexIndex + 0);
+			indices.push_back(vertexIndex + 2);
+			indices.push_back(vertexIndex + 1);
+			indices.push_back(vertexIndex + 2);
+			indices.push_back(vertexIndex + 0);
+			indices.push_back(vertexIndex + 3);
+
+			index++;
+		}
+	}
+
+	ASSERT(vertices.size() == (4 * TERMINAL_WIDTH * TERMINAL_HEIGHT));
+	ASSERT(indices.size() == (6 * TERMINAL_WIDTH * TERMINAL_HEIGHT));
+}
+
 void HelloVulkanApplication::CreateVertexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -752,16 +810,40 @@ void HelloVulkanApplication::CreateIndexBuffer()
 
 void HelloVulkanApplication::CreateUniformBuffers()
 {
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+	//Tile buffers
+	VkDeviceSize tileBufferSize = sizeof(UniformTileObject);
 
-	uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-	uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+	tileUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	tileUniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+	tileUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+		CreateBuffer(tileBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tileUniformBuffers[i], tileUniformBuffersMemory[i]);
+		vkMapMemory(device, tileUniformBuffersMemory[i], 0, tileBufferSize, 0, &tileUniformBuffersMapped[i]);
+	}
 
-		vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+	//FG Color buffers
+	VkDeviceSize fgColorBufferSize = sizeof(FGColorsObject);
+
+	fgColorBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	fgColorBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+	fgColorBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		CreateBuffer(fgColorBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fgColorBuffers[i], fgColorBuffersMemory[i]);
+		vkMapMemory(device, fgColorBuffersMemory[i], 0, fgColorBufferSize, 0, &fgColorBuffersMapped[i]);
+	}
+
+	//BG Color buffers
+	VkDeviceSize bgColorBufferSize = sizeof(BGColorsObject);
+
+	bgColorBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	bgColorBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+	bgColorBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		CreateBuffer(bgColorBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, bgColorBuffers[i], bgColorBuffersMemory[i]);
+		vkMapMemory(device, bgColorBuffersMemory[i], 0, bgColorBufferSize, 0, &bgColorBuffersMapped[i]);
 	}
 }
 
@@ -799,17 +881,27 @@ void HelloVulkanApplication::CreateDescriptorSets()
 	}
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		VkDescriptorBufferInfo bufferInfo{};
-		bufferInfo.buffer = uniformBuffers[i];
-		bufferInfo.offset = 0;
-		bufferInfo.range = sizeof(UniformBufferObject);
+		VkDescriptorBufferInfo tileBufferInfo{};
+		tileBufferInfo.buffer = tileUniformBuffers[i];
+		tileBufferInfo.offset = 0;
+		tileBufferInfo.range = sizeof(UniformTileObject);
+
+		VkDescriptorBufferInfo fgBufferInfo{};
+		fgBufferInfo.buffer = fgColorBuffers[i];
+		fgBufferInfo.offset = 0;
+		fgBufferInfo.range = sizeof(FGColorsObject);
+
+		VkDescriptorBufferInfo bgBufferInfo{};
+		bgBufferInfo.buffer = bgColorBuffers[i];
+		bgBufferInfo.offset = 0;
+		bgBufferInfo.range = sizeof(BGColorsObject);
 
 		VkDescriptorImageInfo imageInfo{};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		imageInfo.imageView = textureImageView;
 		imageInfo.sampler = textureSampler;
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+		std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -817,15 +909,31 @@ void HelloVulkanApplication::CreateDescriptorSets()
 		descriptorWrites[0].dstArrayElement = 0;
 		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
+		descriptorWrites[0].pBufferInfo = &tileBufferInfo;
 
 		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[1].dstSet = descriptorSets[i];
 		descriptorWrites[1].dstBinding = 1;
 		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &imageInfo;
+		descriptorWrites[1].pBufferInfo = &fgBufferInfo;
+
+		descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[2].dstSet = descriptorSets[i];
+		descriptorWrites[2].dstBinding = 2;
+		descriptorWrites[2].dstArrayElement = 0;
+		descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrites[2].descriptorCount = 1;
+		descriptorWrites[2].pBufferInfo = &bgBufferInfo;
+
+		descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[3].dstSet = descriptorSets[i];
+		descriptorWrites[3].dstBinding = 3;
+		descriptorWrites[3].dstArrayElement = 0;
+		descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[3].descriptorCount = 1;
+		descriptorWrites[3].pImageInfo = &imageInfo;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
@@ -1319,21 +1427,22 @@ void HelloVulkanApplication::RecordCommandBuffer(VkCommandBuffer commandBuffer, 
 
 void HelloVulkanApplication::UpdateUniformBuffer(int currentFrame)
 {
-	static auto startTime = std::chrono::high_resolution_clock::now();
+	static int frame = 0;
+	frame++;
+	if (frame % 60 == 0)
+	{
+		for (int i = 0; i < MAX_TILES; i++)
+		{
+			tileData.tileIndices[i] = (i + rand()) % TERMINAL_WIDTH;
+			fgColorData.colors[i] = glm::vec4(float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, 1.0f);
+			bgColorData.colors[i] = glm::vec4(float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, 1.0f);
+		}
+	}
 
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-	time = 0;
-
-	UniformBufferObject ubo{};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-	ubo.proj[1][1] *= -1; //Flip Y, because GLM uses OpenGL coords
-
-	memcpy(uniformBuffersMapped[currentFrame], &ubo, sizeof(ubo));
+	memcpy(tileUniformBuffersMapped[currentFrame], &tileData, sizeof(tileData));
+	memcpy(fgColorBuffersMapped[currentFrame], &fgColorData, sizeof(fgColorData));
+	memcpy(bgColorBuffersMapped[currentFrame], &bgColorData, sizeof(bgColorData));
+	
 }
 
 void HelloVulkanApplication::DrawFrame()
@@ -1430,8 +1539,14 @@ void HelloVulkanApplication::Cleanup()
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-		vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+		vkDestroyBuffer(device, tileUniformBuffers[i], nullptr);
+		vkFreeMemory(device, tileUniformBuffersMemory[i], nullptr);
+
+		vkDestroyBuffer(device, fgColorBuffers[i], nullptr);
+		vkFreeMemory(device, fgColorBuffersMemory[i], nullptr);
+
+		vkDestroyBuffer(device, bgColorBuffers[i], nullptr);
+		vkFreeMemory(device, bgColorBuffersMemory[i], nullptr);
 	}
 
 	vkDestroyDescriptorPool(device, descriptorPool, nullptr);
