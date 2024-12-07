@@ -22,6 +22,7 @@
 #include "Debug/Profiling.h"
 #include "Render/VulkanTest.h"
 #include "Render/Fonts/FontManager.h"
+#include "Render/Terminal.h"
 
 using namespace std;
 
@@ -192,32 +193,32 @@ Direction ReadDirection(Direction currentRotation)
 
     switch (terminal_read())
     {
-    case TK_K:
-    case TK_UP:
+    case GLFW_KEY_K:
+    case GLFW_KEY_UP:
         direction = North;
         break;
-    case TK_U:
+    case GLFW_KEY_U:
         direction = NorthEast;
         break;
-    case TK_L:
-    case TK_RIGHT:
+    case GLFW_KEY_L:
+    case GLFW_KEY_RIGHT:
         direction = East;
         break;
-    case TK_N:
+    case GLFW_KEY_N:
         direction = SouthEast;
         break;
-    case TK_J:
-    case TK_DOWN:
+    case GLFW_KEY_J:
+    case GLFW_KEY_DOWN:
         direction = South;
         break;
-    case TK_B:
+    case GLFW_KEY_B:
         direction = SouthWest;
         break;
-    case TK_H:
-    case TK_LEFT:
+    case GLFW_KEY_H:
+    case GLFW_KEY_LEFT:
         direction = West;
         break;
-    case TK_Y:
+    case GLFW_KEY_Y:
         direction = NorthWest;
         break;
     }
@@ -233,24 +234,10 @@ void InitManagers()
 
 int main(int argc, char* argv[])
 {
-    { //Vulkan Test!
-        HelloVulkanApplication app;
-        
-        try {
-            app.Run();
-        }
-        catch (const std::exception& e) {
-            std::cerr << e.what() << std::endl;
-            return EXIT_FAILURE;
-        }
-
-        return EXIT_SUCCESS;
-    }
-
     //Initialize Random
     srand(1);
 
-    Vec2 size(128, 64);
+    Vec2 size(64, 64);
     THandle<Map> map;
     THandle<TileMemory> memory;
     Location playerLoc = Location(1, 1, 0);
@@ -274,7 +261,6 @@ int main(int argc, char* argv[])
     //Window gameWindow(std::string("Game window"), { 0, 1, 0, 1 });
     Panel* mainGamePanel = uiManager.CreateWindow<Panel>(std::string("Main Game Panel"), Anchors{ 0,1,0,1 }, gameWindow);
     Window* renderWindow = uiManager.CreateWindow<Window>(std::string("Render Window"), Anchors{ 0, 1, 0, 1, 1, -1, 1, -1}, mainGamePanel);
-    renderWindow->m_layer = 0;
 
     Panel* testPanel = uiManager.CreateWindow<Panel>(std::string("Test Panel"), Anchors{ 0, .5, .8, 1 }, renderWindow);
     Panel* testPanel2 = uiManager.CreateWindow<Panel>(std::string("Test Panel 2"), Anchors{.5, 1, .8, 1, 1}, renderWindow);
@@ -286,23 +272,6 @@ int main(int argc, char* argv[])
     Bar* ybar = uiManager.CreateWindow<Bar>(std::string("YBar"), Anchors{ 0, 1, 1, 1, 3, -1, -2, -1 }, testPanel2);
 
     uiManager.ApplySettingsToAllWindows();
-
-    std::vector<int> test;
-    test.push_back(1);
-    test.push_back(3);
-    test.push_back(5);
-    test.push_back(7);
-
-    RogueSaveManager::OpenWriteSaveFile("Test.rsf");
-    RogueSaveManager::Write("Test", test);
-    RogueSaveManager::CloseWriteSaveFile();
-
-    Material load;
-
-    RogueSaveManager::OpenReadSaveFile("Test.rsf");
-    RogueSaveManager::Read("Test", test);
-    RogueSaveManager::CloseReadSaveFile();
-
     InitManagers();
 
     if (RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf"))
@@ -349,7 +318,7 @@ int main(int argc, char* argv[])
         }
     }
 
-    char k;
+    int k;
     int x = 80, y = 40;
     int pos_x = 40;
     int pos_y = 20;
@@ -357,10 +326,6 @@ int main(int argc, char* argv[])
     wchar_t wbuffer[50];
 
     terminal_open();
-    std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
-    terminal_set(&buffer[0]);
-    terminal_set("input: filter = [keyboard, mouse+]");
-    terminal_set("window.resizeable=true");
     terminal_print(34, 20, "Hello World! I am here!");
     terminal_refresh();
 
@@ -371,24 +336,26 @@ int main(int argc, char* argv[])
 
     bool shouldBreak = false;
     long frame = 0;
-    while (!shouldBreak) {
+    while (!shouldBreak && !terminal_should_close()) {
+        glfwPollEvents();
+
         if (terminal_has_input())
         {
             k = terminal_read();
         }
         switch (k)
         {
-        case TK_Q:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_Q:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 RogueSaveManager::DeleteSaveFile("MySaveFile.rsf");
                 RogueSaveManager::DeleteSaveFile("UISettings.rsf");
             }
             shouldBreak = true;
             break;
-        case TK_H:
-        case TK_LEFT:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_H:
+        case GLFW_KEY_LEFT:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(-1, 0);
             }
@@ -400,9 +367,9 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::West));
             }
             break;
-        case TK_K:
-        case TK_UP:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_K:
+        case GLFW_KEY_UP:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(0, 1);
             }
@@ -414,9 +381,9 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::North));
             }
             break;
-        case TK_J:
-        case TK_DOWN:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_J:
+        case GLFW_KEY_DOWN:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(0, -1);
             }
@@ -428,9 +395,9 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::South));
             }
             break;
-        case TK_L:
-        case TK_RIGHT:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_L:
+        case GLFW_KEY_RIGHT:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(1, 0);
             }
@@ -442,8 +409,8 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::East));
             }
             break;
-        case TK_Y:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_Y:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(-1, 1);
             }
@@ -455,8 +422,8 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::NorthWest));
             }
             break;
-        case TK_U:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_U:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(1, 1);
             }
@@ -468,8 +435,8 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::NorthEast));
             }
             break;
-        case TK_B:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_B:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(-1, -1);
             }
@@ -481,8 +448,8 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::SouthWest));
             }
             break;
-        case TK_N:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_N:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(1, -1);
             }
@@ -494,11 +461,11 @@ int main(int argc, char* argv[])
                 memory->Move(VectorFromDirection(Direction::SouthEast));
             }
             break;
-        case TK_SPACE:
+        case GLFW_KEY_SPACE:
             map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
-        case TK_EQUALS:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_EQUAL:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 maxPass = maxPass + 1;
             }
@@ -508,8 +475,8 @@ int main(int argc, char* argv[])
                 view.SetRadius(radius);
             }
             break;
-        case TK_MINUS:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_MINUS:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 maxPass = std::max(1, maxPass - 1);
             }
@@ -519,7 +486,7 @@ int main(int argc, char* argv[])
                 view.SetRadius(radius);
             }
             break;
-        case TK_ENTER:
+        case GLFW_KEY_ENTER:
             if (!warpPosition.GetValid())
             {
                 warpPosition = playerLoc;
@@ -531,7 +498,7 @@ int main(int argc, char* argv[])
                 map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
                 map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
 
-                if (terminal_state(TK_SHIFT))
+                if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
                 {
                     Direction direction = ReadDirection(lookDirection);
                     map->CreateDirectionalPortal(warpPosition.AsVec2(), playerLoc.AsVec2(), direction);
@@ -543,7 +510,7 @@ int main(int argc, char* argv[])
                 warpPosition = Location();
             }
             break;
-        case TK_D:
+        case GLFW_KEY_D:
             if (!warpPosition.GetValid())
             {
                 warpPosition = playerLoc;
@@ -564,8 +531,8 @@ int main(int argc, char* argv[])
                 warpPosition = Location();
             }
             break;
-        case TK_S:
-            if (terminal_state(TK_SHIFT))
+        case GLFW_KEY_S:
+            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 ROGUE_PROFILE_SECTION("Create Save File");
                 RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
@@ -587,8 +554,8 @@ int main(int argc, char* argv[])
                 map->SetTile(playerLoc.AsVec2(), 2);
             }
             break;
-        case TK_R:
-            if (!terminal_state(TK_SHIFT))
+        case GLFW_KEY_R:
+            if (!terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 map->Reset();
                 map->FillTilesExc(Vec2(0, 0), Vec2(size.x - 0, size.y - 0), 1);
@@ -596,7 +563,7 @@ int main(int argc, char* argv[])
             }
             bresenhamPoint = Vec2(0, 0);
             break;
-        case TK_C:
+        case GLFW_KEY_C:
             if (renderFlags & color)
             {
                 renderFlags ^= color;
@@ -621,31 +588,33 @@ int main(int argc, char* argv[])
                 renderFlags |= color;
             }
             break;
-        case TK_X:
+        case GLFW_KEY_X:
             renderFlags ^= background;
             break;
-        case TK_9:
+        case GLFW_KEY_9:
             lookDirection = Rotate(lookDirection, West);
             break;
-        case TK_0:
+        case GLFW_KEY_0:
             lookDirection = Rotate(lookDirection, East);
             break;
-        case TK_W:
+        case GLFW_KEY_W:
             memory->Wipe();
             break;
-        case TK_PAGEUP:
+        case GLFW_KEY_PAGE_UP:
+            //TODO: RESIZING
             x++;
             y++;
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
-            terminal_set(&buffer[0]);
+            //terminal_set(&buffer[0]);
             break;
-        case TK_PAGEDOWN:
+        case GLFW_KEY_PAGE_DOWN:
+            //TODO: RESIZING
             x--;
             y--;
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
-            terminal_set(&buffer[0]);
+            //terminal_set(&buffer[0]);
             break;
-        case TK_A: //Anchors!
+        case GLFW_KEY_A: //Anchors!
             Window* selected = nullptr;
 
             terminal_clear();
@@ -663,10 +632,10 @@ int main(int argc, char* argv[])
                 {
                     switch (terminal_read())
                     {
-                        case TK_MOUSE_MOVE:
+                        case GLFW_RAW_MOUSE_MOTION:
                         {
                             terminal_clear();
-                            gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                            gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_height });
                             gameWindow->RenderSelection();
                             Window* hovered = gameWindow->GetSelectedWindow();
                             if (hovered != nullptr)
@@ -676,7 +645,7 @@ int main(int argc, char* argv[])
                             terminal_refresh();
                             break;
                         }
-                        case TK_MOUSE_LEFT:
+                        case GLFW_MOUSE_BUTTON_LEFT:
                             selected = gameWindow->GetSelectedWindow();
                             break;
                     }
@@ -687,44 +656,44 @@ int main(int argc, char* argv[])
             while (moving)
             {
                 terminal_clear();
-                gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_height() });
                 gameWindow->RenderContent(0);
                 terminal_refresh();
 
                 if (terminal_has_input())
                 {
-                    if (terminal_state(TK_SHIFT))
+                    if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
                     {
                         switch (terminal_peek())
                         {
-                            case TK_UP:
+                            case GLFW_KEY_UP:
                                 selected->m_anchors.minYOffset--;
                                 break;
-                            case TK_DOWN:
+                            case GLFW_KEY_DOWN:
                                 selected->m_anchors.maxYOffset++;
                                 break;
-                            case TK_LEFT:
+                            case GLFW_KEY_LEFT:
                                 selected->m_anchors.minXOffset--;
                                 break;
-                            case TK_RIGHT:
+                            case GLFW_KEY_RIGHT:
                                 selected->m_anchors.maxXOffset++;
                                 break;
                         }
                     }
-                    else if (terminal_state(TK_CONTROL))
+                    else if (terminal_get_key(GLFW_KEY_LEFT_CONTROL))
                     {
                         switch (terminal_peek())
                         {
-                        case TK_UP:
+                        case GLFW_KEY_UP:
                             selected->m_anchors.maxYOffset--;
                             break;
-                        case TK_DOWN:
+                        case GLFW_KEY_DOWN:
                             selected->m_anchors.minYOffset++;
                             break;
-                        case TK_LEFT:
+                        case GLFW_KEY_LEFT:
                             selected->m_anchors.maxXOffset--;
                             break;
-                        case TK_RIGHT:
+                        case GLFW_KEY_RIGHT:
                             selected->m_anchors.minXOffset++;
                             break;
                         }
@@ -733,19 +702,19 @@ int main(int argc, char* argv[])
                     {
                         switch (terminal_peek())
                         {
-                            case TK_UP:
+                            case GLFW_KEY_UP:
                                 selected->m_anchors.minYOffset--;
                                 selected->m_anchors.maxYOffset--;
                                 break;
-                            case TK_DOWN:
+                            case GLFW_KEY_DOWN:
                                 selected->m_anchors.minYOffset++;
                                 selected->m_anchors.maxYOffset++;
                                 break;
-                            case TK_LEFT:
+                            case GLFW_KEY_LEFT:
                                 selected->m_anchors.minXOffset--;
                                 selected->m_anchors.maxXOffset--;
                                 break;
-                            case TK_RIGHT:
+                            case GLFW_KEY_RIGHT:
                                 selected->m_anchors.minXOffset++;
                                 selected->m_anchors.maxXOffset++;
                                 break;
@@ -754,7 +723,7 @@ int main(int argc, char* argv[])
 
                     switch (terminal_read())
                     {
-                    case TK_X: {
+                    case GLFW_KEY_X: {
                         char buf1[50];
                         std::snprintf(buf1, 50, "");
                         terminal_read_str(1, 1, &buf1[0], 50);
@@ -768,7 +737,7 @@ int main(int argc, char* argv[])
                         selected->m_anchors.maxXOffset = 0;
                         break;
                     }
-                    case TK_Y: {
+                    case GLFW_KEY_Y: {
                         char buf1[50];
                         std::snprintf(buf1, 50, "");
                         terminal_read_str(1, 1, &buf1[0], 50);
@@ -782,16 +751,16 @@ int main(int argc, char* argv[])
                         selected->m_anchors.maxYOffset = 0;
                         break;
                     }
-                    case TK_Q:
+                    case GLFW_KEY_Q:
                         moving = false;
                         uiManager.CreateSettingsForAllWindows();
                         uiManager.SaveSettings();
                         break;
-                    case TK_P:
+                    case GLFW_KEY_P:
                         while (true)
                         {
                             terminal_clear();
-                            gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+                            gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_width() });
                             gameWindow->RenderSelection();
                             Window* hovered = gameWindow->GetSelectedWindow();
                             if (hovered != nullptr)
@@ -800,7 +769,7 @@ int main(int argc, char* argv[])
                             }
                             terminal_refresh();
 
-                            if (terminal_has_input() && terminal_read() == TK_MOUSE_LEFT)
+                            if (terminal_has_input() && terminal_read() == GLFW_MOUSE_BUTTON_LEFT)
                             {
                                 selected->SetParent(hovered);
                                 break;
@@ -813,7 +782,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        k = TK_G;
+        k = GLFW_KEY_G;
 
         terminal_clear();
 
@@ -821,7 +790,7 @@ int main(int argc, char* argv[])
         auto frameTime = chrono::duration_cast<chrono::duration<float>>(currentTime - clock);
 
         //Update UI Layout
-        gameWindow->UpdateLayout({ 0, 0, (short)terminal_state(TK_WIDTH), (short)terminal_state(TK_HEIGHT) });
+        gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_height() });
 
         LOS::Calculate(view, playerLoc, lookDirection, maxPass);
         memory->Update(view);
@@ -867,12 +836,12 @@ int main(int argc, char* argv[])
         xbar->SetColor(Color(255, 100, 0));
         xbar->SetFill(((float)playerLoc.x()) / (map->m_size.x - 1), 0.03f);
         xlabel->SetString("x:");
-        xlabel->SetAlignment(TK_ALIGN_DEFAULT);
+        //xlabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
 
         ybar->SetColor(Color(255, 100, 0));
         ybar->SetFill(((float)playerLoc.y()) / (map->m_size.y - 1), 0.03f);
         ylabel->SetString("y:");
-        ylabel->SetAlignment(TK_ALIGN_DEFAULT);
+        //ylabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
         gameWindow->RenderContent(frameTime.count());
 
         {

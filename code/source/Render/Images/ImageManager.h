@@ -27,6 +27,7 @@ public:
 	std::shared_ptr<void> LoadImage(RogueResources::LoadContext& loadContext);
 
 	RogueImage* CreateEmptyImage(int x, int y, int texChannels);
+	RogueImage* PadToSize(RogueImage& image, Vec2 size);
 	RogueImage* CreateAtlas(std::vector<RogueImage*>& images, std::vector<Vec2>& positions, int size);
 
 	static ImageManager* Get() { return manager; }

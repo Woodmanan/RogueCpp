@@ -58,6 +58,9 @@ struct Vertex {
 
 struct UniformTileObject {
 	glm::uint tileIndices[MAX_TILES];
+};
+
+struct UniformFontData {
 	glm::vec2 lowerUVs[MAX_CHARACTERS];
 	glm::vec2 upperUVs[MAX_CHARACTERS];
 };
@@ -70,15 +73,19 @@ struct BGColorsObject {
 	glm::vec4 colors[MAX_TILES];
 };
 
-class HelloVulkanApplication
+class VulkanTerminal
 {
 public:
-	void Run();
+	void Initialize();
+	void RenderFrame();
+	void Clear();
+	void ClearArea(int x, int y, int width, int height);
+	void Shutdown();
 
 	const uint WINDOW_WIDTH = 800;
 	const uint WINDOW_HEIGHT = 600;
 	const int MAX_FRAMES_IN_FLIGHT = 2;
-	const std::wstring preloadChars = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()[]{}\\|/<>,.:;?-=_+~";
+	const std::wstring preloadChars = L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()[]{}\\|/<>,.:;?-=_+~ \u2588\u2550\u2551\u2554\u2557\u255A\u255D";
 	
 	const std::vector<const char*> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
@@ -90,8 +97,8 @@ public:
 	VK_KHR_UNIFORM_BUFFER_STANDARD_LAYOUT_EXTENSION_NAME
 	};
 
-	const uint TERMINAL_WIDTH = 81;
-	const uint TERMINAL_HEIGHT = 41;
+	static const uint TERMINAL_WIDTH = 51;
+	static const uint TERMINAL_HEIGHT = 31;
 
 	std::vector<Vertex> vertices;
 	std::vector<uint16_t> indices;
@@ -101,6 +108,12 @@ public:
 #else
 	const bool enableValidationLayers = false;
 #endif
+
+	void SetFGColor(Color inColor) { fgColor = inColor; }
+	void SetBGColor(Color inColor) { bgColor = inColor; }
+	void SetCharacter(int x, int y, int characterCode);
+	void SetDepth(short newDepth);
+	GLFWwindow* GetWindow() { return window; }
 
 private:
 	struct QueueFamilyIndices {
@@ -145,6 +158,10 @@ private:
 	std::vector<VkDeviceMemory> tileUniformBuffersMemory;
 	std::vector<void*> tileUniformBuffersMapped;
 
+	std::vector<VkBuffer> fontUniformBuffers;
+	std::vector<VkDeviceMemory> fontUniformBuffersMemory;
+	std::vector<void*> fontUniformBuffersMapped;
+
 	std::vector<VkBuffer> fgColorBuffers;
 	std::vector<VkDeviceMemory> fgColorBuffersMemory;
 	std::vector<void*> fgColorBuffersMapped;
@@ -165,8 +182,15 @@ private:
 
 	RogueResources::TResourcePointer<RogueFont> font;
 	UniformTileObject tileData;
+	UniformFontData fontData;
 	FGColorsObject fgColorData;
 	BGColorsObject bgColorData;
+
+	Color fgColor;
+	Color bgColor;
+
+	std::array<short, MAX_TILES> tileDepths;
+	short depth;
 
 	//Rendering Sync tools
 	int currentFrame = 0;

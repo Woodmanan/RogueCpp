@@ -3,6 +3,7 @@
 #include "Data/SaveManager.h"
 #include "Data/RogueDataManager.h"
 #include "Render/Windows/Window.h"
+#include "Render/Terminal.h"
 #include "LOS.h"
 #include <algorithm>
 
@@ -41,7 +42,7 @@ void TileMemory::Render(Window* window)
 {
 	ASSERT(window != nullptr);
 	Color black = Color(0x00, 0x00, 0x00, 0xFF);
-	Color empty = Color(0x00, 0x00, 0x00, 0x00);
+	Color empty = Color(0x03, 0x03, 0x03, 0xFF);
 	terminal_bkcolor(empty);
 
 	for (int i = 0; i < window->m_rect.w; i++)

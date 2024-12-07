@@ -22,6 +22,7 @@ RogueFont::~RogueFont()
 
 bool RogueFont::SetSize(uint xSize, uint ySize)
 {
+	m_size = Vec2((int)xSize, (int)ySize);
 	return !FT_Set_Pixel_Sizes(m_face, xSize, ySize);
 }
 
@@ -106,9 +107,29 @@ bool RogueFont::CreateAtlas()
 		Vec2 rEnd = rStart + Vec2(images[i]->m_width, images[i]->m_height);
 		m_uvStarts.push_back({ ((float) rStart.x) / atlasSize, ((float) rStart.y) / atlasSize });
 		m_uvEnds.push_back({ ((float)rEnd.x) / atlasSize, ((float)rEnd.y) / atlasSize });
+		m_scaling.push_back({ ((float) std::max(images[i]->m_width, images[i]->m_height)) / std::max(m_size.x, m_size.y) });
+	}
+
+	float max = *std::max_element(m_scaling.begin(), m_scaling.end());
+	for (int i = 0; i < index; i++)
+	{
+		m_scaling[i] /= max;
 	}
 
 	return m_atlas != nullptr;
+}
+
+int RogueFont::GetIndexForGlyph(FT_ULong glyph)
+{
+	//TODO: Return missing character index
+	if (m_glyphIndices.contains(glyph))
+	{
+		return m_glyphIndices[glyph];
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 void RogueFont::AddImageForGlyph(FT_ULong glyph, FT_Bitmap& bitmap)
@@ -127,7 +148,10 @@ void RogueFont::AddImageForGlyph(FT_ULong glyph, FT_Bitmap& bitmap)
 		scanline = scanline + bitmap.pitch;
 	}
 
-	m_glyphs[glyph] = image;
+	RogueImage* padded = ImageManager::Get()->PadToSize(image, m_size);
+
+	m_glyphs[glyph] = *padded;
+	delete padded;
 }
 
 void RogueFont::SetRow(RogueImage& image, int row, unsigned char* scanline, unsigned char pixelMode)

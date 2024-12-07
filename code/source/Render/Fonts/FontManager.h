@@ -30,17 +30,20 @@ public:
 
 	bool CreateAtlas();
 	RogueImage* GetAtlas() { return m_atlas; }
+	int GetIndexForGlyph(FT_ULong glyph);
 
 	//Atlas variables
 	std::map<FT_ULong, int> m_glyphIndices;
 	std::vector<glm::vec2> m_uvStarts;
 	std::vector<glm::vec2> m_uvEnds;
+	std::vector<float> m_scaling;
 
 private:
 	void AddImageForGlyph(FT_ULong glyph, FT_Bitmap& bitmap);
 	void SetRow(RogueImage& image, int row, unsigned char* scanline, unsigned char pixelMode);
 	std::vector<unsigned char> m_buffer;
 	RogueImage* m_atlas = nullptr;
+	Vec2 m_size;
 };
 
 class FontManager

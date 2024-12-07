@@ -35,7 +35,7 @@ void RogueImage::InsertImage(RogueImage& image, Vec2 position)
 {
 	ASSERT(m_textureChannels == image.m_textureChannels); //We don't support copying from different channels yet.
 	ASSERT(position.x >= 0 && position.y >= 0);
-	ASSERT(position.x + image.m_width < m_width && position.y + image.m_height < m_height);
+	ASSERT(position.x + image.m_width <= m_width && position.y + image.m_height <= m_height);
 
 	for (int imgY = 0; imgY < image.m_height; imgY++)
 	{
@@ -103,6 +103,25 @@ RogueImage* ImageManager::CreateEmptyImage(int x, int y, int texChannels)
 	image->m_textureChannels = texChannels;
 	image->m_pixels.resize(x * y * texChannels);
 	return image;
+}
+
+RogueImage* ImageManager::PadToSize(RogueImage& image, Vec2 size)
+{
+	size = Vec2(std::max<short>(size.x, image.m_width), std::max<short>(size.y, image.m_height));
+	Vec2 offset = size - Vec2(image.m_width, image.m_height);
+	Vec2 leftPad = offset / 2;
+
+	RogueImage* copy = CreateEmptyImage(size.x, size.y, image.m_textureChannels);
+
+	for (int j = 0; j < image.m_height; j++)
+	{
+		for (int i = 0; i < image.m_width; i++)
+		{
+			*copy->GetPixel(j + leftPad.y, i + leftPad.x) = *image.GetPixel(j, i);
+		}
+	}
+
+	return copy;
 }
 
 RogueImage* ImageManager::CreateAtlas(std::vector<RogueImage*>& images, std::vector<Vec2>& positions, int size)

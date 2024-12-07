@@ -118,19 +118,17 @@ public:
 	virtual void WriteInternals()
 	{
 		RogueSaveManager::AddOffset();
-		RogueSaveManager::Write("Buffer", buffer);
+		RogueSaveManager::WriteAsBuffer("Buffer", buffer);
 		RogueSaveManager::RemoveOffset();
 	}
 
 	virtual void ReadInternals()
 	{
 		RogueSaveManager::AddOffset();
-		RogueSaveManager::Read("Buffer", buffer);
+		RogueSaveManager::ReadAsBuffer("Buffer", buffer);
 		RogueSaveManager::RemoveOffset();
 	}
 
-//protected:
-	//char* bufferStart;
 	std::vector<char> buffer;
 protected:
 	void InitializeHeader(int size)

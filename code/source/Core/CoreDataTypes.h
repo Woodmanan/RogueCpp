@@ -1,6 +1,7 @@
 #pragma once
 #include "Data/SaveManager.h"
-#include "../../libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
+#define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
+#include "glm/glm.hpp"
 
 class Tile;
 class TileNeighbors;
@@ -31,6 +32,11 @@ struct Vec2
         this->x += rhs.x;
         this->y += rhs.y;
         return *this;
+    }
+
+    bool operator==(const Vec2& rhs)
+    {
+        return this->x == rhs.x && this->y == rhs.y;
     }
 };
 
@@ -325,9 +331,9 @@ inline int IntDivisionCeil(int num, int denom)
 union Color
 {
     struct {
-        uchar b;
-        uchar g;
         uchar r;
+        uchar g;
+        uchar b;
         uchar a;
     };
     uint32_t color;
@@ -336,30 +342,21 @@ union Color
 
     Color(uchar _r, uchar _g, uchar _b)
     {
-        a = 255;
         r = _r;
         g = _g;
         b = _b;
-
-        ASSERT(color == color_from_argb(255, _r, _g, _b));
+        a = 255;
     }
 
     Color(uchar _r, uchar _g, uchar _b, uchar _a)
     {
-        a = _a;
         r = _r;
         g = _g;
         b = _b;
-
-        ASSERT(color == color_from_argb(_a, _r, _g, _b));
+        a = _a;
     }
 
-    Color(color_t colorT)
-    {
-        color = colorT;
-    }
-
-    operator color_t() const { return color; }
+    operator glm::vec4() const { return glm::vec4(((float)r) / 255, ((float)g) / 255, ((float)b) / 255, ((float)a) / 255); }
 };
 
 template<typename T>

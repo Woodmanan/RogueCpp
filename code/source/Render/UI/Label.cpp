@@ -1,5 +1,6 @@
 #include "Label.h"
 #include "../RenderTools.h"
+#include "Render/Terminal.h"
 
 void Label::OnSizeUpdated()
 {

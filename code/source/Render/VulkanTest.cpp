@@ -11,15 +11,66 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 
-void HelloVulkanApplication::Run()
+void VulkanTerminal::Initialize()
 {
 	InitWindow();
 	InitVulkan();
-	MainLoop();
+}
+
+void VulkanTerminal::RenderFrame()
+{
+	DrawFrame();
+}
+
+void VulkanTerminal::Clear()
+{
+	for (int i = 0; i < MAX_TILES; i++)
+	{
+		tileData.tileIndices[i] = font->GetIndexForGlyph(L' ');
+		fgColorData.colors[i] = Color(0, 0, 0, 0);
+		bgColorData.colors[i] = Color(0, 0, 0, 0);
+		tileDepths[i] = 0;
+	}
+}
+
+void VulkanTerminal::ClearArea(int x, int y, int width, int height)
+{
+	width = std::min<int>(width, TERMINAL_WIDTH - x);
+	height = std::min<int>(height, TERMINAL_HEIGHT - y);
+	for (int xOff = 0; xOff < width; xOff++)
+	{
+		for (int yOff = 0; yOff < height; yOff++)
+		{
+			SetCharacter(x + xOff, y + yOff, L' ');
+		}
+	}
+}
+
+void VulkanTerminal::Shutdown()
+{
+	vkDeviceWaitIdle(device);
 	Cleanup();
 }
 
-void HelloVulkanApplication::InitWindow()
+void VulkanTerminal::SetCharacter(int x, int y, int characterCode)
+{
+	ASSERT(x >= 0 && x < TERMINAL_WIDTH && y >= 0 && y < TERMINAL_HEIGHT);
+	int index = y * TERMINAL_WIDTH + x;
+
+	if (tileDepths[index] > depth) { return; }
+
+	tileData.tileIndices[index] = font->GetIndexForGlyph(characterCode);
+	fgColorData.colors[index] = fgColor;
+	bgColorData.colors[index] = bgColor;
+	tileDepths[index] = depth;
+}
+
+void VulkanTerminal::SetDepth(short newDepth)
+{
+	depth = newDepth;
+}
+
+void VulkanTerminal::InitWindow()
 {
 	glfwInit();
 
@@ -28,10 +79,10 @@ void HelloVulkanApplication::InitWindow()
 	ASSERT(window != nullptr);
 	
 	glfwSetWindowUserPointer(window, this);
-	glfwSetFramebufferSizeCallback(window, HelloVulkanApplication::NotifyResize);
+	glfwSetFramebufferSizeCallback(window, VulkanTerminal::NotifyResize);
 }
 
-void HelloVulkanApplication::InitVulkan()
+void VulkanTerminal::InitVulkan()
 {
 	CreateInstance();
 	CreateSurface();
@@ -59,7 +110,7 @@ void HelloVulkanApplication::InitVulkan()
 }
 
 
-void HelloVulkanApplication::CreateInstance()
+void VulkanTerminal::CreateInstance()
 {
 	if (enableValidationLayers && !CheckValidationLayerSupport())
 	{
@@ -101,14 +152,14 @@ void HelloVulkanApplication::CreateInstance()
 	}
 }
 
-void HelloVulkanApplication::CreateSurface()
+void VulkanTerminal::CreateSurface()
 {
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}
 }
 
-bool HelloVulkanApplication::CheckValidationLayerSupport()
+bool VulkanTerminal::CheckValidationLayerSupport()
 {
 	uint32_t layerCount;
 	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -138,7 +189,7 @@ bool HelloVulkanApplication::CheckValidationLayerSupport()
 	return true;
 }
 
-bool HelloVulkanApplication::CheckDeviceExtensionSupport(VkPhysicalDevice device)
+bool VulkanTerminal::CheckDeviceExtensionSupport(VkPhysicalDevice device)
 {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -156,7 +207,7 @@ bool HelloVulkanApplication::CheckDeviceExtensionSupport(VkPhysicalDevice device
 	return requiredExtensions.empty();
 }
 
-void HelloVulkanApplication::PickPhysicalDevice()
+void VulkanTerminal::PickPhysicalDevice()
 {
 	uint32_t deviceCount;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -207,7 +258,7 @@ void HelloVulkanApplication::PickPhysicalDevice()
 	}
 }
 
-bool HelloVulkanApplication::IsDeviceSuitable(VkPhysicalDevice device)
+bool VulkanTerminal::IsDeviceSuitable(VkPhysicalDevice device)
 {
 	QueueFamilyIndices indices = FindQueueFamilies(device);
 	bool extensionsSupported = CheckDeviceExtensionSupport(device);
@@ -229,7 +280,7 @@ bool HelloVulkanApplication::IsDeviceSuitable(VkPhysicalDevice device)
 	return indices.IsComplete() && extensionsSupported && swapChainAdequate && features.samplerAnisotropy;
 }
 
-float HelloVulkanApplication::RateDevice(VkPhysicalDevice device)
+float VulkanTerminal::RateDevice(VkPhysicalDevice device)
 {
 	float score = 0;
 
@@ -247,7 +298,7 @@ float HelloVulkanApplication::RateDevice(VkPhysicalDevice device)
 	return score;
 }
 
-void HelloVulkanApplication::CreateLogicalDevice()
+void VulkanTerminal::CreateLogicalDevice()
 {
 	QueueFamilyIndices indices = FindQueueFamilies(physicalDevice);
 	ASSERT(indices.IsComplete());
@@ -297,7 +348,7 @@ void HelloVulkanApplication::CreateLogicalDevice()
 	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
-void HelloVulkanApplication::CreateSwapChain()
+void VulkanTerminal::CreateSwapChain()
 {
 	SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(physicalDevice);
 
@@ -355,7 +406,7 @@ void HelloVulkanApplication::CreateSwapChain()
 	swapChainExtent = extent;
 }
 
-void HelloVulkanApplication::CreateImageViews()
+void VulkanTerminal::CreateImageViews()
 {
 	swapChainImageViews.resize(swapChainImages.size());
 
@@ -365,7 +416,7 @@ void HelloVulkanApplication::CreateImageViews()
 	}
 }
 
-void HelloVulkanApplication::CreateRenderPass()
+void VulkanTerminal::CreateRenderPass()
 {
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapChainImageFormat;
@@ -412,7 +463,7 @@ void HelloVulkanApplication::CreateRenderPass()
 	}
 }
 
-void HelloVulkanApplication::CreateDescriptorSetLayout()
+void VulkanTerminal::CreateDescriptorSetLayout()
 {
 	//Can be used to describe a list of bindings - useful later for array of descriptors
 	VkDescriptorSetLayoutBinding tileLayoutBinding{};
@@ -422,28 +473,35 @@ void HelloVulkanApplication::CreateDescriptorSetLayout()
 	tileLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	tileLayoutBinding.pImmutableSamplers = nullptr; // Optional
 
+	VkDescriptorSetLayoutBinding fontLayoutBinding{};
+	fontLayoutBinding.binding = 1;
+	fontLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	fontLayoutBinding.descriptorCount = 1;
+	fontLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	fontLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
 	VkDescriptorSetLayoutBinding fgColorBinding{};
-	fgColorBinding.binding = 1;
+	fgColorBinding.binding = 2;
 	fgColorBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	fgColorBinding.descriptorCount = 1;
 	fgColorBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	fgColorBinding.pImmutableSamplers = nullptr; // Optional
 
 	VkDescriptorSetLayoutBinding bgColorBinding{};
-	bgColorBinding.binding = 2;
+	bgColorBinding.binding = 3;
 	bgColorBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	bgColorBinding.descriptorCount = 1;
 	bgColorBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	bgColorBinding.pImmutableSamplers = nullptr; // Optional
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-	samplerLayoutBinding.binding = 3;
+	samplerLayoutBinding.binding = 4;
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 4> bindings = { tileLayoutBinding, fgColorBinding, bgColorBinding, samplerLayoutBinding };
+	std::array<VkDescriptorSetLayoutBinding, 5> bindings = { tileLayoutBinding, fontLayoutBinding, fgColorBinding, bgColorBinding, samplerLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo{};
 	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -454,7 +512,7 @@ void HelloVulkanApplication::CreateDescriptorSetLayout()
 	}
 }
 
-void HelloVulkanApplication::CreateGraphicsPipeline()
+void VulkanTerminal::CreateGraphicsPipeline()
 {
 	auto vertShaderCode = readFile("../../../resources/shaders/vert.spv");
 	auto fragShaderCode = readFile("../../../resources/shaders/frag.spv");
@@ -606,7 +664,7 @@ void HelloVulkanApplication::CreateGraphicsPipeline()
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
 
-void HelloVulkanApplication::CreateFrameBuffers()
+void VulkanTerminal::CreateFrameBuffers()
 {
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
@@ -630,7 +688,7 @@ void HelloVulkanApplication::CreateFrameBuffers()
 	}
 }
 
-void HelloVulkanApplication::CreateCommandPool()
+void VulkanTerminal::CreateCommandPool()
 {
 	QueueFamilyIndices queueFamilyIndices = FindQueueFamilies(physicalDevice);
 
@@ -644,10 +702,10 @@ void HelloVulkanApplication::CreateCommandPool()
 	}
 }
 
-void HelloVulkanApplication::CreateFont()
+void VulkanTerminal::CreateFont()
 {
-	font = RogueResources::Load<RogueFont>("Font", "square.ttf");
-	font->SetSize(0, 64);
+	font = RogueResources::Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
+	font->SetSize(48, 48);
 
 	for (wchar_t c : preloadChars)
 	{
@@ -655,11 +713,12 @@ void HelloVulkanApplication::CreateFont()
 	}
 }
 
-void HelloVulkanApplication::CreateTextureImage()
+void VulkanTerminal::CreateTextureImage()
 {
 	//auto image = RogueResources::Load<RogueImage>("Image", "test.png");
 	
 	tileData = UniformTileObject();
+	fontData = UniformFontData();
 	fgColorData = FGColorsObject();
 	bgColorData = BGColorsObject();
 
@@ -668,8 +727,8 @@ void HelloVulkanApplication::CreateTextureImage()
 
 	for (size_t i = 0; i < std::min<size_t>(MAX_CHARACTERS, font->m_uvStarts.size()); i++)
 	{
-		tileData.lowerUVs[i] = font->m_uvStarts[i];
-		tileData.upperUVs[i] = font->m_uvEnds[i];
+		fontData.lowerUVs[i] = font->m_uvStarts[i];
+		fontData.upperUVs[i] = font->m_uvEnds[i];
 	}
 
 	VkDeviceSize imageSize = image->GetByteSize();
@@ -694,17 +753,17 @@ void HelloVulkanApplication::CreateTextureImage()
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void HelloVulkanApplication::CreateTextureImageView()
+void VulkanTerminal::CreateTextureImageView()
 {
 	textureImageView = CreateImageView(textureImage, VK_FORMAT_R8G8B8A8_SRGB);
 }
 
-void HelloVulkanApplication::CreateTextureSampler()
+void VulkanTerminal::CreateTextureSampler()
 {
 	VkSamplerCreateInfo samplerInfo{};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerInfo.magFilter = VK_FILTER_NEAREST;//VK_FILTER_LINEAR;
-	samplerInfo.minFilter = VK_FILTER_NEAREST;// VK_FILTER_LINEAR;
+	samplerInfo.magFilter = VK_FILTER_NEAREST;//VK_FILTER_LINEAR or VK_FILTER_NEAREST;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;// VK_FILTER_LINEAR;
 
 	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -731,7 +790,7 @@ void HelloVulkanApplication::CreateTextureSampler()
 	}
 }
 
-void HelloVulkanApplication::CreateVertices()
+void VulkanTerminal::CreateVertices()
 {
 	vertices.clear();
 	indices.clear();
@@ -767,7 +826,7 @@ void HelloVulkanApplication::CreateVertices()
 	ASSERT(indices.size() == (6 * TERMINAL_WIDTH * TERMINAL_HEIGHT));
 }
 
-void HelloVulkanApplication::CreateVertexBuffer()
+void VulkanTerminal::CreateVertexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
 
@@ -787,7 +846,7 @@ void HelloVulkanApplication::CreateVertexBuffer()
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void HelloVulkanApplication::CreateIndexBuffer()
+void VulkanTerminal::CreateIndexBuffer()
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
 
@@ -808,7 +867,7 @@ void HelloVulkanApplication::CreateIndexBuffer()
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 }
 
-void HelloVulkanApplication::CreateUniformBuffers()
+void VulkanTerminal::CreateUniformBuffers()
 {
 	//Tile buffers
 	VkDeviceSize tileBufferSize = sizeof(UniformTileObject);
@@ -820,6 +879,18 @@ void HelloVulkanApplication::CreateUniformBuffers()
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		CreateBuffer(tileBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, tileUniformBuffers[i], tileUniformBuffersMemory[i]);
 		vkMapMemory(device, tileUniformBuffersMemory[i], 0, tileBufferSize, 0, &tileUniformBuffersMapped[i]);
+	}
+
+	//Font buffers
+	VkDeviceSize fontBufferSize = sizeof(UniformFontData);
+
+	fontUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	fontUniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+	fontUniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		CreateBuffer(fontBufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontUniformBuffers[i], fontUniformBuffersMemory[i]);
+		vkMapMemory(device, fontUniformBuffersMemory[i], 0, fontBufferSize, 0, &fontUniformBuffersMapped[i]);
 	}
 
 	//FG Color buffers
@@ -847,7 +918,7 @@ void HelloVulkanApplication::CreateUniformBuffers()
 	}
 }
 
-void HelloVulkanApplication::CreateDescriptorPool()
+void VulkanTerminal::CreateDescriptorPool()
 {
 	std::array<VkDescriptorPoolSize, 2> poolSizes{};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -866,7 +937,7 @@ void HelloVulkanApplication::CreateDescriptorPool()
 	}
 }
 
-void HelloVulkanApplication::CreateDescriptorSets()
+void VulkanTerminal::CreateDescriptorSets()
 {
 	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
 	VkDescriptorSetAllocateInfo allocInfo{};
@@ -886,6 +957,11 @@ void HelloVulkanApplication::CreateDescriptorSets()
 		tileBufferInfo.offset = 0;
 		tileBufferInfo.range = sizeof(UniformTileObject);
 
+		VkDescriptorBufferInfo fontBufferInfo{};
+		fontBufferInfo.buffer = fontUniformBuffers[i];
+		fontBufferInfo.offset = 0;
+		fontBufferInfo.range = sizeof(UniformFontData);
+
 		VkDescriptorBufferInfo fgBufferInfo{};
 		fgBufferInfo.buffer = fgColorBuffers[i];
 		fgBufferInfo.offset = 0;
@@ -901,7 +977,7 @@ void HelloVulkanApplication::CreateDescriptorSets()
 		imageInfo.imageView = textureImageView;
 		imageInfo.sampler = textureSampler;
 
-		std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
+		std::array<VkWriteDescriptorSet, 5> descriptorWrites{};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
@@ -917,7 +993,7 @@ void HelloVulkanApplication::CreateDescriptorSets()
 		descriptorWrites[1].dstArrayElement = 0;
 		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = &fgBufferInfo;
+		descriptorWrites[1].pBufferInfo = &fontBufferInfo;
 
 		descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[2].dstSet = descriptorSets[i];
@@ -925,21 +1001,29 @@ void HelloVulkanApplication::CreateDescriptorSets()
 		descriptorWrites[2].dstArrayElement = 0;
 		descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[2].descriptorCount = 1;
-		descriptorWrites[2].pBufferInfo = &bgBufferInfo;
+		descriptorWrites[2].pBufferInfo = &fgBufferInfo;
 
 		descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[3].dstSet = descriptorSets[i];
 		descriptorWrites[3].dstBinding = 3;
 		descriptorWrites[3].dstArrayElement = 0;
-		descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorWrites[3].descriptorCount = 1;
-		descriptorWrites[3].pImageInfo = &imageInfo;
+		descriptorWrites[3].pBufferInfo = &bgBufferInfo;
+
+		descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrites[4].dstSet = descriptorSets[i];
+		descriptorWrites[4].dstBinding = 4;
+		descriptorWrites[4].dstArrayElement = 0;
+		descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		descriptorWrites[4].descriptorCount = 1;
+		descriptorWrites[4].pImageInfo = &imageInfo;
 
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 	}
 }
 
-void HelloVulkanApplication::CreateCommandBuffers()
+void VulkanTerminal::CreateCommandBuffers()
 {
 	commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
@@ -954,7 +1038,7 @@ void HelloVulkanApplication::CreateCommandBuffers()
 	}
 }
 
-void HelloVulkanApplication::CreateSyncObjects()
+void VulkanTerminal::CreateSyncObjects()
 {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
@@ -977,7 +1061,7 @@ void HelloVulkanApplication::CreateSyncObjects()
 	}
 }
 
-VkCommandBuffer HelloVulkanApplication::BeginSingleTimeCommands()
+VkCommandBuffer VulkanTerminal::BeginSingleTimeCommands()
 {
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -997,7 +1081,7 @@ VkCommandBuffer HelloVulkanApplication::BeginSingleTimeCommands()
 	return commandBuffer;
 }
 
-void HelloVulkanApplication::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
+void VulkanTerminal::EndSingleTimeCommands(VkCommandBuffer commandBuffer)
 {
 	vkEndCommandBuffer(commandBuffer);
 
@@ -1012,7 +1096,7 @@ void HelloVulkanApplication::EndSingleTimeCommands(VkCommandBuffer commandBuffer
 	vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
-VkShaderModule HelloVulkanApplication::CreateShaderModule(const std::vector<char>& code)
+VkShaderModule VulkanTerminal::CreateShaderModule(const std::vector<char>& code)
 {
 	VkShaderModuleCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1027,7 +1111,7 @@ VkShaderModule HelloVulkanApplication::CreateShaderModule(const std::vector<char
 	return shaderModule;
 }
 
-void HelloVulkanApplication::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
+void VulkanTerminal::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 {
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1055,7 +1139,7 @@ void HelloVulkanApplication::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags 
 	vkBindBufferMemory(device, buffer, bufferMemory, 0);
 }
 
-void HelloVulkanApplication::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
+void VulkanTerminal::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 {
 	VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -1068,7 +1152,7 @@ void HelloVulkanApplication::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize
 	EndSingleTimeCommands(commandBuffer);
 }
 
-void HelloVulkanApplication::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+void VulkanTerminal::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
 {
 	VkImageCreateInfo imageInfo{};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -1104,7 +1188,7 @@ void HelloVulkanApplication::CreateImage(uint32_t width, uint32_t height, VkForm
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VkImageView HelloVulkanApplication::CreateImageView(VkImage image, VkFormat format)
+VkImageView VulkanTerminal::CreateImageView(VkImage image, VkFormat format)
 {
 	VkImageViewCreateInfo viewInfo{};
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -1125,7 +1209,7 @@ VkImageView HelloVulkanApplication::CreateImageView(VkImage image, VkFormat form
 	return imageView;
 }
 
-void HelloVulkanApplication::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+void VulkanTerminal::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
 	VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -1177,7 +1261,7 @@ void HelloVulkanApplication::TransitionImageLayout(VkImage image, VkFormat forma
 	EndSingleTimeCommands(commandBuffer);
 }
 
-void HelloVulkanApplication::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+void VulkanTerminal::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
 	VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
@@ -1210,7 +1294,7 @@ void HelloVulkanApplication::CopyBufferToImage(VkBuffer buffer, VkImage image, u
 	EndSingleTimeCommands(commandBuffer);
 }
 
-HelloVulkanApplication::QueueFamilyIndices HelloVulkanApplication::FindQueueFamilies(VkPhysicalDevice device)
+VulkanTerminal::QueueFamilyIndices VulkanTerminal::FindQueueFamilies(VkPhysicalDevice device)
 {
 	QueueFamilyIndices familyIndices;
 
@@ -1246,7 +1330,7 @@ HelloVulkanApplication::QueueFamilyIndices HelloVulkanApplication::FindQueueFami
 	return familyIndices;
 }
 
-HelloVulkanApplication::SwapChainSupportDetails HelloVulkanApplication::QuerySwapChainSupport(VkPhysicalDevice device)
+VulkanTerminal::SwapChainSupportDetails VulkanTerminal::QuerySwapChainSupport(VkPhysicalDevice device)
 {
 	SwapChainSupportDetails details;
 
@@ -1271,7 +1355,7 @@ HelloVulkanApplication::SwapChainSupportDetails HelloVulkanApplication::QuerySwa
 	return details;
 }
 
-uint32_t HelloVulkanApplication::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+uint32_t VulkanTerminal::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -1285,7 +1369,7 @@ uint32_t HelloVulkanApplication::FindMemoryType(uint32_t typeFilter, VkMemoryPro
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-VkSurfaceFormatKHR HelloVulkanApplication::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR VulkanTerminal::ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& availableFormat : availableFormats) {
 		if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
@@ -1296,7 +1380,7 @@ VkSurfaceFormatKHR HelloVulkanApplication::ChooseSwapSurfaceFormat(const std::ve
 	return availableFormats[0];
 }
 
-VkPresentModeKHR HelloVulkanApplication::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+VkPresentModeKHR VulkanTerminal::ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
 	for (const auto& availablePresentMode : availablePresentModes) {
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -1307,7 +1391,7 @@ VkPresentModeKHR HelloVulkanApplication::ChooseSwapPresentMode(const std::vector
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
 
-VkExtent2D HelloVulkanApplication::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D VulkanTerminal::ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities)
 {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
 		return capabilities.currentExtent;
@@ -1328,7 +1412,7 @@ VkExtent2D HelloVulkanApplication::ChooseSwapExtent(const VkSurfaceCapabilitiesK
 	}
 }
 
-void HelloVulkanApplication::RecreateSwapChain()
+void VulkanTerminal::RecreateSwapChain()
 {
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(window, &width, &height);
@@ -1346,7 +1430,7 @@ void HelloVulkanApplication::RecreateSwapChain()
 	CreateFrameBuffers();
 }
 
-void HelloVulkanApplication::CleanupSwapChain()
+void VulkanTerminal::CleanupSwapChain()
 {
 	for (auto framebuffer : swapChainFramebuffers)
 	{
@@ -1361,13 +1445,13 @@ void HelloVulkanApplication::CleanupSwapChain()
 	vkDestroySwapchainKHR(device, swapChain, nullptr);
 }
 
-void HelloVulkanApplication::NotifyResize(GLFWwindow* window, int width, int height)
+void VulkanTerminal::NotifyResize(GLFWwindow* window, int width, int height)
 {
-	auto app = reinterpret_cast<HelloVulkanApplication*>(glfwGetWindowUserPointer(window));
+	auto app = reinterpret_cast<VulkanTerminal*>(glfwGetWindowUserPointer(window));
 	app->framebufferResized = true;
 }
 
-void HelloVulkanApplication::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+void VulkanTerminal::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1425,27 +1509,15 @@ void HelloVulkanApplication::RecordCommandBuffer(VkCommandBuffer commandBuffer, 
 	}
 }
 
-void HelloVulkanApplication::UpdateUniformBuffer(int currentFrame)
+void VulkanTerminal::UpdateUniformBuffer(int currentFrame)
 {
-	static int frame = 0;
-	frame++;
-	if (frame % 60 == 0)
-	{
-		for (int i = 0; i < MAX_TILES; i++)
-		{
-			tileData.tileIndices[i] = (i + rand()) % TERMINAL_WIDTH;
-			fgColorData.colors[i] = glm::vec4(float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, 1.0f);
-			bgColorData.colors[i] = glm::vec4(float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, float(rand()) / RAND_MAX, 1.0f);
-		}
-	}
-
 	memcpy(tileUniformBuffersMapped[currentFrame], &tileData, sizeof(tileData));
+	memcpy(fontUniformBuffersMapped[currentFrame], &fontData, sizeof(fontData));
 	memcpy(fgColorBuffersMapped[currentFrame], &fgColorData, sizeof(fgColorData));
 	memcpy(bgColorBuffersMapped[currentFrame], &bgColorData, sizeof(bgColorData));
-	
 }
 
-void HelloVulkanApplication::DrawFrame()
+void VulkanTerminal::DrawFrame()
 {
 	//Wait for previous frame to finish
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
@@ -1516,7 +1588,7 @@ void HelloVulkanApplication::DrawFrame()
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void HelloVulkanApplication::MainLoop()
+void VulkanTerminal::MainLoop()
 {
 	while (!glfwWindowShouldClose(window))
 	{
@@ -1527,7 +1599,7 @@ void HelloVulkanApplication::MainLoop()
 	vkDeviceWaitIdle(device);
 }
 
-void HelloVulkanApplication::Cleanup()
+void VulkanTerminal::Cleanup()
 {
 	CleanupSwapChain();
 
@@ -1541,6 +1613,9 @@ void HelloVulkanApplication::Cleanup()
 	{
 		vkDestroyBuffer(device, tileUniformBuffers[i], nullptr);
 		vkFreeMemory(device, tileUniformBuffersMemory[i], nullptr);
+
+		vkDestroyBuffer(device, fontUniformBuffers[i], nullptr);
+		vkFreeMemory(device, fontUniformBuffersMemory[i], nullptr);
 
 		vkDestroyBuffer(device, fgColorBuffers[i], nullptr);
 		vkFreeMemory(device, fgColorBuffersMemory[i], nullptr);

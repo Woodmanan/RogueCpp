@@ -3,7 +3,6 @@
 #include "Data/RogueDataManager.h"
 #include "Core/CoreDataTypes.h"
 #include "Core/Materials/Materials.h"
-#include "..\..\libraries\BearLibTerminal\Include\C\BearLibTerminal.h"
 #include <type_traits>
 
 class BackingTile;

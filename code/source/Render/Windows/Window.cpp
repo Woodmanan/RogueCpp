@@ -1,5 +1,5 @@
 #include "Window.h"
-#include "../../../libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
+#include "Render/Terminal.h"
 #include <algorithm>
 #include "Render/RenderTools.h"
 #include "Debug/Profiling.h"
@@ -86,12 +86,6 @@ void Window::Put(int x, int y, int character, Color fg, Color bg)
 	if (x >= 0 && y >= 0 && x < m_rect.w && y < m_rect.h)
 	{
 		terminal_put(x + m_rect.x, y + m_rect.y, character);
-		if (m_renderBackground && m_layer != 0)
-		{
-			terminal_layer(m_layer - 1);
-			terminal_color(bg);
-			terminal_put(x + m_rect.x, y + m_rect.y, L'\u2588'); //Unicode for blocking char
-		}
 	}
 }
 
@@ -111,19 +105,6 @@ void Window::PutRect(Rect rect, int character, Color fg, Color bg)
 		for (int y = windowY; y < windowY + windowYSize; y++)
 		{
 			terminal_put(x + m_rect.x, y + m_rect.y, character);
-		}
-	}
-
-	if (m_renderBackground && m_layer != 0)
-	{
-		terminal_layer(m_layer - 1);
-		terminal_color(bg);
-		for (int x = windowX; x < windowX + windowXSize; x++)
-		{
-			for (int y = windowY; y < windowY + windowYSize; y++)
-			{
-				terminal_put(x + m_rect.x, y + m_rect.y, L'\u2588');
-			}
 		}
 	}
 }
@@ -148,32 +129,18 @@ void Window::Clear()
 void Window::ClearRect(Rect rect, Color bg)
 {
 	MatchLayer();
+	terminal_bkcolor(bg);
 
 	short windowX = std::max((int)rect.x, 0);
 	short windowXSize = std::min((int) rect.w, m_rect.w - windowX);
 	short windowY = std::max((int)rect.y, 0);
 	short windowYSize = std::max((int)rect.h, m_rect.h - windowY);
 	terminal_clear_area(m_rect.x + windowX, m_rect.y + windowY, windowXSize, windowYSize);
-	if (m_renderBackground && m_layer != 0)
-	{
-		terminal_layer(m_layer - 1);
-		terminal_color(bg);
-		for (int x = windowX; x < windowX + windowXSize; x++)
-		{
-			for (int y = windowY; y < windowY + windowYSize; y++)
-			{
-				terminal_put(x + m_rect.x, y + m_rect.y, L'\u2588');
-			}
-		}
-	}
 }
 
 void Window::MatchLayer()
 {
-	if (terminal_state(TK_LAYER) != m_layer)
-	{
-		terminal_layer(m_layer);
-	}
+	terminal_layer(m_layer);
 }
 
 void Window::RenderSelection()
@@ -203,7 +170,7 @@ void Window::RenderAnchors()
 	}
 	else
 	{
-		parentRect = Rect({ 0,0, short(terminal_state(TK_WIDTH)), short(terminal_state(TK_HEIGHT))});
+		parentRect = Rect({ 0,0, short(terminal_width()), short(terminal_height())});
 	}
 
 	short startX = parentRect.x + ((short)(parentRect.w * m_anchors.minX));
@@ -211,7 +178,6 @@ void Window::RenderAnchors()
 	short startY = parentRect.y + ((short)(parentRect.h * m_anchors.minY));
 	short endY = parentRect.y + ((short)(parentRect.h * m_anchors.maxY)) - 1;
 
-	MatchLayer();
 
 	RenderTools::DrawBresenham(m_rect.x, m_rect.y,startX, startY);
 	RenderTools::DrawBresenham(m_rect.x + m_rect.w - 1, m_rect.y, endX, startY);
@@ -223,8 +189,8 @@ void Window::RenderAnchors()
 
 bool Window::ContainsMouse()
 {
-	int mouseX = terminal_state(TK_MOUSE_X);
-	int mouseY = terminal_state(TK_MOUSE_Y);
+	int mouseX = 0;//terminal_state(TK_MOUSE_X);
+	int mouseY = 0;// terminal_state(TK_MOUSE_Y);
 
 	return (mouseX >= m_rect.x && mouseX < (m_rect.x + m_rect.w) &&
 		    mouseY >= m_rect.y && mouseY < (m_rect.y + m_rect.h));
