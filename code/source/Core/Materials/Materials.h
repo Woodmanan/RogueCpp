@@ -127,12 +127,6 @@ public:
 	const MaterialDefinition& GetMaterialByID(int index);
 	const MaterialDefinition& GetMaterialByName(const std::string& name);
 
-	void PackMaterial(RogueResources::PackContext& packContext);
-	std::shared_ptr<void> LoadMaterial(RogueResources::LoadContext& loadContext);
-
-	void PackReaction(RogueResources::PackContext& packContext);
-	std::shared_ptr<void> LoadReaction(RogueResources::LoadContext& loadContext);
-
 	static MaterialManager* Get()
 	{
 		if (manager == nullptr)
@@ -152,6 +146,15 @@ private:
 	vector<MaterialDefinition> m_materialDefinitions;
 	vector<Reaction> m_reactions;
 };
+
+namespace RogueResources
+{
+	void PackMaterial(PackContext& packContext);
+	std::shared_ptr<void> LoadMaterial(LoadContext& loadContext);
+
+	void PackReaction(PackContext& packContext);
+	std::shared_ptr<void> LoadReaction(LoadContext& loadContext);
+}
 
 namespace RogueSaveManager
 {

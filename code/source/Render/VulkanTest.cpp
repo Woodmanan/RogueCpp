@@ -704,7 +704,7 @@ void VulkanTerminal::CreateCommandPool()
 
 void VulkanTerminal::CreateFont()
 {
-	font = RogueResources::Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
+	font = ResourceManager::Get()->LoadSynchronous<RogueFont>("Font", "Fix15Mono-Bold.woff");
 	font->SetSize(48, 48);
 
 	for (wchar_t c : preloadChars)

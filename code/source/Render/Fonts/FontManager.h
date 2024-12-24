@@ -6,6 +6,7 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <map>
+#include <mutex>
 #include "Render/Images/ImageManager.h" 
 #include "glm/glm.hpp"
 
@@ -51,8 +52,8 @@ class FontManager
 public:
 	FontManager();
 	~FontManager();
-	void PackFont(RogueResources::PackContext& packContext);
-	std::shared_ptr<void> LoadFont(RogueResources::LoadContext& loadContext);
+	void PackFont(PackContext& packContext);
+	std::shared_ptr<void> LoadFont(LoadContext& loadContext);
 
 	static FontManager* Get() { return manager; }
 

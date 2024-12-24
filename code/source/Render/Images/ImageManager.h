@@ -23,8 +23,6 @@ class ImageManager
 {
 public:
 	ImageManager();
-	void PackImage(RogueResources::PackContext& packContext);
-	std::shared_ptr<void> LoadImage(RogueResources::LoadContext& loadContext);
 
 	RogueImage* CreateEmptyImage(int x, int y, int texChannels);
 	RogueImage* PadToSize(RogueImage& image, Vec2 size);
@@ -35,6 +33,12 @@ public:
 private:
 	static ImageManager* manager;
 };
+
+namespace RogueResources
+{
+	void PackImage(PackContext& packContext);
+	std::shared_ptr<void> LoadImage(LoadContext& loadContext);
+}
 
 namespace RogueSaveManager
 {

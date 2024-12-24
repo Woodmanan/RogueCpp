@@ -182,7 +182,6 @@ FontManager::FontManager()
 {
 	FT_Error error = FT_Init_FreeType(&m_library);
 	ASSERT(!error);
-	RogueResources::Register("Font", GetMember(this, &FontManager::PackFont), GetMember(this, &FontManager::LoadFont));
 }
 
 FontManager::~FontManager()
@@ -190,7 +189,7 @@ FontManager::~FontManager()
 	FT_Done_FreeType(m_library);
 }
 
-void FontManager::PackFont(RogueResources::PackContext& packContext)
+void FontManager::PackFont(PackContext& packContext)
 {
 	ROGUE_PROFILE_SECTION("FontManager::Pack");
 	std::ifstream stream(packContext.source, std::ios::binary | std::ios::ate);
@@ -201,18 +200,18 @@ void FontManager::PackFont(RogueResources::PackContext& packContext)
 
 	if (stream.read((char*)buffer.data(), size))
 	{
-		RogueResources::OpenWritePackFile(packContext.destination);
+		OpenWritePackFile(packContext.destination, packContext.header);
 		RogueSaveManager::WriteAsBuffer("Buffer", buffer);
 		RogueSaveManager::CloseWriteSaveFile();
 	}
 }
 
-std::shared_ptr<void> FontManager::LoadFont(RogueResources::LoadContext& loadContext)
+std::shared_ptr<void> FontManager::LoadFont(LoadContext& loadContext)
 {
 	ROGUE_PROFILE_SECTION("FontManager::Load");
 	std::vector<unsigned char> buffer;
 
-	RogueResources::OpenReadPackFile(loadContext.source);
+	OpenReadPackFile(loadContext.source);
 	RogueSaveManager::ReadAsBuffer("Buffer", buffer);
 	RogueSaveManager::CloseReadSaveFile();
 

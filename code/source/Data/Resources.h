@@ -6,6 +6,10 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <thread>
+#include <shared_mutex>
+#include <atomic>
+#include <array>
 #include "Debug/Debug.h"
 
 //Resource management and loading system.
@@ -14,110 +18,196 @@
 
 //Pack functions are passed in to the system on INIT. On request, a resource is loaded. If found, packed version is returned 
 
-namespace RogueResources
+class HashID
 {
-	typedef size_t HashID;
-	const int resourceVersion = 1;
-
-	struct ResourceHandle
+public:
+	HashID()
 	{
-		int m_version;
-		std::shared_ptr<void> m_ptr;
-	};
+		value = 0;
+	}
 
-	class ResourcePointer
+	HashID(const size_t& newValue)
 	{
-	public:
-		ResourcePointer();
-		ResourcePointer(HashID ID, ResourceHandle handle) : m_ID(ID), m_handle(handle) {}
+		value = newValue;
+	}
 
-		bool IsValid();
-		bool NeedsReload();
-		void Reload();
-
-		HashID m_ID;
-		ResourceHandle m_handle;
-	};
-
-	template<typename T>
-	class TResourcePointer : public ResourcePointer
+	HashID(const std::string& name)
 	{
-	public:
-		TResourcePointer() {}
-		TResourcePointer(const ResourcePointer& other)
-		{
-			m_ID = other.m_ID;
-			m_handle = other.m_handle;
-		}
+		value = (size_t) std::hash<std::string>{}(name);
+	}
 
-		std::shared_ptr<T> operator ->()
-		{
-			ASSERT(IsValid());
-			return std::static_pointer_cast<T>(m_handle.m_ptr);
-		}
-	};
+	HashID(const char* name)
+	{
+		value = (size_t)std::hash<std::string>{}(name);
+	}
 
-	HashID GetHashID(const std::string type, const std::string name);
+	operator size_t() const { return value; }
 
-	std::filesystem::path GetSource(const std::string name);
-	std::filesystem::path GetPacked(const HashID ID);
-	std::filesystem::path GetResources();
+	static HashID Mix(const HashID& lhs, const HashID& rhs)
+	{
+		size_t left = lhs;
+		size_t right = rhs;
+		return (left ^ (right << 1));
+	}
 
-	bool IsNewer(std::filesystem::path current, std::filesystem::path dependency);
-	bool RequiresPack(std::filesystem::path source, std::filesystem::path packed);
-	bool RequiresLoad(HashID ID);
-	//bool RequiresRepack(const HashID ID);
-	//void Pack_Internal();
+private:
+	size_t value;
+};
 
-	ResourcePointer Load(const std::string type, const std::string name);
-	std::vector<ResourcePointer> LoadFromConfig(const std::string type, const std::string tag);
-	void _LoadAllFromConfig(const std::string& type, const std::string& tag, const std::filesystem::path& path, std::vector<ResourcePointer>& pointers);
+const int resourceVersion = 1;
+
+struct ResourceRequest
+{
+	HashID type;
+	HashID name;
+};
+
+struct ResourceHandle
+{
+	int m_version;
+	std::shared_ptr<void> m_ptr;
+};
+
+class ResourcePointer
+{
+public:
+	ResourcePointer();
+	ResourcePointer(HashID ID) : m_ID(ID) {}
+
+	bool IsValid();
+	bool IsReady();
+	std::shared_ptr<void> GetResource();
+
+	HashID m_ID;
+};
+
+template<typename T>
+class TResourcePointer : public ResourcePointer
+{
+public:
+	TResourcePointer() {}
+	TResourcePointer(const ResourcePointer& other)
+	{
+		m_ID = other.m_ID;
+	}
+
+	std::shared_ptr<T> operator ->()
+	{
+		ASSERT(IsValid() && IsReady());
+		return std::static_pointer_cast<T>(GetResource());
+	}
+};
+
+//bool RequiresRepack(const HashID ID);
+//void Pack_Internal();
+
+//File saving shenanigans
+struct ResourceHeader
+{
+	int version = resourceVersion;
+	std::vector<HashID> dependencies;
+};
+
+struct PackContext
+{
+	std::filesystem::path source;
+	std::filesystem::path destination;
+	ResourceHeader header;
+};
+
+struct LoadContext
+{
+	std::filesystem::path source;
+};
+
+bool OpenReadPackFile(std::filesystem::path packed);
+void OpenWritePackFile(std::filesystem::path path, ResourceHeader header);
+
+class ResourceManager
+{
+public:
+	ResourceManager();
+	~ResourceManager();
+
+	//Const values
+	static const int numWorkerThreads = 4;
+
+	static void InitResources();
+	void Register(const HashID& type, std::function<void(PackContext&)> pack, std::function<std::shared_ptr<void>(LoadContext&)> load);
+	void LaunchThreads();
+	static void ShutdownResources();
+	static ResourceManager* Get();
+
+	ResourcePointer Load(const HashID& type, const HashID& name, PackContext* context = nullptr);
+	ResourcePointer LoadSynchronous(const HashID& type, const HashID& name, PackContext* context = nullptr);
+	std::vector<ResourcePointer> LoadFromConfig(const std::string type, const std::string tag, PackContext* context = nullptr);
+	std::vector<ResourcePointer> LoadFromConfigSynchronous(const std::string type, const std::string tag, PackContext* context = nullptr);
+	void _LoadAllFromConfig(const std::string& type, const std::string& tag, const std::filesystem::path& path, std::vector<ResourcePointer>& pointers, PackContext* context = nullptr);
 	bool IsMatchingTag(const std::string& tag, const std::string& line);
 	bool IsAnyTag(const std::string& line);
 
 	template<typename T>
-	TResourcePointer<T> Load(const std::string type, const std::string name)
+	TResourcePointer<T> Load(const HashID& type, const HashID& name)
 	{
 		return (TResourcePointer<T>) Load(type, name);
 	}
 
-	struct PackContext
+	template<typename T>
+	TResourcePointer<T> LoadSynchronous(const HashID& type, const HashID& name)
 	{
-		std::filesystem::path source;
-		std::filesystem::path destination;
-	};
+		return (TResourcePointer<T>) LoadSynchronous(type, name);
+	}
 
-	struct LoadContext
-	{
-		std::filesystem::path source;
-	};
+	//Resource Acquisitions
+	bool IsResourceLoaded(const HashID& id);
+	std::shared_ptr<void> GetResource(const HashID& id);
+	void InsertLoadedResource(const HashID& id, std::shared_ptr<void> ptr);
 
-	std::map<std::string, std::function<void(PackContext&)>>& GetPackFunctions();
-	std::map<std::string, std::function<std::shared_ptr<void>(LoadContext&)>>& GetLoadFunctions();
-	std::map<HashID, ResourceHandle>& GetLoadedResources();
+private:
+	std::filesystem::path GetSource(const HashID& name);
+	std::filesystem::path GetPacked(const HashID& ID);
+	std::filesystem::path GetResources();
 
-	void InsertNewLoadedResource(HashID ID, std::shared_ptr<void> resource);
-	ResourcePointer GetLoadedResource(HashID ID);
+	bool IsNewer(std::filesystem::path current, std::filesystem::path dependency);
+	bool RequiresPack(std::filesystem::path source, std::filesystem::path packed);
 
-	void Register(const std::string type, std::function<void(PackContext&)> pack, std::function<std::shared_ptr<void>(LoadContext&)> load);
-
-	//File saving shenanigans
-	struct ResourceHeader
-	{
-		int version = resourceVersion;
-		std::vector<HashID> dependencies;
-	};
-
-	void LinkAsDependency(HashID hash);
-	void OpenPackDependencies();
-	void ClosePackDependencies();
-	bool OpenReadPackFile(std::filesystem::path packed);
-	void OpenWritePackFile(std::filesystem::path path);
 	bool AreDependenciesUpToDate(std::filesystem::path packed);
-}
+
+	void ThreadMainLoop();
+	void CacheFileNames();
+
+	//Requests
+	bool HasResourceRequests();
+	ResourceRequest PopResourceRequest();
+	void PushResourceRequest(ResourceRequest request);
+	void Thread_LoadRequest(ResourceRequest request, int threadNum);
+	int FindOpenWorkerThread();
+
+	volatile bool m_active;
+	std::thread m_resourceThread;
+	static ResourceManager* manager;
+
+	//Loaded resources
+	std::shared_mutex resourceMutex;
+	std::map<HashID, std::shared_ptr<void>> loadedResources;
+
+	//Loading pipeline
+	std::shared_mutex loadingMutex;
+	std::vector<ResourceRequest> resourceRequests;
+
+	std::map<HashID, std::string> fileNames;
+	std::map<HashID, std::function<void(PackContext&)>> packFunctions;
+	std::map<HashID, std::function<std::shared_ptr<void>(LoadContext&)>> loadFunctions;
+
+	std::array<std::thread, numWorkerThreads> workerThreads;
+	std::array<std::atomic<bool>, numWorkerThreads> workerFlags;
+	int numWorkers = 0;
+};
 
 namespace RogueSaveManager
 {
-	void Serialize(RogueResources::ResourceHeader& value);
-	void Deserialize(RogueResources::ResourceHeader& value);
+	void Serialize(HashID& value);
+	void Deserialize(HashID& value);
+	void Serialize(ResourceHeader& value);
+	void Deserialize(ResourceHeader& value);
 }

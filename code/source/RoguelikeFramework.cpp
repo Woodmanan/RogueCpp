@@ -226,6 +226,22 @@ Direction ReadDirection(Direction currentRotation)
     return Rotate(direction, currentRotation);
 }
 
+void SetupResources()
+{
+    ResourceManager::InitResources();
+
+    //TODO: Add new pieces!
+    ResourceManager::Get()->Register("Mat", &RogueResources::PackMaterial, &RogueResources::LoadMaterial);
+    ResourceManager::Get()->Register("Reaction", &RogueResources::PackReaction, &RogueResources::LoadReaction);
+    ResourceManager::Get()->Register("Image", &RogueResources::PackImage, &RogueResources::LoadImage);
+
+    auto PackFont = GetMember(FontManager::Get(), &FontManager::PackFont);
+    auto LoadFont = GetMember(FontManager::Get(), &FontManager::LoadFont);
+    ResourceManager::Get()->Register("Font", PackFont, LoadFont);
+
+    ResourceManager::Get()->LaunchThreads();
+}
+
 void InitManagers()
 {
     ROGUE_PROFILE;
@@ -234,6 +250,8 @@ void InitManagers()
 
 int main(int argc, char* argv[])
 {
+    SetupResources();
+
     //Initialize Random
     srand(1);
 
@@ -852,7 +870,10 @@ int main(int argc, char* argv[])
 
         ROGUE_PROFILE_FRAME();
     }
+
+    //Cleanup phase
     terminal_close();
+    ResourceManager::ShutdownResources();
 
     return EXIT_SUCCESS;
 }

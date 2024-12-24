@@ -10,26 +10,25 @@ MaterialManager* MaterialManager::manager = new MaterialManager();
 
 MaterialManager::MaterialManager()
 {
-	RogueResources::Register("Mat", GetMember(this, &MaterialManager::PackMaterial), GetMember(this, &MaterialManager::LoadMaterial));
-	RogueResources::Register("Reaction", GetMember(this, &MaterialManager::PackReaction), GetMember(this, &MaterialManager::LoadReaction));
+
 }
 
 void MaterialManager::Init()
 {
-	std::vector<RogueResources::ResourcePointer> materials = RogueResources::LoadFromConfig("Mat", "materials");
-	for (RogueResources::ResourcePointer& matArray : materials)
+	std::vector<ResourcePointer> materials = ResourceManager::Get()->LoadFromConfigSynchronous("Mat", "materials");
+	for (ResourcePointer& matArray : materials)
 	{
-		RogueResources::TResourcePointer<std::vector<MaterialDefinition>> pointer = matArray;
+		TResourcePointer<std::vector<MaterialDefinition>> pointer = matArray;
 		for (auto it = pointer->begin(); it != pointer->end(); it++)
 		{
 			AddMaterialDefinition(*it);
 		}
 	}
 
-	std::vector<RogueResources::ResourcePointer> reactions = RogueResources::LoadFromConfig("Reaction", "reactions");
-	for (RogueResources::ResourcePointer& array : reactions)
+	std::vector<ResourcePointer> reactions = ResourceManager::Get()->LoadFromConfigSynchronous("Reaction", "reactions");
+	for (ResourcePointer& array : reactions)
 	{
-		RogueResources::TResourcePointer<std::vector<Reaction>> pointer = array;
+		TResourcePointer<std::vector<Reaction>> pointer = array;
 		for (auto it = pointer->begin(); it != pointer->end(); it++)
 		{
 			AddReaction(*it);
@@ -419,138 +418,6 @@ const MaterialDefinition& MaterialManager::GetMaterialByName(const std::string& 
 	HALT();
 }
 
-void MaterialManager::PackMaterial(RogueResources::PackContext& packContext)
-{
-	std::ifstream stream;
-	stream.open(packContext.source);
-
-	SkipLine(stream);
-
-	std::vector<MaterialDefinition> materials;
-
-	while (stream.is_open())
-	{
-		std::string line;
-		std::getline(stream, line);
-		if (line.empty()) { break; }
-
-		std::vector<std::string> tokens = string_split(line, ",");
-
-		ASSERT(tokens.size() == 8);
-
-		if (tokens[0].empty()) { continue; }
-
-		//Name,Density,Melting Point,Boiling Point,Specific Heat,Thermal Conductivity,Electrical Resistance,Moh's Hardness
-
-		MaterialDefinition definition;
-		definition.ID					= -1;
-		definition.name					= tokens[0];
-		definition.density				= string_to_float(tokens[1]);
-		definition.meltingPoint			= string_to_float(tokens[2]);
-		definition.boilingPoint			= string_to_float(tokens[3]);
-		definition.specificHeat			= string_to_float(tokens[4]);
-		definition.thermalConductivity	= string_to_float(tokens[5]);
-		definition.electricalResistance = string_to_float(tokens[6]);
-		definition.hardness				= string_to_float(tokens[7]);
-
-		materials.push_back(definition);
-	}
-
-	stream.close();
-
-	RogueResources::OpenWritePackFile(packContext.destination);
-	RogueSaveManager::Write("Materials", materials);
-	RogueSaveManager::CloseWriteSaveFile();
-}
-
-std::shared_ptr<void> MaterialManager::LoadMaterial(RogueResources::LoadContext& loadContext)
-{
-	std::vector<MaterialDefinition>* materials = new std::vector<MaterialDefinition>();
-
-	RogueResources::OpenReadPackFile(loadContext.source);
-	RogueSaveManager::Read("Materials", *materials);
-	RogueSaveManager::CloseReadSaveFile();
-
-	return std::shared_ptr<std::vector<MaterialDefinition>>(materials);
-}
-
-void MaterialManager::PackReaction(RogueResources::PackContext& packContext)
-{
-	//Just for linking dependency! If Init order is correct we should be fine to just use the material manager
-	std::vector<RogueResources::ResourcePointer> materials = RogueResources::LoadFromConfig("Mat", "materials");
-
-	std::ifstream stream;
-	stream.open(packContext.source);
-
-	SkipLine(stream);
-
-	std::vector<Reaction> reactions;
-
-	while (stream.is_open())
-	{
-		std::string line;
-		std::getline(stream, line);
-		if (line.empty()) { break; }
-
-		std::vector<std::string> tokens = string_split(line, ",");
-
-		ASSERT(tokens.size() == 5);
-
-		if (tokens[0].empty()) { continue; }
-
-		Reaction nextReaction;
-
-		//Name,Inputs,Outputs,MinTemp,DeltaTemp
-		nextReaction.name = tokens[0];
-
-		std::vector<std::string> inputs = string_split(tokens[1], " + ");
-		std::vector<std::string> outputs = string_split(tokens[2], " + ");
-
-		for (std::string& input : inputs)
-		{
-			std::vector<std::string> item = string_split(input, " ");
-			ASSERT(item.size() == 2);
-			nextReaction.m_reactants.push_back(Material(GetMaterialByName(item[1]).ID, string_to_float(item[0]), false));
-		}
-
-		for (std::string& output : outputs)
-		{
-			if (output.size() == 1 && output[0] == '_') //Catch wildcard output
-			{
-				nextReaction.m_products.push_back(Material(-1, -1, false));
-				continue;
-			}
-
-			std::vector<std::string> item = string_split(output, " ");
-			ASSERT(item.size() == 2);
-			nextReaction.m_products.push_back(Material(GetMaterialByName(item[1]).ID, string_to_float(item[0]), false));
-		}
-
-		nextReaction.m_minHeat = string_to_float(tokens[3]);
-		nextReaction.m_deltaHeat = string_to_float(tokens[4]);
-		nextReaction.SortReactantsByID();
-		
-		reactions.push_back(nextReaction);
-	}
-
-	stream.close();
-
-	RogueResources::OpenWritePackFile(packContext.destination);
-	RogueSaveManager::Write("Reactions", reactions);
-	RogueSaveManager::CloseWriteSaveFile();
-}
-
-std::shared_ptr<void> MaterialManager::LoadReaction(RogueResources::LoadContext& loadContext)
-{
-	std::vector<Reaction>* reactions = new std::vector<Reaction>();
-
-	RogueResources::OpenReadPackFile(loadContext.source);
-	RogueSaveManager::Read("Materials", *reactions);
-	RogueSaveManager::CloseReadSaveFile();
-
-	return std::shared_ptr<std::vector<Reaction>>(reactions);
-}
-
 void MaterialManager::SortReactions()
 {
 	sort(m_reactions.begin(), m_reactions.end(), [](const Reaction& lhs, const Reaction& rhs)
@@ -607,6 +474,156 @@ float MaterialManager::GetReactionMultiple(Reaction& reaction, MixtureContainer&
 
 	ASSERT(maxAmount >= 1);
 	return maxAmount;
+}
+
+namespace RogueResources
+{
+	void PackMaterial(PackContext& packContext)
+	{
+		std::ifstream stream;
+		stream.open(packContext.source);
+
+		SkipLine(stream);
+
+		std::vector<MaterialDefinition> materials;
+
+		while (stream.is_open())
+		{
+			std::string line;
+			std::getline(stream, line);
+			if (line.empty()) { break; }
+
+			std::vector<std::string> tokens = string_split(line, ",");
+
+			ASSERT(tokens.size() == 8);
+
+			if (tokens[0].empty()) { continue; }
+
+			//Name,Density,Melting Point,Boiling Point,Specific Heat,Thermal Conductivity,Electrical Resistance,Moh's Hardness
+
+			MaterialDefinition definition;
+			definition.ID = -1;
+			definition.name = tokens[0];
+			definition.density = string_to_float(tokens[1]);
+			definition.meltingPoint = string_to_float(tokens[2]);
+			definition.boilingPoint = string_to_float(tokens[3]);
+			definition.specificHeat = string_to_float(tokens[4]);
+			definition.thermalConductivity = string_to_float(tokens[5]);
+			definition.electricalResistance = string_to_float(tokens[6]);
+			definition.hardness = string_to_float(tokens[7]);
+
+			materials.push_back(definition);
+		}
+
+		stream.close();
+
+		OpenWritePackFile(packContext.destination, packContext.header);
+		RogueSaveManager::Write("Materials", materials);
+		RogueSaveManager::CloseWriteSaveFile();
+	}
+
+	std::shared_ptr<void> LoadMaterial(LoadContext& loadContext)
+	{
+		std::vector<MaterialDefinition>* materials = new std::vector<MaterialDefinition>();
+
+		OpenReadPackFile(loadContext.source);
+		RogueSaveManager::Read("Materials", *materials);
+		RogueSaveManager::CloseReadSaveFile();
+
+		return std::shared_ptr<std::vector<MaterialDefinition>>(materials);
+	}
+
+	void PackReaction(PackContext& packContext)
+	{
+		//Just for linking dependency! If Init order is correct we should be fine to just use the material manager
+		std::vector<ResourcePointer> materials = ResourceManager::Get()->LoadFromConfig("Mat", "materials", &packContext);
+
+		auto FindIndex = [materials](const std::string& name) {
+			int index = 0;
+			for (int i = 0; i < materials.size(); i++)
+			{
+				index++;
+				TResourcePointer<MaterialDefinition> material = materials[i];
+				if (material->name == name)
+				{
+					return index;
+				}
+			}
+
+			return -1;
+		};
+
+		std::ifstream stream;
+		stream.open(packContext.source);
+
+		SkipLine(stream);
+
+		std::vector<Reaction> reactions;
+
+		while (stream.is_open())
+		{
+			std::string line;
+			std::getline(stream, line);
+			if (line.empty()) { break; }
+
+			std::vector<std::string> tokens = string_split(line, ",");
+
+			ASSERT(tokens.size() == 5);
+
+			if (tokens[0].empty()) { continue; }
+
+			Reaction nextReaction;
+
+			//Name,Inputs,Outputs,MinTemp,DeltaTemp
+			nextReaction.name = tokens[0];
+
+			std::vector<std::string> inputs = string_split(tokens[1], " + ");
+			std::vector<std::string> outputs = string_split(tokens[2], " + ");
+
+			for (std::string& input : inputs)
+			{
+				std::vector<std::string> item = string_split(input, " ");
+				ASSERT(item.size() == 2);
+				nextReaction.m_reactants.push_back(Material(FindIndex(item[1]), string_to_float(item[0]), false));
+			}
+
+			for (std::string& output : outputs)
+			{
+				if (output.size() == 1 && output[0] == '_') //Catch wildcard output
+				{
+					nextReaction.m_products.push_back(Material(-1, -1, false));
+					continue;
+				}
+
+				std::vector<std::string> item = string_split(output, " ");
+				ASSERT(item.size() == 2);
+				nextReaction.m_products.push_back(Material(FindIndex(item[1]), string_to_float(item[0]), false));
+			}
+
+			nextReaction.m_minHeat = string_to_float(tokens[3]);
+			nextReaction.m_deltaHeat = string_to_float(tokens[4]);
+			nextReaction.SortReactantsByID();
+
+			reactions.push_back(nextReaction);
+		}
+
+		stream.close();
+
+		OpenWritePackFile(packContext.destination, packContext.header);
+		RogueSaveManager::Write("Reactions", reactions);
+		RogueSaveManager::CloseWriteSaveFile();
+	}
+
+	std::shared_ptr<void> LoadReaction(LoadContext& loadContext)
+	{
+		std::vector<Reaction>* reactions = new std::vector<Reaction>();
+
+		OpenReadPackFile(loadContext.source);
+		RogueSaveManager::Read("Materials", *reactions);
+		RogueSaveManager::CloseReadSaveFile();
+
+		return std::shared_ptr<std::vector<Reaction>>(reactions);
+	}
 }
 
 namespace RogueSaveManager
