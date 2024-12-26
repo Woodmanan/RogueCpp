@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <map>
+#include <set>
 #include <thread>
 #include <shared_mutex>
 #include <atomic>
@@ -161,7 +162,7 @@ public:
 	//Resource Acquisitions
 	bool IsResourceLoaded(const HashID& id);
 	std::shared_ptr<void> GetResource(const HashID& id);
-	void InsertLoadedResource(const HashID& id, std::shared_ptr<void> ptr);
+	void InsertLoadedResource(const HashID& id, const HashID& name, std::shared_ptr<void> ptr);
 
 private:
 	std::filesystem::path GetSource(const HashID& name);
@@ -179,7 +180,6 @@ private:
 	//Requests
 	bool HasResourceRequests();
 	ResourceRequest PopResourceRequest();
-	void PushResourceRequest(ResourceRequest request);
 	void Thread_LoadRequest(ResourceRequest request, int threadNum);
 	int FindOpenWorkerThread();
 
@@ -190,9 +190,11 @@ private:
 	//Loaded resources
 	std::shared_mutex resourceMutex;
 	std::map<HashID, std::shared_ptr<void>> loadedResources;
+	std::set<HashID> inProgress;
 
 	//Loading pipeline
-	std::shared_mutex loadingMutex;
+	std::mutex loadingMutex;
+	std::condition_variable loadingCv;
 	std::vector<ResourceRequest> resourceRequests;
 
 	std::map<HashID, std::string> fileNames;

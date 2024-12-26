@@ -57,6 +57,7 @@ ResourceManager::~ResourceManager()
 	{
 		m_active = false;
 		_mm_mfence();
+		loadingCv.notify_all();
 		m_resourceThread.join();
 	}
 }
@@ -78,7 +79,7 @@ void ResourceManager::LaunchThreads()
 	ASSERT(m_active == false);
 	m_active = true;
 	_mm_mfence();
-	m_resourceThread = std::thread(GetMember(this, &ResourceManager::ThreadMainLoop));
+	m_resourceThread = std::thread(&ResourceManager::ThreadMainLoop, this);
 }
 
 void ResourceManager::ShutdownResources()
@@ -94,13 +95,22 @@ ResourceManager* ResourceManager::Get()
 
 void ResourceManager::ThreadMainLoop()
 {
+	ROGUE_PROFILE;
 	CacheFileNames();
+	
+	int count = 0;
 
 	while (m_active)
 	{
-		ROGUE_PROFILE;
-		if (HasResourceRequests())
+		//Hand over OS control of lock - keeps thread efficiently sleeping until someone wants to pass it info
 		{
+			std::unique_lock lock(loadingMutex);
+			loadingCv.wait(lock, [this] { return !m_active || resourceRequests.size() > 0; });
+		}
+
+		while (HasResourceRequests())
+		{
+			ROGUE_PROFILE_SECTION("Process Resource Request");
 			int threadIndex = FindOpenWorkerThread();
 			ResourceRequest nextRequest = PopResourceRequest();
 			if ((size_t) nextRequest.type != 0)
@@ -115,6 +125,7 @@ void ResourceManager::ThreadMainLoop()
 
 	for (int i = 0; i < numWorkers; i++)
 	{
+		ROGUE_PROFILE_SECTION("Close worker thread");
 		if (workerThreads[i].joinable())
 		{
 			workerThreads[i].join();
@@ -126,6 +137,7 @@ void ResourceManager::ThreadMainLoop()
 
 void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 {
+	ROGUE_PROFILE_SECTION("Thread Load Request");
 	ASSERT(workerFlags[index] == true);
 
 	HashID ID = HashID::Mix(request.type, request.name);
@@ -133,9 +145,36 @@ void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 	std::filesystem::path packedPath = GetPacked(ID);
 	bool repacked = false;
 
+	{ //Quick check - is someone else working on this?
+		std::unique_lock processLock(resourceMutex);
+		if (inProgress.contains(ID) || loadedResources.contains(ID))
+		{
+			DEBUG_PRINT("Worker %d: Quitting load of '%s' - another thread has taken this task.", index, sourcePath.string().c_str());
+			workerFlags[index] = false;
+			_mm_mfence();
+			return;
+		}
+
+		inProgress.insert(ID);
+	}
+
+	{ //Secondary check - does someone have the source file we need?
+		while (true)
+		{
+			std::unique_lock processLock(resourceMutex);
+			if (!inProgress.contains(request.name))
+			{
+				inProgress.insert(request.name);
+				break;
+			}
+		}
+	}
+
 	if (!std::filesystem::exists(sourcePath) && !std::filesystem::exists(packedPath))
 	{
-		InsertLoadedResource(ID, nullptr);
+		InsertLoadedResource(ID, request.name, nullptr);
+		workerFlags[index] = false;
+		_mm_mfence();
 		return;
 	}
 
@@ -144,7 +183,7 @@ void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 		ROGUE_PROFILE_SECTION("Pack Resource");
 		ASSERT(packFunctions.contains(request.type));
 
-		DEBUG_PRINT("Packing from %s to %s", sourcePath.string().c_str(), packedPath.string().c_str());
+		DEBUG_PRINT("Worker %d: Packing from %s to %s", index, sourcePath.string().c_str(), packedPath.string().c_str());
 		PackContext packContext = { sourcePath, packedPath };
 		packFunctions[request.type](packContext);
 		repacked = true;
@@ -157,11 +196,11 @@ void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 	{
 		ROGUE_PROFILE_SECTION("Load From File");
 		ASSERT(loadFunctions.contains(request.type));
-		DEBUG_PRINT("Loading %s with handle %zu", sourcePath.string().c_str(), ID);
+		DEBUG_PRINT("Worker %d: Loading %s with handle %zu", index, sourcePath.string().c_str(), ID);
 		LoadContext loadContext = { packedPath };
 		std::shared_ptr<void> resource = loadFunctions[request.type](loadContext);
 
-		InsertLoadedResource(ID, resource);
+		InsertLoadedResource(ID, request.name, resource);
 	}
 
 	workerFlags[index] = false;
@@ -220,7 +259,11 @@ ResourcePointer ResourceManager::Load(const HashID& type, const HashID& name, Pa
 
 	if (!IsResourceLoaded(ID))
 	{
-		PushResourceRequest({type, name});
+		{	
+			std::lock_guard lock(loadingMutex);
+			resourceRequests.push_back({ type, name });
+		}
+		loadingCv.notify_all();
 	}
 
 	return ResourcePointer(ID);
@@ -228,9 +271,11 @@ ResourcePointer ResourceManager::Load(const HashID& type, const HashID& name, Pa
 
 ResourcePointer ResourceManager::LoadSynchronous(const HashID& type, const HashID& name, PackContext* context)
 {
+	ROGUE_PROFILE_SECTION("Load Resource - Synchronous");
 	ResourcePointer ptr = Load(type, name, context);
 	if (ptr.IsValid())
 	{
+		ROGUE_PROFILE_SECTION("Waiting for load");
 		while (!ptr.IsReady())
 		{
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -260,11 +305,13 @@ std::vector<ResourcePointer> ResourceManager::LoadFromConfig(const std::string t
 
 std::vector<ResourcePointer> ResourceManager::LoadFromConfigSynchronous(const std::string type, const std::string tag, PackContext* context)
 {
+	ROGUE_PROFILE_SECTION("Load From Config - Synchronous");
 	std::vector<ResourcePointer> pointers = LoadFromConfig(type, tag, context);
 	for (ResourcePointer ptr : pointers)
 	{
 		if (ptr.IsValid())
 		{
+			ROGUE_PROFILE_SECTION("Waiting for loads");
 			while (!ptr.IsReady())
 			{
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -348,21 +395,23 @@ std::shared_ptr<void> ResourceManager::GetResource(const HashID& id)
 	return loadedResources[id];
 }
 
-void ResourceManager::InsertLoadedResource(const HashID& id, std::shared_ptr<void> ptr)
+void ResourceManager::InsertLoadedResource(const HashID& id, const HashID& name, std::shared_ptr<void> ptr)
 {
 	std::unique_lock lock(resourceMutex);
 	loadedResources[id] = ptr;
+	inProgress.erase(id);
+	inProgress.erase(name);
 }
 
 bool ResourceManager::HasResourceRequests()
 {
-	std::shared_lock lock(loadingMutex);
+	std::lock_guard lock(loadingMutex);
 	return resourceRequests.size() > 0;
 }
 
 ResourceRequest ResourceManager::PopResourceRequest()
 {
-	std::unique_lock lock(loadingMutex);
+	std::lock_guard lock(loadingMutex);
 	ResourceRequest request;
 	if (resourceRequests.size() > 0)
 	{
@@ -371,12 +420,6 @@ ResourceRequest ResourceManager::PopResourceRequest()
 	}
 	
 	return request;
-}
-
-void ResourceManager::PushResourceRequest(ResourceRequest request)
-{
-	std::unique_lock lock(loadingMutex);
-	resourceRequests.push_back(request);
 }
 
 std::filesystem::path ResourceManager::GetSource(const HashID& name)

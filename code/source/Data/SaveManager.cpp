@@ -1,16 +1,17 @@
 #include "Data/SaveManager.h"
 
 namespace RogueSaveManager {
-	std::ofstream outStream;
-	std::ifstream inStream;
-	char buffer[200];
+	thread_local std::ofstream SaveStreams::outStream;
+	thread_local std::ifstream SaveStreams::inStream;
+	thread_local int SaveStreams::offset;
+	thread_local char SaveStreams::buffer[200];
 
 	void WriteTabs()
 	{
 #ifdef JSON
-		for (int i = 0; i < offset; i++)
+		for (int i = 0; i < SaveStreams::offset; i++)
 		{
-			outStream.write(tabString, 4);
+			SaveStreams::outStream.write(tabString, 4);
 		}
 #endif
 	}
@@ -18,9 +19,9 @@ namespace RogueSaveManager {
 	void ReadTabs()
 	{
 #ifdef JSON
-		for (int i = 0; i < offset; i++)
+		for (int i = 0; i < SaveStreams::offset; i++)
 		{
-			inStream.read(buffer, 4);
+			SaveStreams::inStream.read(SaveStreams::buffer, 4);
 		}
 #endif
 	}
@@ -28,45 +29,45 @@ namespace RogueSaveManager {
 	void WriteNewline()
 	{
 #ifdef JSON
-		outStream.write("\n", 1);
+		SaveStreams::outStream.write("\n", 1);
 #endif // JSON
 	}
 
 	void ReadNewline()
 	{
 #ifdef JSON
-		inStream.read(buffer, 1);
+		SaveStreams::inStream.read(SaveStreams::buffer, 1);
 #endif
 	}
 
 	void AddOffset()
 	{
 #ifdef JSON
-		if (outStream.is_open())
+		if (SaveStreams::outStream.is_open())
 		{
-			outStream << "{\n";
+			SaveStreams::outStream << "{\n";
 		}
-		if (inStream.is_open())
+		if (SaveStreams::inStream.is_open())
 		{
-			inStream.read(buffer, 2);
+			SaveStreams::inStream.read(SaveStreams::buffer, 2);
 		}
 #endif
-		offset++;
+		SaveStreams::offset++;
 	}
 
 	void RemoveOffset()
 	{
-		offset--;
+		SaveStreams::offset--;
 #ifdef JSON
-		if (outStream.is_open())
+		if (SaveStreams::outStream.is_open())
 		{
 			WriteTabs();
-			outStream << "}";
+			SaveStreams::outStream << "}";
 		}
-		if (inStream.is_open())
+		if (SaveStreams::inStream.is_open())
 		{
 			ReadTabs();
-			inStream.read(buffer, 1);
+			SaveStreams::inStream.read(SaveStreams::buffer, 1);
 		}
 #endif
 	}
@@ -76,7 +77,7 @@ namespace RogueSaveManager {
 #ifdef JSON
 		if (!isLast)
 		{
-			outStream << ",";
+			SaveStreams::outStream << ",";
 		}
 		WriteNewline();
 #endif
@@ -87,7 +88,7 @@ namespace RogueSaveManager {
 #ifdef JSON
 		if (!isLast)
 		{
-			inStream.read(buffer, 1);
+			SaveStreams::inStream.read(SaveStreams::buffer, 1);
 		}
 		ReadNewline();
 #endif

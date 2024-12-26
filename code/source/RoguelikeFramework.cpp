@@ -2,6 +2,7 @@
 //
 
 #include "RoguelikeFramework.h"
+#include "Game/Game.h"
 #include "Core/CoreDataTypes.h"
 #include "Data/RogueArena.h"
 #include "Data/RogueDataManager.h"
@@ -252,8 +253,30 @@ int main(int argc, char* argv[])
 {
     SetupResources();
 
+    //Preload font!
+    ResourceManager::Get()->Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
+
+    Input exitInput;
+    exitInput.Set<ExitGame>();
+
     //Initialize Random
     srand(1);
+
+    Game game = Game();
+    std::thread gameThread(&Game::LaunchGame, &game);
+
+    if (RogueSaveManager::FilePathExists("MySaveFile.rsf"))
+    {
+        Input startInput;
+        startInput.Set<LoadSaveGame>(std::make_shared<LoadSaveInput>("MySaveFile.rsf"));
+        game.AddInput(startInput);
+    }
+    else
+    {
+        Input startInput;
+        startInput.Set<BeginNewGame>();
+        game.AddInput(startInput);
+    }
 
     Vec2 size(64, 64);
     THandle<Map> map;
@@ -295,6 +318,7 @@ int main(int argc, char* argv[])
     if (RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf"))
     {
         ROGUE_PROFILE_SECTION("Load Save File");
+        RogueSaveManager::Read("Input", input);
         RogueSaveManager::Read("Map", map);
         RogueSaveManager::Read("Memory", memory);
         RogueSaveManager::Read("Player", playerLoc);
@@ -554,6 +578,7 @@ int main(int argc, char* argv[])
             {
                 ROGUE_PROFILE_SECTION("Create Save File");
                 RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
+                RogueSaveManager::Write("Input", input);
                 RogueSaveManager::Write("Map", map);
                 RogueSaveManager::Write("Memory", memory);
                 RogueSaveManager::Write("Player", playerLoc);
@@ -872,6 +897,8 @@ int main(int argc, char* argv[])
     }
 
     //Cleanup phase
+    game.AddInput(exitInput);
+    gameThread.join();
     terminal_close();
     ResourceManager::ShutdownResources();
 

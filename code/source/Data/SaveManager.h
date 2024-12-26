@@ -10,11 +10,17 @@
 #endif
 
 namespace RogueSaveManager {
-	extern std::ofstream outStream;
-	extern std::ifstream inStream;
-	static int offset;
+
+	class SaveStreams
+	{
+	public:
+		thread_local static std::ofstream outStream;
+		thread_local static std::ifstream inStream;
+		thread_local static int offset;
+		thread_local static char buffer[];
+	};
+	
 	const char* const tabString = "    ";
-	extern char buffer[]; //Buffer for storing garbage while we read files
 
 	const short version = 3;
 	const char* const header = "RSFL";
@@ -30,11 +36,11 @@ namespace RogueSaveManager {
 	void Serialize(T& value)
 	{
 #ifdef JSON
-		outStream << value;
+		SaveStreams::outStream << value;
 #else
-		ASSERT(outStream.is_open());
+		ASSERT(SaveStreams::SaveStreams::outStream.is_open());
 		char* bytePtr = (char*)&value;
-		outStream.write(bytePtr, sizeof(T));
+		SaveStreams::outStream.write(bytePtr, sizeof(T));
 #endif
 	}
 
@@ -42,11 +48,11 @@ namespace RogueSaveManager {
 	void Deserialize(T& value)
 	{
 #ifdef JSON
-		inStream >> value;
+		SaveStreams::inStream >> value;
 #else
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 		char* bytePtr = (char*)&value;
-		inStream.read(bytePtr, sizeof(T));
+		SaveStreams::inStream.read(bytePtr, sizeof(T));
 #endif
 	}
 
@@ -65,28 +71,28 @@ namespace RogueSaveManager {
 	template <typename T>
 	static void Write(const char* name, T value)
 	{
-		ASSERT(outStream.is_open());
+		ASSERT(SaveStreams::outStream.is_open());
 #ifdef JSON
 		WriteTabs();
-		outStream.write(name, strlen(name));
-		outStream << " : ";
+		SaveStreams::outStream.write(name, strlen(name));
+		SaveStreams::outStream << " : ";
 #endif // JSON
 
 		Serialize(value);
 
 #ifdef JSON
-		outStream << ",\n";
+		SaveStreams::outStream << ",\n";
 #endif // JSON
 	}
 
 	template <typename T>
 	static void Write(const char* name, std::vector<T> values)
 	{
-		ASSERT(outStream.is_open());
+		ASSERT(SaveStreams::outStream.is_open());
 #ifdef JSON
 		WriteTabs();
-		outStream.write(name, strlen(name));
-		outStream << " : ";
+		SaveStreams::outStream.write(name, strlen(name));
+		SaveStreams::outStream << " : ";
 #endif // JSON
 		AddOffset();
 		Write("Count", values.size());
@@ -102,37 +108,37 @@ namespace RogueSaveManager {
 		WriteNewline();
 		RemoveOffset();
 #ifdef JSON
-		outStream << ",\n";
+		SaveStreams::outStream << ",\n";
 #endif // JSON
 	}
 
 	template <typename T>
 	static void Read(const char* name, T& value)
 	{
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 
 #ifdef JSON
 		ReadTabs();
-		inStream.read(buffer, strlen(name));
-		inStream.read(buffer, 3);
+		SaveStreams::inStream.read(SaveStreams::buffer, strlen(name));
+		SaveStreams::inStream.read(SaveStreams::buffer, 3);
 #endif // JSON
 
 		Deserialize(value);
 
 #ifdef JSON
-		inStream.read(buffer, 2);
+		SaveStreams::inStream.read(SaveStreams::buffer, 2);
 #endif // JSON
 	}
 
 	template <typename T>
 	static void Read(const char* name, std::vector<T>& values)
 	{
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 
 #ifdef JSON
 		ReadTabs();
-		inStream.read(buffer, strlen(name));
-		inStream.read(buffer, 3);
+		SaveStreams::inStream.read(SaveStreams::buffer, strlen(name));
+		SaveStreams::inStream.read(SaveStreams::buffer, 3);
 #endif // JSON
 		AddOffset();
 		size_t size;
@@ -151,14 +157,14 @@ namespace RogueSaveManager {
 		RemoveOffset();
 
 #ifdef JSON
-		inStream.read(buffer, 2);
+		SaveStreams::inStream.read(SaveStreams::buffer, 2);
 #endif // JSON
 	}
 
 	template <typename T>
 	static T Read(const char* name)
 	{
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 
 		T hold;
 		Read(name, hold);
@@ -167,56 +173,56 @@ namespace RogueSaveManager {
 
 	static void Write(const char* name, std::string& str)
 	{
-		ASSERT(outStream.is_open());
+		ASSERT(SaveStreams::outStream.is_open());
 
 #ifdef JSON
 		WriteTabs();
-		outStream.write(name, strlen(name));
-		outStream << " : ";
+		SaveStreams::outStream.write(name, strlen(name));
+		SaveStreams::outStream << " : ";
 #endif // JSON
 
 		//Serialize size
 		size_t size = str.size();
 #ifdef JSON
-		outStream << size;
-		outStream << ": ";
+		SaveStreams::outStream << size;
+		SaveStreams::outStream << ": ";
 #else
 		char* bytePtr = (char*)&size;
-		outStream.write(bytePtr, sizeof(size_t));
+		SaveStreams::outStream.write(bytePtr, sizeof(size_t));
 #endif
 
-		outStream.write(str.c_str(), str.size());
+		SaveStreams::outStream.write(str.c_str(), str.size());
 
 #ifdef JSON
-		outStream << ",\n";
+		SaveStreams::outStream << ",\n";
 #endif // JSON
 	}
 
 	static void Read(const char* name, std::string& str)
 	{
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 
 #ifdef JSON
 		ReadTabs();
-		inStream.read(buffer, strlen(name));
-		inStream.read(buffer, 3);
+		SaveStreams::inStream.read(SaveStreams::buffer, strlen(name));
+		SaveStreams::inStream.read(SaveStreams::buffer, 3);
 #endif // JSON
 
 		//Serialize Size
 		size_t size;
 #ifdef JSON
-		inStream >> size;
-		inStream.read(buffer, 2);
+		SaveStreams::inStream >> size;
+		SaveStreams::inStream.read(SaveStreams::buffer, 2);
 #else
 		char* bytePtr = (char*)&size;
-		inStream.read(bytePtr, sizeof(size_t));
+		SaveStreams::inStream.read(bytePtr, sizeof(size_t));
 #endif
 
-		inStream.read(buffer, size);
-		str = std::string(buffer, size);
+		SaveStreams::inStream.read(SaveStreams::buffer, size);
+		str = std::string(SaveStreams::buffer, size);
 
 #ifdef JSON
-		inStream.read(buffer, 2);
+		SaveStreams::inStream.read(SaveStreams::buffer, 2);
 #endif
 	}
 
@@ -231,7 +237,7 @@ namespace RogueSaveManager {
 			unsigned char uChar = asChar;
 			int val = (int)uChar;
 			ASSERT(val >= 0 && val <= 255);
-			outStream << IntToHex(val >> 4) << IntToHex(val & 0xF);
+			SaveStreams::outStream << IntToHex(val >> 4) << IntToHex(val & 0xF);
 
 			if ((i + 1) == len || ((i + 1) % 10) == 0)
 			{
@@ -239,29 +245,29 @@ namespace RogueSaveManager {
 			}
 			else
 			{
-				outStream << ' ';
+				SaveStreams::outStream << ' ';
 			}
 		}
 #else
-		outStream.write(data, len);
+		SaveStreams::outStream.write(data, len);
 #endif
 	}
 
 	template <typename T>
 	static void WriteAsBuffer(const char* name, std::vector<T> values)
 	{
-		ASSERT(outStream.is_open());
+		ASSERT(SaveStreams::outStream.is_open());
 #ifdef JSON
 		WriteTabs();
-		outStream.write(name, strlen(name));
-		outStream << " : ";
+		SaveStreams::outStream.write(name, strlen(name));
+		SaveStreams::outStream << " : ";
 #endif // JSON
 		AddOffset();
 		Write("Size", values.size());
 		WriteTabs();
 #ifdef JSON
-		outStream.write("Contents", strlen("Contents"));
-		outStream << " : ";
+		SaveStreams::outStream.write("Contents", strlen("Contents"));
+		SaveStreams::outStream << " : ";
 #endif // JSON
 		AddOffset();
 		WriteRawBuffer((char*)values.data(), values.size() * sizeof(T));
@@ -269,7 +275,7 @@ namespace RogueSaveManager {
 		WriteNewline();
 		RemoveOffset();
 #ifdef JSON
-		outStream << ",\n";
+		SaveStreams::outStream << ",\n";
 #endif // JSON
 	}
 
@@ -280,7 +286,7 @@ namespace RogueSaveManager {
 		for (size_t i = 0; i < len; i++)
 		{
 			if (i % 10 == 0) ReadTabs();
-			inStream.read(str, 2);
+			SaveStreams::inStream.read(str, 2);
 			int val = (HexToInt(str[0]) << 4) | HexToInt(str[1]);
 			ASSERT(val >= 0 && val <= 255);
 			unsigned char uChar = (unsigned char)val;
@@ -292,23 +298,23 @@ namespace RogueSaveManager {
 			}
 			else
 			{
-				inStream.read(str, 1);
+				SaveStreams::inStream.read(str, 1);
 			}
 		}
 #else
-		inStream.read(data, len);
+		SaveStreams::inStream.read(data, len);
 #endif
 	}
 
 	template <typename T>
 	static void ReadAsBuffer(const char* name, std::vector<T>& values)
 	{
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 
 #ifdef JSON
 		ReadTabs();
-		inStream.read(buffer, strlen(name));
-		inStream.read(buffer, 3);
+		SaveStreams::inStream.read(SaveStreams::buffer, strlen(name));
+		SaveStreams::inStream.read(SaveStreams::buffer, 3);
 #endif // JSON
 		AddOffset();
 		size_t size;
@@ -316,8 +322,8 @@ namespace RogueSaveManager {
 		values.resize(size);
 		ReadTabs();
 #ifdef JSON
-		inStream.read(buffer, strlen("Contents"));
-		inStream.read(buffer, 3);
+		SaveStreams::inStream.read(SaveStreams::buffer, strlen("Contents"));
+		SaveStreams::inStream.read(SaveStreams::buffer, 3);
 #endif // JSON
 		AddOffset();
 		ReadRawBuffer((char*) values.data(), size * sizeof(T));
@@ -326,20 +332,20 @@ namespace RogueSaveManager {
 		RemoveOffset();
 
 #ifdef JSON
-		inStream.read(buffer, 2);
+		SaveStreams::inStream.read(SaveStreams::buffer, 2);
 #endif // JSON
 	}
 
 	static void OpenWriteSaveFileByPath(const std::filesystem::path path)
 	{
-		ASSERT(!inStream.is_open());
-		offset = 0;
+		ASSERT(!SaveStreams::inStream.is_open());
+		SaveStreams::offset = 0;
 #ifdef JSON
-		outStream.open(path);
+		SaveStreams::outStream.open(path);
 #else
-		outStream.open(path, std::ios::binary);
+		SaveStreams::outStream.open(path, std::ios::binary);
 #endif
-		ASSERT(outStream.is_open());
+		ASSERT(SaveStreams::outStream.is_open());
 		for (int i = 0; i < strlen(header); i++)
 		{
 			Serialize(header[i]);
@@ -365,8 +371,8 @@ namespace RogueSaveManager {
 
 	static void CloseWriteSaveFile()
 	{
-		ASSERT(outStream.is_open());
-		outStream.close();
+		ASSERT(SaveStreams::outStream.is_open());
+		SaveStreams::outStream.close();
 	}
 
 	static bool OpenReadSaveFileByPath(const std::filesystem::path path)
@@ -376,14 +382,14 @@ namespace RogueSaveManager {
 			return false;
 		}
 
-		ASSERT(!outStream.is_open());
-		offset = 0;
+		ASSERT(!SaveStreams::outStream.is_open());
+		SaveStreams::offset = 0;
 #ifdef JSON
-		inStream.open(path);
+		SaveStreams::inStream.open(path);
 #else
-		inStream.open(path, std::ios::binary);
+		SaveStreams::inStream.open(path, std::ios::binary);
 #endif
-		ASSERT(inStream.is_open());
+		ASSERT(SaveStreams::inStream.is_open());
 		char buf[5];
 		for (int i = 0; i < strlen(header); i++)
 		{
@@ -412,8 +418,8 @@ namespace RogueSaveManager {
 
 	static void CloseReadSaveFile()
 	{
-		ASSERT(inStream.is_open());
-		inStream.close();
+		ASSERT(SaveStreams::inStream.is_open());
+		SaveStreams::inStream.close();
 	}
 
 	static void DeleteSaveFile(const std::string filename)

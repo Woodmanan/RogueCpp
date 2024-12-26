@@ -535,8 +535,7 @@ namespace RogueResources
 
 	void PackReaction(PackContext& packContext)
 	{
-		//Just for linking dependency! If Init order is correct we should be fine to just use the material manager
-		std::vector<ResourcePointer> materials = ResourceManager::Get()->LoadFromConfig("Mat", "materials", &packContext);
+		std::vector<ResourcePointer> materials = ResourceManager::Get()->LoadFromConfigSynchronous("Mat", "materials", &packContext);
 
 		auto FindIndex = [materials](const std::string& name) {
 			int index = 0;
