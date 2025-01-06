@@ -126,23 +126,12 @@ public:
 
 	const MaterialDefinition& GetMaterialByID(int index);
 	const MaterialDefinition& GetMaterialByName(const std::string& name);
-
-	static MaterialManager* Get()
-	{
-		if (manager == nullptr)
-		{
-			manager = new MaterialManager();
-		}
-
-		return manager;
-	}
 	
 private:
 	void SortReactions();
 	bool ReactionMatchesMixture(Reaction& reaction, MixtureContainer& mixture);
 	float GetReactionMultiple(Reaction& reaction, MixtureContainer& mixture);
 
-	static MaterialManager* manager;
 	vector<MaterialDefinition> m_materialDefinitions;
 	vector<Reaction> m_reactions;
 };

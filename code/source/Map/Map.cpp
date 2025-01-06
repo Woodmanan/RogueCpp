@@ -96,7 +96,7 @@ THandle<TileStats> Map::GetOrAddStats(Tile& tile)
 {
     if (!tile.m_stats.IsValid())
     {
-        tile.m_stats = RogueDataManager::Allocate<TileStats>();
+        tile.m_stats = Game::dataManager->Allocate<TileStats>();
     }
 
     ASSERT(tile.m_stats.IsValid());
@@ -110,7 +110,7 @@ THandle<TileNeighbors> Map::GetOrAddNeighbors(Tile& tile)
 
     if (!stats->m_neighbors.IsValid())
     {
-        stats->m_neighbors = RogueDataManager::Allocate<TileNeighbors>();
+        stats->m_neighbors = Game::dataManager->Allocate<TileNeighbors>();
     }
 
     ASSERT(stats->m_neighbors.IsValid());

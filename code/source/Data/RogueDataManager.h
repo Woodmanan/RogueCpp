@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include "Game/Game.h"
 #include "Data/RogueArena.h"
 #include "Data/SaveManager.h"
 #include "Debug/Debug.h"
@@ -43,36 +44,9 @@ class THandle;
 
 class RogueDataManager
 {
-
-private:
-	static RogueDataManager* manager;
-	vector<RogueArena*> arenas;
-
-	RogueDataManager()
-	{
-		//Create an insert generic arena
-		arenas.push_back(new RogueArena(1024));
-	}
-
-	~RogueDataManager()
-	{
-		for (int i = 0; i < arenas.size(); i++)
-		{
-			delete(arenas[i]);
-		}
-	}
-
-
 public:
-	static RogueDataManager* Get()
-	{
-		if (manager == nullptr)
-		{
-			manager = new RogueDataManager();
-		}
-
-		return manager;
-	}
+	RogueDataManager();
+	~RogueDataManager();
 
 	template <typename T>
 	int RegisterArena(int size)
@@ -87,18 +61,18 @@ public:
 	}
 
 	template <typename T>
-	static Handle AllocateGeneric()
+	Handle AllocateGeneric()
 	{
-		int offset = manager->arenas[0]->AllocateByOffset<T>();
+		int offset = arenas[0]->AllocateByOffset<T>();
 		return Handle(0, offset);
 	}
 
 	template <typename T, class... Args>
-	static THandle<T> Allocate(Args&&... args)
+	THandle<T> Allocate(Args&&... args)
 	{
 		int arenaNum = RogueSaveable<T>::ID;
 		STRONG_ASSERT(arenaNum > 0);
-		int offset = manager->arenas[arenaNum]->AllocateByOffset<T>(std::forward<Args>(args)...);
+		int offset = arenas[arenaNum]->AllocateByOffset<T>(std::forward<Args>(args)...);
 		return THandle<T>(arenaNum, offset);
 	}
 
@@ -110,22 +84,22 @@ public:
 
 	bool CanResolve(int index, unsigned int offset)
 	{
-		if (index > 0 && index < manager->arenas.size())
+		if (index > 0 && index < arenas.size())
 		{
-			return manager->arenas[index]->Contains(offset);
+			return arenas[index]->Contains(offset);
 		}
 		return false;
 	}
 
 	void* ResolveHandle(int index, unsigned int offset)
 	{
-		return manager->arenas[index]->Get<void>(offset);
+		return arenas[index]->Get<void>(offset);
 	}
 
 	template <typename T>
 	T* ResolveHandle(int index, unsigned int offset)
 	{
-		return manager->arenas[index]->Get<T>(offset);
+		return arenas[index]->Get<T>(offset);
 	}
 
 	template <typename T>
@@ -133,7 +107,7 @@ public:
 	{
 		int arenaNum = RogueSaveable<T>::ID;
 		STRONG_ASSERT(arenaNum > 0);
-		return manager->arenas[arenaNum]->GetByTypeIndex<T>(index);
+		return arenas[arenaNum]->GetByTypeIndex<T>(index);
 	}
 
 	void SaveAll()
@@ -151,6 +125,9 @@ public:
 			arenas[i]->ReadInternals();
 		}
 	}
+
+private:
+	vector<RogueArena*> arenas;
 };
 
 class Handle
@@ -184,7 +161,7 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
-		return RogueDataManager::Get()->ResolveHandle(GetIndex(), GetOffset());
+		return Game::dataManager->ResolveHandle(GetIndex(), GetOffset());
 	}
 
 	signed char GetIndex() { return (signed char) (_internalOffset >> 24) & (0xFF); }
@@ -201,9 +178,9 @@ protected:
 	void* linked = nullptr;
 	virtual void RefreshLinkedObject()
 	{
-		if (IsValid() && RogueDataManager::Get()->CanResolve(GetIndex(), GetOffset()))
+		if (IsValid() && Game::dataManager->CanResolve(GetIndex(), GetOffset()))
 		{
-			linked = RogueDataManager::Get()->ResolveHandle(GetIndex(), GetOffset());
+			linked = Game::dataManager->ResolveHandle(GetIndex(), GetOffset());
 		}
 		else
 		{
@@ -239,7 +216,7 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
-		return RogueDataManager::Get()->ResolveHandle<T>(GetIndex(), GetOffset());
+		return Game::dataManager->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
 	T& GetReference()
@@ -247,7 +224,7 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
-		return *RogueDataManager::Get()->ResolveHandle<T>(GetIndex(), GetOffset());
+		return *Game::dataManager->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
 #ifdef LINK_HANDLE
@@ -255,9 +232,9 @@ protected:
 	T* linked = nullptr;
 	virtual void RefreshLinkedObject() override
 	{
-		if (IsValid() && RogueDataManager::Get()->CanResolve(GetIndex(), GetOffset()))
+		if (IsValid() && Game::dataManager->CanResolve(GetIndex(), GetOffset()))
 		{
-			linked = RogueDataManager::Get()->ResolveHandle<T>(GetIndex(), GetOffset());
+			linked = Game::dataManager->ResolveHandle<T>(GetIndex(), GetOffset());
 		}
 		else
 		{
@@ -288,10 +265,10 @@ public:
 	}
 };
 
-#define REGISTER_SAVE_TYPE(index, ClassName, name, size)\
+#define REGISTER_SAVE_TYPE(index, ClassName)\
 	class ClassName;\
-	template<> int RogueSaveable<ClassName>::ID = index;\
-    template<> RegisterHelper<ClassName>::RegisterHelper (int) { DEBUG_PRINT("%d: %s (Registered %d)", index, name, size); RogueDataManager::Get()->RegisterArena<ClassName>(size); }\
+	template<> int RogueSaveable<ClassName>::ID = index;
+    //template<> RegisterHelper<ClassName>::RegisterHelper (int) { DEBUG_PRINT("%d: %s (Registered %d)", index, name, size); Game::dataManager->RegisterArena<ClassName>(size); }\
     template<> RegisterHelper<ClassName> RegisterHelper<ClassName>::_helper(size);
 
 namespace RogueSaveManager

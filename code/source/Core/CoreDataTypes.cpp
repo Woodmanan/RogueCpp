@@ -1,4 +1,6 @@
 #include "CoreDataTypes.h"
+#include "Data/RogueDataManager.h"
+#include "Game/Game.h"
 #include "Data/SaveManager.h"
 #include "Map/Map.h"
 #include "Debug/Profiling.h"
@@ -141,20 +143,20 @@ Vec2 Location::AsVec2()
 Tile& Location::GetTile()
 {
     ASSERT(InMap());
-    return RogueDataManager::Get()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    return Game::dataManager->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
 }
 
 Tile* Location::operator ->()
 {
     ASSERT(InMap());
-    return &RogueDataManager::Get()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    return &Game::dataManager->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
 }
 
 bool Location::InMap()
 {
     if (!GetValid()) { return false; }
 
-    Map* map = RogueDataManager::Get()->ResolveByTypeIndex<Map>(z());
+    Map* map = Game::dataManager->ResolveByTypeIndex<Map>(z());
     return x() >= 0 && y() >= 0 && x() < map->m_size.x && y() < map->m_size.y;
 }
 
@@ -236,7 +238,7 @@ std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction directi
 {
     ROGUE_PROFILE_SECTION("LOS::_Traverse_No_Neighbor");
     ASSERT((!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid()));
-    Map* map = RogueDataManager::Get()->ResolveByTypeIndex<Map>(z());
+    Map* map = Game::dataManager->ResolveByTypeIndex<Map>(z());
     ASSERT(map != nullptr);
 
     switch (direction)
@@ -334,14 +336,16 @@ THandle<TileNeighbors> Location::GetNeighbors()
 #ifdef LINK_TILE
 void Location::RefreshLinkedTile()
 {
-    if (GetValid() && RogueDataManager::Get()->CanResolve<Map>(z()) && InMap())
+    /*
+    if (GetValid() && Game::dataManager->CanResolve<Map>(z()) && InMap())
     {
-        linkedTile = &RogueDataManager::Get()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+        linkedTile = &Game::dataManager->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
     }
     else
     {
         linkedTile = nullptr;
     }
+    */
 }
 #endif
 

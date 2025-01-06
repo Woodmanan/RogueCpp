@@ -1,3 +1,4 @@
+#pragma once
 #include "Core/CoreDataTypes.h"
 #include <string>
 #include <memory>
@@ -82,10 +83,10 @@ public:
 		m_data = nullptr;
 	}
 
-	template <EInputType type>
-	void Set(std::shared_ptr<TInputBase<type>> ptr)
+	template <typename T>
+	void Set(std::shared_ptr<T> ptr)
 	{
-		m_type = type;
+		m_type = ptr->GetType();
 		m_data = ptr;
 	}
 

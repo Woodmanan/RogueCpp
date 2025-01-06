@@ -3,10 +3,9 @@
 #include "Utils/Utils.h"
 #include "Utils/FileUtils.h"
 #include "Data/SaveManager.h"
+#include "Game/Game.h"
 #include <iostream>
 #include <algorithm>
-
-MaterialManager* MaterialManager::manager = new MaterialManager();
 
 MaterialManager::MaterialManager()
 {
@@ -38,7 +37,7 @@ void MaterialManager::Init()
 
 const MaterialDefinition& Material::GetMaterial() const
 {
-	return MaterialManager::Get()->GetMaterialByID(m_materialID);
+	return Game::materialManager->GetMaterialByID(m_materialID);
 }
 
 void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMaterial, int index)
@@ -49,7 +48,7 @@ void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMa
 
 void MaterialContainer::AddMaterial(const std::string& name, float mass, bool staticMaterial)
 {
-	int ID = MaterialManager::Get()->GetMaterialByName(name).ID;
+	int ID = Game::materialManager->GetMaterialByName(name).ID;
 	Material mat = Material(ID, mass, staticMaterial);
 	AddMaterial(mat, -1);
 }
@@ -662,7 +661,7 @@ namespace RogueSaveManager
 		AddOffset();
 		if (debug)
 		{
-			std::string name = (value.m_materialID == -1) ? "Remove" : MaterialManager::Get()->GetMaterialByID(value.m_materialID).name;
+			std::string name = (value.m_materialID == -1) ? "Remove" : Game::materialManager->GetMaterialByID(value.m_materialID).name;
 			Write("Name", name);
 		}
 		Write("ID", value.m_materialID);

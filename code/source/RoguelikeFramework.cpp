@@ -20,6 +20,7 @@
 #include "Render/UI/Label.h"
 #include "Render/UI/UIManager.h"
 #include "Core/Materials/Materials.h"
+#include "Core/Events/Event.h"
 #include "Debug/Profiling.h"
 #include "Render/VulkanTest.h"
 #include "Render/Fonts/FontManager.h"
@@ -243,10 +244,49 @@ void SetupResources()
     ResourceManager::Get()->LaunchThreads();
 }
 
-void InitManagers()
+void TestEvents()
 {
-    ROGUE_PROFILE;
-    MaterialManager::Get()->Init();
+    ROGUE_PROFILE_SECTION("Test Events");
+    EventHandlerContainer testContainer1;
+    EventHandlerContainer testContainer2;
+    EventHandlerContainer testContainer3;
+
+    for (int i = 0; i < 30; i++)
+    {
+        testContainer1.eventHandlers.push_back(new TestEvent<OnTurnStartGlobal, 10, 0>());
+        testContainer2.eventHandlers.push_back(new TestEvent<OnTurnStartGlobal, 20, 1>());
+        testContainer3.eventHandlers.push_back(new TestEvent<OnTurnStartGlobal, 30, 2>());
+
+        testContainer1.eventHandlers.push_back(new TestEvent<OnTurnEndGlobal, 30, 0>());
+        testContainer2.eventHandlers.push_back(new TestEvent<OnTurnEndGlobal, 20, 1>());
+        testContainer3.eventHandlers.push_back(new TestEvent<OnTurnEndGlobal, 10, 2>());
+    }
+
+    for (int i = 0; i < 100; i++)
+    {
+        EventData data;
+        data.targets.push_back(&testContainer1);
+        data.targets.push_back(&testContainer2);
+        data.targets.push_back(&testContainer3);
+
+        {
+            ROGUE_PROFILE_SECTION("Test Event: 0");
+            data.type = OnTurnStartGlobal;
+            FireEvent(data);
+        }
+
+        {
+            ROGUE_PROFILE_SECTION("Test Event: 1");
+            data.type = OnTurnEndGlobal;
+            FireEvent(data);
+        }
+
+        {
+            ROGUE_PROFILE_SECTION("Test Event: 2");
+            data.type = OnAttacked;
+            FireEvent(data);
+        }
+    }
 }
 
 int main(int argc, char* argv[])
@@ -256,9 +296,6 @@ int main(int argc, char* argv[])
     //Preload font!
     ResourceManager::Get()->Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
 
-    Input exitInput;
-    exitInput.Set<ExitGame>();
-
     //Initialize Random
     srand(1);
 
@@ -267,9 +304,7 @@ int main(int argc, char* argv[])
 
     if (RogueSaveManager::FilePathExists("MySaveFile.rsf"))
     {
-        Input startInput;
-        startInput.Set<LoadSaveGame>(std::make_shared<LoadSaveInput>("MySaveFile.rsf"));
-        game.AddInput(startInput);
+        game.CreateInput<LoadSaveInput>("MySaveFile.rsf");
     }
     else
     {
@@ -313,52 +348,6 @@ int main(int argc, char* argv[])
     Bar* ybar = uiManager.CreateWindow<Bar>(std::string("YBar"), Anchors{ 0, 1, 1, 1, 3, -1, -2, -1 }, testPanel2);
 
     uiManager.ApplySettingsToAllWindows();
-    InitManagers();
-
-    if (RogueSaveManager::OpenReadSaveFile("MySaveFile.rsf"))
-    {
-        ROGUE_PROFILE_SECTION("Load Save File");
-        RogueSaveManager::Read("Input", input);
-        RogueSaveManager::Read("Map", map);
-        RogueSaveManager::Read("Memory", memory);
-        RogueSaveManager::Read("Player", playerLoc);
-        RogueSaveManager::Read("Look Direction", lookDirection);
-        RogueSaveManager::Read("Radius", radius);
-        RogueSaveManager::Read("Max Pass", maxPass);
-        RogueSaveManager::Read("Current Index", currentIndex);
-        RogueSaveManager::Read("Render Flags", renderFlags);
-        RogueSaveManager::Read("bPoint", bresenhamPoint);
-        RogueDataManager::Get()->LoadAll();
-        RogueSaveManager::CloseReadSaveFile();
-    }
-    else
-    {
-        for (int i = 0; i < 1; i++)
-        {
-            MaterialContainer groundMat;
-            groundMat.AddMaterial("Dirt", 1000);
-            MaterialContainer wallMat;
-            wallMat.AddMaterial("Dirt", 1000);
-            wallMat.AddMaterial("Stone", 1000, true);
-
-            map = RogueDataManager::Allocate<Map>(size, i, 2);
-            map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, -1, wallMat);
-            map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('0', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('1', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('2', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('3', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('4', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-            map->LinkBackingTile<BackingTile>('5', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-
-            map->FillTilesExc(Vec2(0, 0), size, 0);
-            map->FillTilesExc(Vec2(1, 1), Vec2(size.x - 1, size.y - 1), 1);
-            
-            memory = RogueDataManager::Allocate<TileMemory>(map);
-            memory->SetLocalPosition(playerLoc);
-        }
-    }
 
     int k;
     int x = 80, y = 40;
@@ -370,6 +359,8 @@ int main(int argc, char* argv[])
     terminal_open();
     terminal_print(34, 20, "Hello World! I am here!");
     terminal_refresh();
+
+    TestEvents();
 
     View view;
     view.SetRadius(radius);
@@ -574,28 +565,7 @@ int main(int argc, char* argv[])
             }
             break;
         case GLFW_KEY_S:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
-            {
-                ROGUE_PROFILE_SECTION("Create Save File");
-                RogueSaveManager::OpenWriteSaveFile("MySaveFile.rsf");
-                RogueSaveManager::Write("Input", input);
-                RogueSaveManager::Write("Map", map);
-                RogueSaveManager::Write("Memory", memory);
-                RogueSaveManager::Write("Player", playerLoc);
-                RogueSaveManager::Write("Look Direction", lookDirection);
-                RogueSaveManager::Write("Radius", radius);
-                RogueSaveManager::Write("Max Pass", maxPass);
-                RogueSaveManager::Write("Current Index", currentIndex);
-                RogueSaveManager::Write("Render Flags", renderFlags);
-                RogueSaveManager::Write("bPoint", bresenhamPoint);
-                RogueDataManager::Get()->SaveAll();
-                RogueSaveManager::CloseWriteSaveFile();
-                shouldBreak = true;
-            }
-            else
-            {
-                map->SetTile(playerLoc.AsVec2(), 2);
-            }
+            game.CreateInput<SaveAndExit>();
             break;
         case GLFW_KEY_R:
             if (!terminal_get_key(GLFW_KEY_LEFT_SHIFT))
@@ -835,10 +805,10 @@ int main(int argc, char* argv[])
         //Update UI Layout
         gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_height() });
 
-        LOS::Calculate(view, playerLoc, lookDirection, maxPass);
-        memory->Update(view);
+        //LOS::Calculate(view, playerLoc, lookDirection, maxPass);
+        //memory->Update(view);
 
-        if (renderFlags & render)
+        /*if (renderFlags & render)
         {
             if (renderFlags & background)
             {
@@ -873,16 +843,16 @@ int main(int argc, char* argv[])
             RenderBresenham(renderWindow, bresenhamPoint);
 
             renderWindow->Put(renderWindow->m_rect.w / 2, renderWindow->m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
-        }
+        }*/
 
 
         xbar->SetColor(Color(255, 100, 0));
-        xbar->SetFill(((float)playerLoc.x()) / (map->m_size.x - 1), 0.03f);
+        //xbar->SetFill(((float)playerLoc.x()) / (map->m_size.x - 1), 0.03f);
         xlabel->SetString("x:");
         //xlabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
 
         ybar->SetColor(Color(255, 100, 0));
-        ybar->SetFill(((float)playerLoc.y()) / (map->m_size.y - 1), 0.03f);
+        //ybar->SetFill(((float)playerLoc.y()) / (map->m_size.y - 1), 0.03f);
         ylabel->SetString("y:");
         //ylabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
         gameWindow->RenderContent(frameTime.count());
@@ -897,7 +867,7 @@ int main(int argc, char* argv[])
     }
 
     //Cleanup phase
-    game.AddInput(exitInput);
+    game.CreateInput<ExitGame>();
     gameThread.join();
     terminal_close();
     ResourceManager::ShutdownResources();

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Game/Game.h"
 #include "Data/RogueDataManager.h"
 #include "Core/CoreDataTypes.h"
 #include "Core/Materials/Materials.h"
@@ -122,7 +122,7 @@ public:
     int LinkBackingTile(Args&&... args)
     {
         static_assert(std::is_convertible<T*, BackingTile*>::value, "T must inherit from BackingTile");
-        THandle<BackingTile> tile = RogueDataManager::Allocate<T>(std::forward<Args>(args)...);
+        THandle<BackingTile> tile = Game::dataManager->Allocate<T>(std::forward<Args>(args)...);
         return LinkBackingTile(tile);
     }
 };
