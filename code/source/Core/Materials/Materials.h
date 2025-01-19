@@ -145,14 +145,85 @@ namespace RogueResources
 	std::shared_ptr<void> LoadReaction(LoadContext& loadContext);
 }
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	void Serialize(MaterialDefinition& value);
-	void Deserialize(MaterialDefinition& value);
-	void Serialize(Material& value);
-	void Deserialize(Material& value);
-	void Serialize(Reaction& value);
-	void Deserialize(Reaction& value);
-	void Serialize(MaterialContainer& value);
-	void Deserialize(MaterialContainer& value);
+	template<typename Stream>
+	void Serialize(Stream& stream, MaterialDefinition& value)
+	{
+		Write(stream, "ID", value.ID);
+		Write(stream, "Name", value.name);
+		Write(stream, "Density", value.density);
+		Write(stream, "Melting Point", value.meltingPoint);
+		Write(stream, "Boiling Point", value.boilingPoint);
+		Write(stream, "Specific Heat", value.specificHeat);
+		Write(stream, "Thermal Conductivity", value.thermalConductivity);
+		Write(stream, "Electrical Resistance", value.electricalResistance);
+		Write(stream, "Hardness", value.hardness);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, MaterialDefinition& value)
+	{
+		Read(stream, "ID", value.ID);
+		Read(stream, "Name", value.name);
+		Read(stream, "Density", value.density);
+		Read(stream, "Melting Point", value.meltingPoint);
+		Read(stream, "Boiling Point", value.boilingPoint);
+		Read(stream, "Specific Heat", value.specificHeat);
+		Read(stream, "Thermal Conductivity", value.thermalConductivity);
+		Read(stream, "Electrical Resistance", value.electricalResistance);
+		Read(stream, "Hardness", value.hardness);
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, Material& value)
+	{
+		Write(stream, "ID", value.m_materialID);
+		Write(stream, "Mass", value.m_mass);
+		Write(stream, "Static", value.m_static);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, Material& value)
+	{
+		Read(stream, "ID", value.m_materialID);
+		Read(stream, "Mass", value.m_mass);
+		Read(stream, "Static", value.m_static);
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, Reaction& value)
+	{
+		Write(stream, "Name", value.name);
+		Write(stream, "Reactants", value.m_reactants);
+		Write(stream, "Products", value.m_products);
+		Write(stream, "Min Heat", value.m_minHeat);
+		Write(stream, "Delta Heat", value.m_deltaHeat);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, Reaction& value)
+	{
+		Read(stream, "Name", value.name);
+		Read(stream, "Reactants", value.m_reactants);
+		Read(stream, "Products", value.m_products);
+		Read(stream, "Min Heat", value.m_minHeat);
+		Read(stream, "Delta Heat", value.m_deltaHeat);
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, MaterialContainer& value)
+	{
+		Write(stream, "Materials", value.m_materials);
+		Write(stream, "Layers", value.m_layers);
+		Write(stream, "Heat", value.m_heat);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, MaterialContainer& value)
+	{
+		Read(stream, "Materials", value.m_materials);
+		Read(stream, "Layers", value.m_layers);
+		Read(stream, "Heat", value.m_heat);
+	}
 }

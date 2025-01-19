@@ -1,7 +1,9 @@
 #pragma once
-#include "Data/SaveManager.h"
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include "glm/glm.hpp"
+#include "Debug/Debug.h"
+#include <type_traits>
+#include "Data/Serialization/Serialization.h"
 
 class Tile;
 class TileNeighbors;
@@ -62,11 +64,6 @@ enum Direction : char
     West = 6,
     NorthWest = 7
 };
-
-std::istream& operator >> (std::istream& in, Direction& direction);
-
-std::ostream& operator << (std::ostream& out, Direction direction);
-
 
 inline static Direction Orthagonal(Direction direction)
 {
@@ -216,7 +213,7 @@ public:
     Tile* operator ->();
 
 #ifndef _DEBUG
-    int GetData() { return m_data; }
+    int& GetData() { return m_data; }
     void SetData(int newData) { m_data = newData; }
 #endif // _DEBUG
 
@@ -230,8 +227,6 @@ public:
     std::pair<Location, Direction> _Traverse_Neighbors(Direction direction);
 
     THandle<TileNeighbors> GetNeighbors();
-
-
 
     static const int xSize = 12;
     static const int ySize = 12;
@@ -389,14 +384,112 @@ inline Color Blend(Color f, Color s, float percent)
     return Color(r, g, b, a);
 }
 
-namespace RogueSaveManager
+namespace Serialization
 {
-    void Serialize(Vec2& value);
-    void Deserialize(Vec2& value);
-    void Serialize(Vec3& value);
-    void Deserialize(Vec3& value);
-    void Serialize(Location& value);
-    void Deserialize(Location& value);
-    void Serialize(Color& value);
-    void Deserialize(Color& value);
+    template<typename Stream>
+    void SerializeObject(Stream& stream, Direction& direction)
+    {
+        int asInt = direction;
+        Serialize(stream, asInt);
+    }
+
+    template<typename Stream>
+    void DeserializeObject(Stream& stream, Direction& direction)
+    {
+        int asInt;
+        Deserialize(stream, asInt);
+        direction = (Direction) asInt;
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, Vec2& value)
+    {
+        Write(stream, "x", value.x);
+        Write(stream, "y", value.y);
+    }
+
+    template<typename Stream>
+    void Deserialize(Stream& stream, Vec2& value)
+    {
+        Read(stream, "x", value.x);
+        Read(stream, "y", value.y);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, Vec3& value)
+    {
+        Write(stream, "x", value.x);
+        Write(stream, "y", value.y);
+        Write(stream, "z", value.z);
+    }
+
+    template<typename Stream>
+    void Deserialize(Stream& stream, Vec3& value)
+    {
+        Read(stream, "x", value.x);
+        Read(stream, "y", value.y);
+        Read(stream, "z", value.z);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, Location& value)
+    {
+#ifdef _DEBUG
+        bool valid = value.GetValid();
+        Write(stream, "Valid", valid);
+        if (value.GetValid())
+        {
+            Vec3 vec = value.GetVector();
+            Write(stream, "Vector", vec);
+        }
+#else
+        Write(stream, "Data", value.GetData());
+#endif
+    }
+
+    template<typename Stream>
+    void Deserialize(Stream& stream, Location& value)
+    {
+#ifdef _DEBUG
+        value.SetValid(Read<Stream, bool>(stream, "Valid"));
+        if (value.GetValid())
+        {
+            value.SetVector(Read<Stream, Vec3>(stream, "Vector"));
+        }
+#else
+        value.SetData(Read<Stream, int>(stream, "Data"));
+#endif
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, Color& value)
+    {
+        if constexpr (std::is_same<Stream, JSONStream>::value)
+        {
+            Write(stream, "r", value.r);
+            Write(stream, "g", value.g);
+            Write(stream, "b", value.b);
+            Write(stream, "a", value.a);
+        }
+        else
+        {
+            Write(stream, "color", value.color);
+        }
+    }
+
+    template<typename Stream>
+    void Deserialize(Stream& stream, Color& value)
+    {
+        if constexpr (std::is_same<Stream, JSONStream>::value)
+        {
+            Read(stream, "r", value.r);
+            Read(stream, "g", value.g);
+            Read(stream, "b", value.b);
+            Read(stream, "a", value.a);
+        }
+        else
+        {
+            Read(stream, "color", value.color);
+        }
+    }
 }

@@ -1,4 +1,5 @@
 #include "UIManager.h"
+#include "Data/SaveManager.h"
 
 UIManager::UIManager()
 {
@@ -95,25 +96,4 @@ void UIManager::CreateSettingsForAllWindows()
 void UIManager::CreateSettingsForWindow(Window* window)
 {
     m_settings.emplace_back(WindowSettings({ window->m_id, window->m_anchors, (window->m_parent == nullptr) ? std::string("") : window->m_parent->m_id }));
-}
-
-namespace RogueSaveManager
-{
-    void Serialize(WindowSettings& value)
-    {
-        AddOffset();
-        Write("ID", value.id);
-        Write("Anchors", value.anchors);
-        Write("Parent", value.parentId);
-        RemoveOffset();
-    }
-
-    void Deserialize(WindowSettings& value)
-    {
-        AddOffset();
-        Read("ID", value.id);
-        Read("Anchors", value.anchors);
-        Read("Parent", value.parentId);
-        RemoveOffset();
-    }
 }

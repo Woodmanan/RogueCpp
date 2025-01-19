@@ -122,28 +122,3 @@ int TileMemory::IndexIntoTilemap(short x, short y)
 	return (location.x + (m_size.x * location.y));
 #endif
 }
-
-namespace RogueSaveManager
-{
-	void Serialize(TileMemory& value)
-	{
-		AddOffset();
-		Write("Size", value.m_size);
-		Write("Local Position", value.m_localPosition);
-		Write("Z Level", value.m_z);
-		Write("Wraps", value.m_wrap);
-		Write("Tile Memory", value.m_tiles);
-		RemoveOffset();
-	}
-
-	void Deserialize(TileMemory& value)
-	{
-		AddOffset();
-		Read("Size", value.m_size);
-		Read("Local Position", value.m_localPosition);
-		Read("Z Level", value.m_z);
-		Read("Wraps", value.m_wrap);
-		Read("Tile Memory", value.m_tiles);
-		RemoveOffset();
-	}
-}

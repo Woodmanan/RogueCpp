@@ -96,7 +96,7 @@ THandle<TileStats> Map::GetOrAddStats(Tile& tile)
 {
     if (!tile.m_stats.IsValid())
     {
-        tile.m_stats = Game::dataManager->Allocate<TileStats>();
+        tile.m_stats = GetDataManager()->Allocate<TileStats>();
     }
 
     ASSERT(tile.m_stats.IsValid());
@@ -110,7 +110,7 @@ THandle<TileNeighbors> Map::GetOrAddNeighbors(Tile& tile)
 
     if (!stats->m_neighbors.IsValid())
     {
-        stats->m_neighbors = Game::dataManager->Allocate<TileNeighbors>();
+        stats->m_neighbors = GetDataManager()->Allocate<TileNeighbors>();
     }
 
     ASSERT(stats->m_neighbors.IsValid());
@@ -314,162 +314,4 @@ void Map::CreateBidirectionalPortal(Vec2 open, Direction openDir, Vec2 exit, Dir
     SetNeighbor(exit, reverseExit, openLoc, ReverseRotation(rotation));
     SetNeighbor(exit, TurnClockwise(reverseExit), openLocCL, ReverseRotation(rotation));
     SetNeighbor(exit, TurnCounterClockwise(reverseExit), openLocCCL, ReverseRotation(rotation));
-}
-
-namespace RogueSaveManager
-{
-	void Serialize(BackingTile& value)
-	{
-		AddOffset();
-		Write("Char", value.m_renderCharacter);
-        Write("FGColor", value.m_foregroundColor);
-        Write("BGColor", value.m_backgroundColor);
-		Write("Blocks Vision", value.m_blocksVision);
-		Write("Movement Cost", value.m_movementCost);
-        Write("Base Materials", value.m_baseMaterials);
-        Write("Index", value.m_index);
-		RemoveOffset();
-	}
-
-    void Deserialize(BackingTile& value)
-    {
-        AddOffset();
-        Read("Char", value.m_renderCharacter);
-        Read("FGColor", value.m_foregroundColor);
-        Read("BGColor", value.m_backgroundColor);
-        Read("Blocks Vision", value.m_blocksVision);
-        Read("Movement Cost", value.m_movementCost);
-        Read("Base Materials", value.m_baseMaterials);
-        Read("Index", value.m_index);
-        RemoveOffset();
-    }
-
-    void Serialize(TileStats& value)
-    {
-        AddOffset();
-        Write("Neighbors", value.m_neighbors);
-        Write("Materials", value.m_materialContainer);
-        RemoveOffset();
-    }
-
-    void Deserialize(TileStats& value)
-    {
-        AddOffset();
-        Read("Neighbors", value.m_neighbors);
-        Read("Materials", value.m_materialContainer);
-        RemoveOffset();
-    }
-
-    void Serialize(Map& value)
-    {
-        AddOffset();
-        Write("Z", value.z);
-        Write("Size", value.m_size);
-        Write("Interleave", value.m_interleaveBits);
-        Write("Backing Tiles", value.m_backingTiles);
-        if (debug)
-        {
-            for (int j = 0; j < value.m_size.y; j++)
-            {
-                for (int i = 0; i < value.m_size.x; i++)
-                {
-                    Vec2 location(i, j);
-                    Write("Location", location);
-                    Write("Tile", value.GetTile(location));
-                }
-            }
-        }
-        else
-        {
-            Write("Tiles", value.m_tiles);
-        }
-        RemoveOffset();
-    }
-
-    void Deserialize(Map& value)
-    {
-        AddOffset();
-        Read("Z", value.z);
-        Read("Size", value.m_size);
-        Read("Interleave", value.m_interleaveBits);
-        Read("Backing Tiles", value.m_backingTiles);
-        value.m_tiles = std::vector<Tile>(value.m_size.x * value.m_size.y, Tile());
-        if (debug)
-        {
-            for (int j = 0; j < value.m_size.y; j++)
-            {
-                for (int i = 0; i < value.m_size.x; i++)
-                {
-                    Vec2 location(i, j);
-                    Read<Vec2>("Location");
-                    Read("Tile", value.GetTile(location));
-                }
-            }
-        }
-        else
-        {
-            Read("Tiles", value.m_tiles);
-        }
-        RemoveOffset();
-    }
-
-    void Serialize(Tile& value)
-    {
-        AddOffset();
-        Write("Backing", value.m_backingTile);
-        Write("Stats", value.m_stats);
-        RemoveOffset();
-    }
-
-    void Deserialize(Tile& value)
-    {
-        AddOffset();
-        Read("Backing", value.m_backingTile);
-        Read("Stats", value.m_stats);
-        RemoveOffset();
-    }
-
-    void Serialize(TileNeighbors& value)
-    {
-        AddOffset();
-        Write("N", value.N);
-        Write("NDir", value.N_Direction);
-        Write("NE", value.NE);
-        Write("NEDir", value.NE_Direction);
-        Write("E", value.E);
-        Write("EDir", value.E_Direction);
-        Write("SE", value.SE);
-        Write("SEDir", value.SE_Direction);
-        Write("S", value.S);
-        Write("SDir", value.S_Direction);
-        Write("SW", value.SW);
-        Write("SWDir", value.SW_Direction);
-        Write("W", value.W);
-        Write("WDir", value.W_Direction);
-        Write("NW", value.NW);
-        Write("NWDir", value.NW_Direction);
-        RemoveOffset();
-    }
-
-    void Deserialize(TileNeighbors& value)
-    {
-        AddOffset();
-        Read("N", value.N);
-        Read("NDir", value.N_Direction);
-        Read("NE", value.NE);
-        Read("NEDir", value.NE_Direction);
-        Read("E", value.E);
-        Read("EDir", value.E_Direction);
-        Read("SE", value.SE);
-        Read("SEDir", value.SE_Direction);
-        Read("S", value.S);
-        Read("SDir", value.S_Direction);
-        Read("SW", value.SW);
-        Read("SWDir", value.SW_Direction);
-        Read("W", value.W);
-        Read("WDir", value.W_Direction);
-        Read("NW", value.NW);
-        Read("NWDir", value.NW_Direction);
-        RemoveOffset();
-    }
 }

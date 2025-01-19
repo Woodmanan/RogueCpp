@@ -1,5 +1,4 @@
 #pragma once
-#include "Game/Game.h"
 #include "Data/RogueDataManager.h"
 #include "Core/CoreDataTypes.h"
 #include "Core/Materials/Materials.h"
@@ -127,20 +126,150 @@ public:
     }
 };
 
-namespace RogueSaveManager
+namespace Serialization
 {
-    void Serialize(BackingTile& value);
-    void Deserialize(BackingTile& value);
+    template<typename Stream>
+    void Serialize(Stream& stream, BackingTile& value)
+    {
+        Write(stream, "Char", value.m_renderCharacter);
+        Write(stream, "FGColor", value.m_foregroundColor);
+        Write(stream, "BGColor", value.m_backgroundColor);
+        Write(stream, "Blocks Vision", value.m_blocksVision);
+        Write(stream, "Movement Cost", value.m_movementCost);
+        Write(stream, "Base Materials", value.m_baseMaterials);
+        Write(stream, "Index", value.m_index);
+    }
 
-    void Serialize(TileStats& value);
-    void Deserialize(TileStats& value);
+    template<typename Stream>
+    void Deserialize(Stream& stream, BackingTile& value)
+    {
+        Read(stream, "Char", value.m_renderCharacter);
+        Read(stream, "FGColor", value.m_foregroundColor);
+        Read(stream, "BGColor", value.m_backgroundColor);
+        Read(stream, "Blocks Vision", value.m_blocksVision);
+        Read(stream, "Movement Cost", value.m_movementCost);
+        Read(stream, "Base Materials", value.m_baseMaterials);
+        Read(stream, "Index", value.m_index);
+    }
 
-    void Serialize(Map& value);
-    void Deserialize(Map& value);
+    template<typename Stream>
+    void Serialize(Stream& stream, TileStats& value)
+    {
+        Write(stream, "Neighbors", value.m_neighbors);
+        Write(stream, "Materials", value.m_materialContainer);
+    }
 
-    void Serialize(Tile& value);
-    void Deserialize(Tile& value);
+    template <typename Stream>
+    void Deserialize(Stream& stream, TileStats& value)
+    {
+        Read(stream, "Neighbors", value.m_neighbors);
+        Read(stream, "Materials", value.m_materialContainer);
+    }
 
-    void Serialize(TileNeighbors& value);
-    void Deserialize(TileNeighbors& value);
+    template<typename Stream>
+    void Serialize(Stream& stream, Map& value)
+    {
+        Write(stream, "Z", value.z);
+        Write(stream, "Size", value.m_size);
+        Write(stream, "Interleave", value.m_interleaveBits);
+        Write(stream, "Backing Tiles", value.m_backingTiles);
+        if constexpr (std::is_same<Stream, JSONStream>::value)
+        {
+            for (int j = 0; j < value.m_size.y; j++)
+            {
+                for (int i = 0; i < value.m_size.x; i++)
+                {
+                    Vec2 location(i, j);
+                    Write(stream, "Location", location);
+                    Write(stream, "Tile", value.GetTile(location));
+                }
+            }
+        }
+        else
+        {
+            Write(stream, "Tiles", value.m_tiles);
+        }
+    }
+
+    template <typename Stream>
+    void Deserialize(Stream& stream, Map& value)
+    {
+        Read(stream, "Z", value.z);
+        Read(stream, "Size", value.m_size);
+        Read(stream, "Interleave", value.m_interleaveBits);
+        Read(stream, "Backing Tiles", value.m_backingTiles);
+        value.m_tiles = std::vector<Tile>(value.m_size.x * value.m_size.y, Tile());
+        if constexpr (std::is_same<Stream, JSONStream>::value)
+        {
+            for (int j = 0; j < value.m_size.y; j++)
+            {
+                for (int i = 0; i < value.m_size.x; i++)
+                {
+                    Vec2 location(i, j);
+                    Read<Stream, Vec2>(stream, "Location");
+                    Read(stream, "Tile", value.GetTile(location));
+                }
+            }
+        }
+        else
+        {
+            Read(stream, "Tiles", value.m_tiles);
+        }
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, Tile& value)
+    {
+        Write(stream, "Backing", value.m_backingTile);
+        Write(stream, "Stats", value.m_stats);
+    }
+
+    template <typename Stream>
+    void Deserialize(Stream& stream, Tile& value)
+    {
+        Read(stream, "Backing", value.m_backingTile);
+        Read(stream, "Stats", value.m_stats);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, TileNeighbors& value)
+    {
+        Write(stream, "N", value.N);
+        Write(stream, "NDir", value.N_Direction);
+        Write(stream, "NE", value.NE);
+        Write(stream, "NEDir", value.NE_Direction);
+        Write(stream, "E", value.E);
+        Write(stream, "EDir", value.E_Direction);
+        Write(stream, "SE", value.SE);
+        Write(stream, "SEDir", value.SE_Direction);
+        Write(stream, "S", value.S);
+        Write(stream, "SDir", value.S_Direction);
+        Write(stream, "SW", value.SW);
+        Write(stream, "SWDir", value.SW_Direction);
+        Write(stream, "W", value.W);
+        Write(stream, "WDir", value.W_Direction);
+        Write(stream, "NW", value.NW);
+        Write(stream, "NWDir", value.NW_Direction);
+    }
+
+    template <typename Stream>
+    void Deserialize(Stream& stream, TileNeighbors& value)
+    {
+        Read(stream, "N", value.N);
+        Read(stream, "NDir", value.N_Direction);
+        Read(stream, "NE", value.NE);
+        Read(stream, "NEDir", value.NE_Direction);
+        Read(stream, "E", value.E);
+        Read(stream, "EDir", value.E_Direction);
+        Read(stream, "SE", value.SE);
+        Read(stream, "SEDir", value.SE_Direction);
+        Read(stream, "S", value.S);
+        Read(stream, "SDir", value.S_Direction);
+        Read(stream, "SW", value.SW);
+        Read(stream, "SWDir", value.SW_Direction);
+        Read(stream, "W", value.W);
+        Read(stream, "WDir", value.W_Direction);
+        Read(stream, "NW", value.NW);
+        Read(stream, "NWDir", value.NW_Direction);
+    }
 }

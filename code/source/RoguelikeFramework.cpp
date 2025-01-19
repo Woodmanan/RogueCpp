@@ -2,7 +2,6 @@
 //
 
 #include "RoguelikeFramework.h"
-#include "Game/Game.h"
 #include "Core/CoreDataTypes.h"
 #include "Data/RogueArena.h"
 #include "Data/RogueDataManager.h"
@@ -25,6 +24,10 @@
 #include "Render/VulkanTest.h"
 #include "Render/Fonts/FontManager.h"
 #include "Render/Terminal.h"
+#include "Game/Game.h"
+
+#include "Data/Serialization/BitStream.h"
+#include "Data/Serialization/Serialization.h"
 
 using namespace std;
 
@@ -244,6 +247,15 @@ void SetupResources()
     ResourceManager::Get()->LaunchThreads();
 }
 
+void TestResources()
+{
+    ResourceManager::Get()->Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
+    ResourceManager::Get()->Load<RogueFont>("Font", "Applell.ttf");
+    ResourceManager::Get()->Load<RogueFont>("Font", "square.ttf");
+    ResourceManager::Get()->Load<RogueFont>("Font", "whitrabt.ttf");
+    ResourceManager::Get()->LoadFromConfig("Image", "image");
+}
+
 void TestEvents()
 {
     ROGUE_PROFILE_SECTION("Test Events");
@@ -292,9 +304,6 @@ void TestEvents()
 int main(int argc, char* argv[])
 {
     SetupResources();
-
-    //Preload font!
-    ResourceManager::Get()->Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
 
     //Initialize Random
     srand(1);
@@ -495,7 +504,7 @@ int main(int argc, char* argv[])
             }
             break;
         case GLFW_KEY_SPACE:
-            map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
+            //map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
         case GLFW_KEY_EQUAL:
             if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
@@ -568,13 +577,14 @@ int main(int argc, char* argv[])
             game.CreateInput<SaveAndExit>();
             break;
         case GLFW_KEY_R:
-            if (!terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+            /*if (!terminal_get_key(GLFW_KEY_LEFT_SHIFT))
             {
                 map->Reset();
                 map->FillTilesExc(Vec2(0, 0), Vec2(size.x - 0, size.y - 0), 1);
                 memory->Wipe();
             }
-            bresenhamPoint = Vec2(0, 0);
+            bresenhamPoint = Vec2(0, 0);*/
+            TestResources();
             break;
         case GLFW_KEY_C:
             if (renderFlags & color)
@@ -867,7 +877,7 @@ int main(int argc, char* argv[])
     }
 
     //Cleanup phase
-    game.CreateInput<ExitGame>();
+    game.CreateInput<SaveAndExit>();
     gameThread.join();
     terminal_close();
     ResourceManager::ShutdownResources();

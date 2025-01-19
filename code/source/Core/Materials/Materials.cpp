@@ -3,7 +3,7 @@
 #include "Utils/Utils.h"
 #include "Utils/FileUtils.h"
 #include "Data/SaveManager.h"
-#include "Game/Game.h"
+#include "Game/ThreadManagers.h"
 #include <iostream>
 #include <algorithm>
 
@@ -37,7 +37,7 @@ void MaterialManager::Init()
 
 const MaterialDefinition& Material::GetMaterial() const
 {
-	return Game::materialManager->GetMaterialByID(m_materialID);
+	return GetMaterialManager()->GetMaterialByID(m_materialID);
 }
 
 void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMaterial, int index)
@@ -48,7 +48,7 @@ void MaterialContainer::AddMaterial(int materialIndex, float mass, bool staticMa
 
 void MaterialContainer::AddMaterial(const std::string& name, float mass, bool staticMaterial)
 {
-	int ID = Game::materialManager->GetMaterialByName(name).ID;
+	int ID = GetMaterialManager()->GetMaterialByName(name).ID;
 	Material mat = Material(ID, mass, staticMaterial);
 	AddMaterial(mat, -1);
 }
@@ -534,17 +534,21 @@ namespace RogueResources
 
 	void PackReaction(PackContext& packContext)
 	{
-		std::vector<ResourcePointer> materials = ResourceManager::Get()->LoadFromConfigSynchronous("Mat", "materials", &packContext);
+		std::vector<ResourcePointer> materialLists = ResourceManager::Get()->LoadFromConfigSynchronous("Mat", "materials", &packContext);
 
-		auto FindIndex = [materials](const std::string& name) {
+		auto FindIndex = [materialLists](const std::string& name) {
 			int index = 0;
-			for (int i = 0; i < materials.size(); i++)
+			for (int i = 0; i < materialLists.size(); i++)
 			{
-				index++;
-				TResourcePointer<MaterialDefinition> material = materials[i];
-				if (material->name == name)
+				TResourcePointer<std::vector<MaterialDefinition>> materials = materialLists[i];
+				for (int j = 0; j < materials->size(); j++)
 				{
-					return index;
+					index++;
+					const MaterialDefinition& material = materials->operator[](j);
+					if (material.name == name)
+					{
+						return index;
+					}
 				}
 			}
 
@@ -621,106 +625,5 @@ namespace RogueResources
 		RogueSaveManager::CloseReadSaveFile();
 
 		return std::shared_ptr<std::vector<Reaction>>(reactions);
-	}
-}
-
-namespace RogueSaveManager
-{
-	void Serialize(MaterialDefinition& value)
-	{
-		AddOffset();
-		Write("ID", value.ID);
-		Write("Name", value.name);
-		Write("Density", value.density);
-		Write("Melting Point", value.meltingPoint);
-		Write("Boiling Point", value.boilingPoint);
-		Write("Specific Heat", value.specificHeat);
-		Write("Thermal Conductivity", value.thermalConductivity);
-		Write("Electrical Resistance", value.electricalResistance);
-		Write("Hardness", value.hardness);
-		RemoveOffset();
-	}
-
-	void Deserialize(MaterialDefinition& value)
-	{
-		AddOffset();
-		Read("ID", value.ID);
-		Read("Name", value.name);
-		Read("Density", value.density);
-		Read("Melting Point", value.meltingPoint);
-		Read("Boiling Point", value.boilingPoint);
-		Read("Specific Heat", value.specificHeat);
-		Read("Thermal Conductivity", value.thermalConductivity);
-		Read("Electrical Resistance", value.electricalResistance);
-		Read("Hardness", value.hardness);
-		RemoveOffset();
-	}
-
-	void Serialize(Material& value)
-	{
-		AddOffset();
-		if (debug)
-		{
-			std::string name = (value.m_materialID == -1) ? "Remove" : Game::materialManager->GetMaterialByID(value.m_materialID).name;
-			Write("Name", name);
-		}
-		Write("ID", value.m_materialID);
-		Write("Mass", value.m_mass);
-		Write("Static", value.m_static);
-		RemoveOffset();
-	}
-
-	void Deserialize(Material& value)
-	{
-		AddOffset();
-		if (debug)
-		{
-			std::string name;
-			Read("Name", name);
-		}
-		Read("ID", value.m_materialID);
-		Read("Mass", value.m_mass);
-		Read("Static", value.m_static);
-		RemoveOffset();
-	}
-
-	void Serialize(Reaction& value)
-	{
-		AddOffset();
-		Write("Name", value.name);
-		Write("Reactants", value.m_reactants);
-		Write("Products", value.m_products);
-		Write("Min Heat", value.m_minHeat);
-		Write("Delta Heat", value.m_deltaHeat);
-		RemoveOffset();
-	}
-
-	void Deserialize(Reaction& value)
-	{
-		AddOffset();
-		Read("Name", value.name);
-		Read("Reactants", value.m_reactants);
-		Read("Products", value.m_products);
-		Read("Min Heat", value.m_minHeat);
-		Read("Delta Heat", value.m_deltaHeat);
-		RemoveOffset();
-	}
-
-	void Serialize(MaterialContainer& value)
-	{
-		AddOffset();
-		Write("Materials", value.m_materials);
-		Write("Layers", value.m_layers);
-		Write("Heat", value.m_heat);
-		RemoveOffset();
-	}
-
-	void Deserialize(MaterialContainer& value)
-	{
-		AddOffset();
-		Read("Materials", value.m_materials);
-		Read("Layers", value.m_layers);
-		Read("Heat", value.m_heat);
-		RemoveOffset();
 	}
 }

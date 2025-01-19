@@ -1,11 +1,16 @@
 #pragma once
-#include "Core/CoreDataTypes.h"
-#include <string>
-#include <memory>
+#include "GameHeaders.h"
+#include "Data/Serialization/BitStream.h"
 
 /*
 	IO controls! Defines the structs and serialization that we will need for communicating with our game threads and servers.
 */
+
+#ifdef _DEBUG
+typedef JSONStream StreamType;
+#else
+typedef PackedStream StreamType;
+#endif
 
 enum EInputType
 {
@@ -22,8 +27,8 @@ class InputBase
 {
 public:
 	virtual EInputType GetType() const { return EInputType::Invalid; }
-	virtual void Serialize() {}
-	virtual void Deserialize() {}
+	virtual void Serialize(StreamType& stream) {}
+	virtual void Deserialize(StreamType& stream) {}
 };
 
 template<EInputType inputType>
@@ -37,8 +42,8 @@ public:
 class MoveInput : public TInputBase<Movement>
 {
 public:
-	void Serialize();
-	void Deserialize();
+	void Serialize(StreamType& stream);
+	void Deserialize(StreamType& stream);
 
 	Vec2 direction;
 };
@@ -46,8 +51,8 @@ public:
 struct BeginSeededGameInput : public TInputBase<BeginSeededGame>
 {
 public:
-	void Serialize();
-	void Deserialize();
+	void Serialize(StreamType& stream);
+	void Deserialize(StreamType& stream);
 
 	int seed;
 };
@@ -58,8 +63,8 @@ public:
 	LoadSaveInput() { fileName = ""; }
 	LoadSaveInput(const std::string& file) { fileName = file; }
 
-	void Serialize();
-	void Deserialize();
+	void Serialize(StreamType& stream);
+	void Deserialize(StreamType& stream);
 
 	std::string fileName = "";
 };
@@ -107,11 +112,61 @@ public:
 	}
 };
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	void Serialize(EInputType& value);
-	void Deserialize(EInputType& value);
+	template<typename Stream>
+	void SerializeObject(Stream& stream, EInputType& value)
+	{
+		int asInt = value;
+		Serialize(stream, asInt);
+	}
 
-	void Serialize(Input& value);
-	void Deserialize(Input& value);
+	template<typename Stream>
+	void DeserializeObject(Stream& stream, EInputType& value)
+	{
+		int asInt;
+		Deserialize(asInt);
+		value = (EInputType)asInt;
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, Input& value)
+	{
+		Write(stream, "Type", value.m_type);
+		bool hasData = value.HasData();
+		Write(stream "Has Data", hasData);
+		if (hasData)
+		{
+			stream.WriteSpacing();
+			value.Get<InputBase>()->Serialize(stream);
+		}
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, Input& value)
+	{
+		Read(stream, "Type", value.m_type);
+		bool hasData;
+		Read(stream, "Has Data", hasData);
+		if (hasData)
+		{
+			switch (value.m_type)
+			{
+			default:
+				HALT(); //Bad type! Whatever value this is needs a corresponding case in the switch.
+			case EInputType::Movement:
+				value.m_data = std::make_shared<MoveInput>();
+				break;
+			case EInputType::BeginSeededGame:
+				value.m_data = std::make_shared<BeginSeededGameInput>();
+				break;
+			case EInputType::LoadSaveGame:
+				value.m_data = std::make_shared<LoadSaveInput>();
+				break;
+			}
+
+			stream.ReadSpacing();
+			value.Get<InputBase>()->Deserialize(stream);
+		}
+	}
 }

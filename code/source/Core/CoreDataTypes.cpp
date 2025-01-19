@@ -1,24 +1,9 @@
 #include "CoreDataTypes.h"
 #include "Data/RogueDataManager.h"
-#include "Game/Game.h"
 #include "Data/SaveManager.h"
 #include "Map/Map.h"
 #include "Debug/Profiling.h"
-
-std::istream& operator >> (std::istream& in, Direction& direction)
-{
-    unsigned u = 0;
-    in >> u;
-    direction = static_cast<Direction>(u);
-    return in;
-}
-
-std::ostream& operator << (std::ostream& out, Direction direction)
-{
-    unsigned u = direction;
-    out << u;
-    return out;
-}
+#include "Game/ThreadManagers.h"
 
 Location::Location()
 {
@@ -143,20 +128,20 @@ Vec2 Location::AsVec2()
 Tile& Location::GetTile()
 {
     ASSERT(InMap());
-    return Game::dataManager->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    return GetDataManager()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
 }
 
 Tile* Location::operator ->()
 {
     ASSERT(InMap());
-    return &Game::dataManager->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    return &GetDataManager()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
 }
 
 bool Location::InMap()
 {
     if (!GetValid()) { return false; }
 
-    Map* map = Game::dataManager->ResolveByTypeIndex<Map>(z());
+    Map* map = GetDataManager()->ResolveByTypeIndex<Map>(z());
     return x() >= 0 && y() >= 0 && x() < map->m_size.x && y() < map->m_size.y;
 }
 
@@ -238,7 +223,7 @@ std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction directi
 {
     ROGUE_PROFILE_SECTION("LOS::_Traverse_No_Neighbor");
     ASSERT((!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid()));
-    Map* map = Game::dataManager->ResolveByTypeIndex<Map>(z());
+    Map* map = GetDataManager()->ResolveByTypeIndex<Map>(z());
     ASSERT(map != nullptr);
 
     switch (direction)
@@ -348,98 +333,3 @@ void Location::RefreshLinkedTile()
     */
 }
 #endif
-
-namespace RogueSaveManager
-{
-    void Serialize(Vec2& value)
-    {
-        AddOffset();
-        Write("x", value.x);
-        Write("y", value.y);
-        RemoveOffset();
-    }
-
-    void Deserialize(Vec2& value)
-    {
-        AddOffset();
-        Read("x", value.x);
-        Read("y", value.y);
-        RemoveOffset();
-    }
-
-    void Serialize(Vec3& value)
-    {
-        AddOffset();
-        Write("x", value.x);
-        Write("y", value.y);
-        Write("z", value.z);
-        RemoveOffset();
-    }
-
-    void Deserialize(Vec3& value)
-    {
-        AddOffset();
-        Read("x", value.x);
-        Read("y", value.y);
-        Read("z", value.z);
-        RemoveOffset();
-    }
-
-    void Serialize(Location& value)
-    {
-        AddOffset();
-#ifdef _DEBUG
-        Write("Valid", value.GetValid());
-        if (value.GetValid())
-        {
-            Write("Vector", value.GetVector());
-        }
-#else
-     Write("Data", value.GetData());
-#endif
-        RemoveOffset();
-    }
-
-    void Deserialize(Location& value)
-    {
-        AddOffset();
-#ifdef _DEBUG
-        value.SetValid(Read<bool>("Valid"));
-        if (value.GetValid())
-        {
-            value.SetVector(Read<Vec3>("Vector"));
-        }
-#else
-        value.SetData(Read<int>("Data"));
-#endif
-        RemoveOffset();
-    }
-
-    void Serialize(Color& value)
-    {
-        AddOffset();
-#ifdef _DEBUG
-        Write("r", (uint) value.r);
-        Write("g", (uint) value.g);
-        Write("b", (uint) value.b);
-        Write("a", (uint) value.a);
-#else
-        Write("color_t", value.color);
-#endif
-        RemoveOffset();
-    }
-
-    void Deserialize(Color& value)
-    {
-        AddOffset();
-#ifdef _DEBUG
-        value.r = Read<uint>("r");
-        value.g = Read<uint>("g");
-        value.b = Read<uint>("b");
-        value.a = Read<uint>("a");
-#else
-        Read("color_t", value.color);
-#endif
-        RemoveOffset();
-    }
-}

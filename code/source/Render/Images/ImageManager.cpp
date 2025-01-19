@@ -170,26 +170,3 @@ namespace RogueResources
 		return std::shared_ptr<RogueImage>(image);
 	}
 }
-
-namespace RogueSaveManager
-{
-	void Serialize(RogueImage& value)
-	{
-		AddOffset();
-		Write("Width", value.m_width);
-		Write("Width", value.m_height);
-		Write("Tex Channels", value.m_textureChannels);
-		WriteAsBuffer("Pixels", value.m_pixels);
-		RemoveOffset();
-	}
-
-	void Deserialize(RogueImage& value)
-	{
-		AddOffset();
-		Read("Width", value.m_width);
-		Read("Width", value.m_height);
-		Read("Tex Channels", value.m_textureChannels);
-		ReadAsBuffer("Pixels", value.m_pixels);
-		RemoveOffset();
-	}
-}

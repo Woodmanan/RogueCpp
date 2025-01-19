@@ -42,6 +42,21 @@ namespace RogueResources
 
 namespace RogueSaveManager
 {
-	void Serialize(RogueImage& value);
-	void Deserialize(RogueImage& value);
+	template<typename Stream>
+	void Serialize(Stream& stream, RogueImage& value)
+	{
+		Write(stream, "Width", value.m_width);
+		Write(stream, "Width", value.m_height);
+		Write(stream, "Tex Channels", value.m_textureChannels);
+		WriteRawBytes(stream, "Pixels", value.m_pixels);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, RogueImage& value)
+	{
+		Read(stream, "Width", value.m_width);
+		Read(stream, "Width", value.m_height);
+		Read(stream, "Tex Channels", value.m_textureChannels);
+		ReadRawBytes(stream, "Pixels", value.m_pixels);
+	}
 }

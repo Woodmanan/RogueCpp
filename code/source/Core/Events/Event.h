@@ -1,3 +1,4 @@
+#pragma once
 #include "Core/CoreDataTypes.h"
 #include "Core/Collections/FixedArrary.h"
 

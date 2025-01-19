@@ -33,7 +33,7 @@ void Game::Save(std::string filename)
 {
 	ROGUE_PROFILE_SECTION("Save File");
 	RogueSaveManager::OpenWriteSaveFile(filename);
-	dataManager->SaveAll();
+	//dataManager->SaveAll();
 	RogueSaveManager::CloseWriteSaveFile();
 }
 
@@ -42,7 +42,7 @@ void Game::Load(std::string filename)
 	ROGUE_PROFILE_SECTION("Load File");
 	if (RogueSaveManager::OpenReadSaveFile(filename))
 	{
-		dataManager->LoadAll();
+		//dataManager->LoadAll();
 		RogueSaveManager::CloseReadSaveFile();
 	}
 }
@@ -134,6 +134,8 @@ void Game::HandleInput(const Input& input)
 	case EInputType::LoadSaveGame:
 		break;
 	case EInputType::SaveAndExit:
+		Save("TestSave.rsf");
+		active = false;
 		break;
 	case EInputType::ExitGame:
 		active = false;

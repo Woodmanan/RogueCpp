@@ -120,42 +120,39 @@ private:
 	size_t m_size = 0;
 };
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	template<class T, size_t N>
-	void Serialize(FixedArray<T, N>& values)
+	template<typename Stream, class T, size_t N>
+	void Serialize(Stream& stream, FixedArray<T, N>& values)
 	{
-		AddOffset();
-		Write("Count", values.size());
-		WriteTabs();
-		AddOffset();
+		size_t size = values.size();
+		Write(stream, "Size", size);
+		stream.BeginWrite("Values");
+		stream.OpenWriteScope();
 		for (size_t index = 0; index < values.size(); index++)
 		{
-			WriteTabs();
-			Serialize(values[index]);
-			AddListSeparator(index == values.size() - 1);
+			stream.WriteSpacing();
+			SerializeObject(stream, values[index]);
+			stream.WriteListSeperator();
 		}
-		RemoveOffset();
-		WriteNewline();
-		RemoveOffset();
+		stream.CloseWriteScope();
+		stream.FinishWrite();
 	}
 
-	template<class T, size_t N>
-	void Deserialize(FixedArray<T, N>& values)
+	template<typename Stream, class T, size_t N>
+	void Deserialize(Stream& stream, FixedArray<T, N>& values)
 	{
-		AddOffset();
-		size_t size = Read<size_t>("Count");
+		size_t size = Read<Stream, size_t>(stream, "Size");
 		values.resize(size);
-		ReadTabs();
-		AddOffset();
+		stream.BeginRead("Values");
+		stream.OpenReadScope();
 		for (int index = 0; index < size; index++)
 		{
-			ReadTabs();
-			Deserialize(values[index]);
-			RemoveListSeparator(index == values.size() - 1);
+			stream.ReadSpacing();
+			DeserializeObject(stream, values[index]);
+			stream.ReadListSeperator();
 		}
-		RemoveOffset();
-		ReadNewline();
-		RemoveOffset();
+		stream.CloseReadScope();
+		stream.FinishRead();
 	}
 }

@@ -44,8 +44,21 @@ private:
 	vector<WindowSettings> m_settings;
 };
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	void Serialize(WindowSettings& value);
-	void Deserialize(WindowSettings& value);
+	template<typename Stream>
+	void Serialize(Stream& stream, WindowSettings& value)
+	{
+		Write(stream, "ID", value.id);
+		Write(stream, "Anchors", value.anchors);
+		Write(stream, "Parent", value.parentId);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, WindowSettings& value)
+	{
+		Read(stream, "ID", value.id);
+		Read(stream, "Anchors", value.anchors);
+		Read(stream, "Parent", value.parentId);
+	}
 }

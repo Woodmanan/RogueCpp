@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include "Game/Game.h"
+#include "Game/ThreadManagers.h"
 #include "Data/RogueArena.h"
 #include "Data/SaveManager.h"
 #include "Debug/Debug.h"
@@ -161,14 +161,14 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
-		return Game::dataManager->ResolveHandle(GetIndex(), GetOffset());
+		return GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
 	}
 
 	signed char GetIndex() { return (signed char) (_internalOffset >> 24) & (0xFF); }
 
 	unsigned int GetOffset() { return (_internalOffset & 0x00FFFFFF); }
 
-	unsigned int GetInternalOffset() { return _internalOffset; }
+	unsigned int& GetInternalOffset() { return _internalOffset; }
 	void SetInternalOffset(unsigned int internalOffset) { _internalOffset = internalOffset; }
 
 protected:
@@ -178,9 +178,9 @@ protected:
 	void* linked = nullptr;
 	virtual void RefreshLinkedObject()
 	{
-		if (IsValid() && Game::dataManager->CanResolve(GetIndex(), GetOffset()))
+		if (IsValid() && GetDataManager()->CanResolve(GetIndex(), GetOffset()))
 		{
-			linked = Game::dataManager->ResolveHandle(GetIndex(), GetOffset());
+			linked = GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
 		}
 		else
 		{
@@ -216,7 +216,7 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
-		return Game::dataManager->ResolveHandle<T>(GetIndex(), GetOffset());
+		return GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
 	T& GetReference()
@@ -224,7 +224,7 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
-		return *Game::dataManager->ResolveHandle<T>(GetIndex(), GetOffset());
+		return *GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
 #ifdef LINK_HANDLE
@@ -232,9 +232,9 @@ protected:
 	T* linked = nullptr;
 	virtual void RefreshLinkedObject() override
 	{
-		if (IsValid() && Game::dataManager->CanResolve(GetIndex(), GetOffset()))
+		if (IsValid() && GetDataManager()->CanResolve(GetIndex(), GetOffset()))
 		{
-			linked = Game::dataManager->ResolveHandle<T>(GetIndex(), GetOffset());
+			linked = GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
 		}
 		else
 		{
@@ -268,55 +268,72 @@ public:
 #define REGISTER_SAVE_TYPE(index, ClassName)\
 	class ClassName;\
 	template<> int RogueSaveable<ClassName>::ID = index;
-    //template<> RegisterHelper<ClassName>::RegisterHelper (int) { DEBUG_PRINT("%d: %s (Registered %d)", index, name, size); Game::dataManager->RegisterArena<ClassName>(size); }\
+    //template<> RegisterHelper<ClassName>::RegisterHelper (int) { DEBUG_PRINT("%d: %s (Registered %d)", index, name, size); GetDataManager()->RegisterArena<ClassName>(size); }\
     template<> RegisterHelper<ClassName> RegisterHelper<ClassName>::_helper(size);
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	template <>
-	void Serialize(Handle& value);
-
-	template<>
-	void Deserialize(Handle& value);
-
-	template <typename T>
-	void Serialize(THandle<T>& value)
+	template <typename Stream>
+	void Serialize(Stream& stream, Handle& value)
 	{
-		AddOffset();
-		Write("Valid", value.IsValid());
+		Write(stream, "Valid", value.IsValid());
 		if (value.IsValid())
 		{
-			if (debug)
+			Write(stream, "offset", value.GetInternalOffset());
+		}
+	}
+
+	template <typename Stream>
+	void Deserialize(Stream& stream, Handle& value)
+	{
+		if (Read<Stream, bool>(stream, "Valid"))
+		{
+			unsigned int offset;
+			Read(stream, "offset", offset);
+			value.SetInternalOffset(offset);
+			return;
+		}
+		value = Handle();
+	}
+
+	template <typename Stream, typename T>
+	void Serialize(Stream& stream, THandle<T>& value)
+	{
+		bool valid = value.IsValid();
+		Write(stream, "Valid", valid);
+		if (value.IsValid())
+		{
+			if constexpr (std::is_same<Stream, JSONStream>::value)
 			{
-				Write("Type Index", (short)value.GetIndex());
-				Write("Offset", value.GetOffset());
+				short typeIndex = value.GetIndex();
+				unsigned int offset = value.GetOffset();
+				Write(stream, "Type Index", typeIndex);
+				Write(stream, "Offset", offset);
 			}
 			else
 			{
-				Write("offset", value.GetInternalOffset());
+				Write(stream, "offset", value.GetInternalOffset());
 			}
 		}
-		RemoveOffset();
 	}
 
-	template<typename T>
-	void Deserialize(THandle<T>& value)
+	template <typename Stream, typename T>
+	void Deserialize(Stream& stream, THandle<T>& value)
 	{
-		AddOffset();
-		if (Read<bool>("Valid"))
+		if (Read<Stream, bool>(stream, "Valid"))
 		{
-			if (debug)
+			if constexpr (std::is_same<Stream, JSONStream>::value)
 			{
 				short index;
 				unsigned int offset;
-				Read("Type Index", index);
-				Read("Offset", offset);
+				Read(stream, "Type Index", index);
+				Read(stream, "Offset", offset);
 				value = THandle<T>((unsigned char)index, offset);
 			}
 			else
 			{
 				unsigned int offset;
-				Read("offset", offset);
+				Read(stream, "offset", offset);
 				value.SetInternalOffset(offset);
 			}
 		}
@@ -324,6 +341,5 @@ namespace RogueSaveManager
 		{
 			value = THandle<T>();
 		}
-		RemoveOffset();
 	}
 }

@@ -1,102 +1,31 @@
 #include "IO.h"
 
-void MoveInput::Serialize()
+void MoveInput::Serialize(StreamType& stream)
 {
-	RogueSaveManager::AddOffset();
-	RogueSaveManager::Write("Direction", direction);
-	RogueSaveManager::RemoveOffset();
+	Serialization::Write(stream, "Direction", direction);
 }
 
-void MoveInput::Deserialize()
+void MoveInput::Deserialize(StreamType& stream)
 {
-	RogueSaveManager::AddOffset();
-	RogueSaveManager::Read("Direction", direction);
-	RogueSaveManager::RemoveOffset();
+	Serialization::Read(stream, "Direction", direction);
 }
 
-void BeginSeededGameInput::Serialize()
+void BeginSeededGameInput::Serialize(StreamType& stream)
 {
-	RogueSaveManager::AddOffset();
-	RogueSaveManager::Write("Seed", seed);
-	RogueSaveManager::RemoveOffset();
+	Serialization::Write(stream, "Seed", seed);
 }
 
-void BeginSeededGameInput::Deserialize()
+void BeginSeededGameInput::Deserialize(StreamType& stream)
 {
-	RogueSaveManager::AddOffset();
-	RogueSaveManager::Read("Seed", seed);
-	RogueSaveManager::RemoveOffset();
+	Serialization::Read(stream, "Seed", seed);
 }
 
-void LoadSaveInput::Serialize()
+void LoadSaveInput::Serialize(StreamType& stream)
 {
-	RogueSaveManager::AddOffset();
-	RogueSaveManager::Write("File Name", fileName);
-	RogueSaveManager::RemoveOffset();
+	Serialization::Write(stream, "File Name", fileName);
 }
 
-void LoadSaveInput::Deserialize()
+void LoadSaveInput::Deserialize(StreamType& stream)
 {
-	RogueSaveManager::AddOffset();
-	RogueSaveManager::Read("File Name", fileName);
-	RogueSaveManager::RemoveOffset();
-}
-
-namespace RogueSaveManager
-{
-	void Serialize(EInputType& value)
-	{
-		int asInt = value;
-		Serialize(asInt);
-	}
-
-	void Deserialize(EInputType& value)
-	{
-		int asInt;
-		Deserialize(asInt);
-		value = (EInputType)asInt;
-	}
-
-	void Serialize(Input& value)
-	{
-		AddOffset();
-		Write("Type", value.m_type);
-		bool hasData = value.HasData();
-		Write("Has Data", hasData);
-		if (hasData)
-		{
-			WriteTabs();
-			value.Get<InputBase>()->Serialize();
-		}
-		RemoveOffset();
-	}
-
-	void Deserialize(Input& value)
-	{
-		AddOffset();
-		Read("Type", value.m_type);
-		bool hasData;
-		Read("Has Data", hasData);
-		if (hasData)
-		{
-			switch (value.m_type)
-			{
-			default:
-				HALT(); //Bad type! Whatever value this is needs a corresponding case in the switch.
-			case EInputType::Movement:
-				value.m_data = std::make_shared<MoveInput>();
-				break;
-			case EInputType::BeginSeededGame:
-				value.m_data = std::make_shared<BeginSeededGameInput>();
-				break;
-			case EInputType::LoadSaveGame:
-				value.m_data = std::make_shared<LoadSaveInput>();
-				break;
-			}
-
-			ReadTabs();
-			value.Get<InputBase>()->Deserialize();
-		}
-		RemoveOffset();
-	}
+	Serialization::Read(stream, "File Name", fileName);
 }

@@ -206,10 +206,34 @@ private:
 	int numWorkers = 0;
 };
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	void Serialize(HashID& value);
-	void Deserialize(HashID& value);
-	void Serialize(ResourceHeader& value);
-	void Deserialize(ResourceHeader& value);
+	template<typename Stream>
+	void Serialize(Stream& stream, HashID& value)
+	{
+		size_t asSize = value;
+		Write(stream, "Value", asSize);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, HashID& value)
+	{
+		size_t asSize;
+		Read(stream, "Value", asSize);
+		value = asSize;
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, ResourceHeader& value)
+	{
+		Write(stream, "Resource Version", value.version);
+		Write(stream, "Dependencies", value.dependencies);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, ResourceHeader& value)
+	{
+		Read(stream, "Resource Version", value.version);
+		Read(stream, "Dependencies", value.dependencies);
+	}
 }

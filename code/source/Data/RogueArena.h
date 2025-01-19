@@ -117,16 +117,12 @@ public:
 
 	virtual void WriteInternals()
 	{
-		RogueSaveManager::AddOffset();
 		RogueSaveManager::WriteAsBuffer("Buffer", buffer);
-		RogueSaveManager::RemoveOffset();
 	}
 
 	virtual void ReadInternals()
 	{
-		RogueSaveManager::AddOffset();
 		RogueSaveManager::ReadAsBuffer("Buffer", buffer);
-		RogueSaveManager::RemoveOffset();
 	}
 
 	std::vector<char> buffer;
@@ -165,7 +161,6 @@ public:
 	void WriteInternals() override
 	{
 		ArenaHeader* header = GetHeader();
-		RogueSaveManager::AddOffset();
 		RogueSaveManager::Write("size", header->size);
 		RogueSaveManager::Write("offset", header->currentOffset);
 
@@ -173,12 +168,10 @@ public:
 		{
 			RogueSaveManager::Write("Value", *Get<T>(i));
 		}
-		RogueSaveManager::RemoveOffset();
 	}
 
 	void ReadInternals() override
 	{
-		RogueSaveManager::AddOffset();
 		int size;
 		RogueSaveManager::Read("size", size);
 		buffer = vector<char>(size, '\0');
@@ -191,15 +184,22 @@ public:
 			*Get<T>(i) = T();
 			RogueSaveManager::Read("Value", *Get<T>(i));
 		}
-		RogueSaveManager::RemoveOffset();
 	}
 };
 
-namespace RogueSaveManager
+/*
+namespace Serialization
 {
-	void Serialize(RogueArena& arena);
+	template <typename Stream>
+	void Serialize(Stream& stream, RogueArena& arena)
+	{
+		arena.WriteInternals();
+	}
 
-	void Deserialize(RogueArena& arena);
+	void Deserialize(RogueArena& arena)
+	{
+		arena.ReadInternals();
+	}
 
 	template <typename T>
 	void Serialize(SpecializedArena<T>& arena)
@@ -212,4 +212,4 @@ namespace RogueSaveManager
 	{
 		arena.ReadInternals();
 	}
-}
+}*/

@@ -47,8 +47,25 @@ public:
 	bool m_wrap = true;
 };
 
-namespace RogueSaveManager
+namespace Serialization
 {
-	void Serialize(TileMemory& value);
-	void Deserialize(TileMemory& value);
+	template<typename Stream>
+	void Serialize(Stream& stream, TileMemory& value)
+	{
+		Write(stream, "Size", value.m_size);
+		Write(stream, "Local Position", value.m_localPosition);
+		Write(stream, "Z Level", value.m_z);
+		Write(stream, "Wraps", value.m_wrap);
+		Write(stream, "Tile Memory", value.m_tiles);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, TileMemory& value)
+	{
+		Read(stream, "Size", value.m_size);
+		Read(stream, "Local Position", value.m_localPosition);
+		Read(stream, "Z Level", value.m_z);
+		Read(stream, "Wraps", value.m_wrap);
+		Read(stream, "Tile Memory", value.m_tiles);
+	}
 }

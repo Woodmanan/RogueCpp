@@ -1,15 +1,6 @@
 #pragma once
-#include "Core/CoreDataTypes.h"
-#include "Game/IO.h"
-#include <filesystem>
-#include <vector>
-#include <mutex>
-
-//Forward declarations
-class RogueDataManager;
-class MaterialManager;
-class Map;
-class TileMemory;
+#include "GameHeaders.h"
+#include "IO.h"
 
 /*
  * Big game state! This represents a thread-specific black-box which is runnign
@@ -64,4 +55,6 @@ private:
 	std::mutex inputMutex;
 	std::condition_variable inputCv;
 	std::vector<Input> m_inputs;
+
+	View los;
 };

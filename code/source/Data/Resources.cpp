@@ -239,7 +239,17 @@ void ResourceManager::CacheFileNames()
 	for (const auto& p : std::filesystem::recursive_directory_iterator(resourceFolder)) {
 		if (!std::filesystem::is_directory(p)) {
 			HashID id = p.path().filename().string();
-			ASSERT(!fileNames.contains(id));
+
+			if (p.path().filename().extension().string() == ".ini")
+			{
+				continue;
+			}
+
+			if (fileNames.contains(id))
+			{
+				DEBUG_PRINT("Matching file names: %s and %s", fileNames[id].c_str(), p.path().string().c_str());
+				HALT();
+			}
 			fileNames[id] = p.path().string();
 		}
 	}
@@ -492,40 +502,4 @@ bool ResourceManager::AreDependenciesUpToDate(std::filesystem::path packed)
 	}
 
 	return true;
-}
-
-namespace RogueSaveManager
-{
-	void Serialize(HashID& value)
-	{
-		AddOffset();
-		size_t asSize = value;
-		Write("Value", asSize);
-		RemoveOffset();
-	}
-
-	void Deserialize(HashID& value)
-	{
-		AddOffset();
-		size_t asSize;
-		Read("Value", asSize);
-		value = asSize;
-		RemoveOffset();
-	}
-
-	void Serialize(ResourceHeader& value)
-	{
-		AddOffset();
-		Write("Resource Version", value.version);
-		Write("Dependencies", value.dependencies);
-		RemoveOffset();
-	}
-
-	void Deserialize(ResourceHeader& value)
-	{
-		AddOffset();
-		Read("Resource Version", value.version);
-		Read("Dependencies", value.dependencies);
-		RemoveOffset();
-	}
 }
