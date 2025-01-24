@@ -2,6 +2,7 @@
 #include <Debug/Debug.h>
 #include <vector>
 #include <filesystem>
+#include <fstream>
 
 #define UseSpacesNotTabs
 
@@ -80,6 +81,85 @@ void PackedStream::Read(T& value)
 
 template<>
 inline void PackedStream::Read(std::string& value)
+{
+	size_t size = 0;
+	char buffer[128];
+	Read(size);
+	ASSERT(size <= 100);
+	Read(buffer, size);
+	value = std::string(buffer, size);
+}
+
+class PackedFileStream
+{
+public:
+	PackedFileStream() {}
+	PackedFileStream(std::filesystem::path path, bool in);
+
+	void Close();
+
+	void BeginWrite(const char* name) {}
+	void FinishWrite() {}
+	void OpenWriteScope() {}
+	void CloseWriteScope() {}
+	void WriteSpacing() {}
+	void WriteListSeperator() {}
+
+	void BeginRead(const char* name) {}
+	void FinishRead() {}
+	void OpenReadScope() {}
+	void CloseReadScope() {}
+	void ReadSpacing() {}
+	void ReadListSeperator() {}
+
+	void Write(const char* ptr, size_t length);
+	void Read(char* ptr, size_t length);
+
+	void WriteRawBytes(const char* ptr, size_t length)
+	{
+		Write(ptr, length);
+	}
+
+	void ReadRawBytes(char* ptr, size_t length)
+	{
+		Read(ptr, length);
+	}
+
+	template<typename T>
+	void Write(T& value);
+
+	template<typename T>
+	void Read(T& value);
+
+private:
+	std::fstream stream;
+};
+
+template<typename T>
+void PackedFileStream::Write(T& value)
+{
+	char* bytePtr = (char*)&value;
+	Write(bytePtr, sizeof(T));
+}
+
+template<>
+inline void PackedFileStream::Write(std::string& value)
+{
+	size_t size = value.size();
+	ASSERT(size <= 128);
+	Write(size);
+	Write(value.c_str(), size);
+}
+
+template<typename T>
+void PackedFileStream::Read(T& value)
+{
+	char* bytePtr = (char*)&value;
+	Read(bytePtr, sizeof(T));
+}
+
+template<>
+inline void PackedFileStream::Read(std::string& value)
 {
 	size_t size = 0;
 	char buffer[128];

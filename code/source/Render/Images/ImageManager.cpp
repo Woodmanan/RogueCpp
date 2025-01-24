@@ -148,20 +148,30 @@ namespace RogueResources
 		ROGUE_PROFILE_SECTION("LoadImage");
 		std::vector<unsigned char> buffer;
 
-		OpenReadPackFile(loadContext.source);
-		RogueSaveManager::ReadAsBuffer("Buffer", buffer);
-		RogueSaveManager::CloseReadSaveFile();
+		{
+			ROGUE_PROFILE_SECTION("File Read");
+			OpenReadPackFile(loadContext.source);
+			RogueSaveManager::ReadAsBuffer("Buffer", buffer);
+			RogueSaveManager::CloseReadSaveFile();
+		}
 
 		RogueImage* image = new RogueImage();
 
-		stbi_uc* pixels = stbi_load_from_memory((stbi_uc*)buffer.data(), buffer.size(), &image->m_width, &image->m_height, &image->m_textureChannels, STBI_rgb_alpha);
-		ASSERT(pixels != nullptr);
-
-		size_t size = image->m_width * image->m_height * 4;
-		image->m_pixels.resize(size);
-		for (size_t pix = 0; pix < size; pix++)
+		stbi_uc* pixels;
 		{
-			image->m_pixels[pix] = pixels[pix];
+			ROGUE_PROFILE_SECTION("Load Pixels from format");
+			pixels = stbi_load_from_memory((stbi_uc*)buffer.data(), buffer.size(), &image->m_width, &image->m_height, &image->m_textureChannels, STBI_rgb_alpha);
+			ASSERT(pixels != nullptr);
+		}
+
+		{
+			ROGUE_PROFILE_SECTION("Write image pixels");
+			size_t size = image->m_width * image->m_height * 4;
+			image->m_pixels.resize(size);
+			for (size_t pix = 0; pix < size; pix++)
+			{
+				image->m_pixels[pix] = pixels[pix];
+			}
 		}
 		// TODO - Make memcpy? Not working for some reason
 

@@ -9,73 +9,85 @@
 
 #ifdef _DEBUG
 #define JSON
+#else
+#define PACKED_FILE
 #endif
 
 namespace RogueSaveManager {
 
-#ifdef JSON
+#if defined(JSON)
 	typedef JSONStream SaveStreamType;
-#else
+#elif defined(PACKED)
 	typedef PackedStream SaveStreamType;
+#elif defined(PACKED_FILE)
+	typedef PackedFileStream SaveStreamType;
 #endif
 
 	class SaveStreams
 	{
 	public:
+#if defined(JSON) || defined(PACKED)
 		thread_local static std::ofstream outStream;
 		thread_local static std::ifstream inStream;
+#endif
 		thread_local static SaveStreamType stream;
 	};
 	
-	const short version = 3;
+	const short version = 4;
 	const char* const header = "RSFL";
 
 
 	template <typename T>
 	static void Write(const char* name, T value)
 	{
-		ASSERT(SaveStreams::outStream.is_open());
 		Serialization::Write(SaveStreams::stream, name, value);
 	}
 
 	template <typename T>
 	static void Read(const char* name, T& value)
 	{
-		ASSERT(SaveStreams::inStream.is_open());
 		Serialization::Read(SaveStreams::stream, name, value);
 	}
 
 	template <typename T>
 	static T Read(const char* name)
 	{
-		ASSERT(SaveStreams::inStream.is_open());
 		return Serialization::Read(SaveStreams::stream, name);
 	}
 
 	template <typename T>
 	static void WriteAsBuffer(const char* name, std::vector<T> values)
 	{
-		ASSERT(SaveStreams::outStream.is_open());
 		Serialization::WriteRawBytes(SaveStreams::stream, name, values);
 	}
 
 	template <typename T>
 	static void ReadAsBuffer(const char* name, std::vector<T>& values)
 	{
-		ASSERT(SaveStreams::inStream.is_open());
 		Serialization::ReadRawBytes(SaveStreams::stream, name, values);
 	}
 
 	static void OpenWriteSaveFileByPath(const std::filesystem::path path)
 	{
-		ASSERT(!SaveStreams::inStream.is_open());
 #ifdef JSON
-		SaveStreams::outStream.open(path);
-#else
-		SaveStreams::outStream.open(path, std::ios::binary);
+			ASSERT(!SaveStreams::inStream.is_open());
+			SaveStreams::outStream.open(path);
+			SaveStreams::stream = SaveStreamType();
+
+			ASSERT(SaveStreams::outStream.is_open());
 #endif
-		ASSERT(SaveStreams::outStream.is_open());
-		SaveStreams::stream = SaveStreamType();
+
+#ifdef PACKED
+			ASSERT(!SaveStreams::inStream.is_open());
+			SaveStreams::outStream.open(path, std::ios::binary);
+			SaveStreams::stream = SaveStreamType();
+
+			ASSERT(SaveStreams::outStream.is_open());
+#endif
+
+#ifdef PACKED_FILE
+			SaveStreams::stream = SaveStreamType(path, false);
+#endif
 
 		SaveStreams::stream.Write(header, 4);
 		SaveStreams::stream.FinishWrite();
@@ -99,10 +111,14 @@ namespace RogueSaveManager {
 
 	static void CloseWriteSaveFile()
 	{
-		ASSERT(SaveStreams::outStream.is_open());
-		std::vector<char>& data = SaveStreams::stream.GetData();
-		SaveStreams::outStream.write(data.data(), data.size());
-		SaveStreams::outStream.close();
+#if (defined(JSON) || defined(PACKED))
+			ASSERT(SaveStreams::outStream.is_open());
+			std::vector<char>& data = SaveStreams::stream.GetData();
+			SaveStreams::outStream.write(data.data(), data.size());
+			SaveStreams::outStream.close();
+#elif defined(PACKED_FILE)
+			SaveStreams::stream.Close();
+#endif
 	}
 
 	static bool OpenReadSaveFileByPath(const std::filesystem::path path)
@@ -112,12 +128,9 @@ namespace RogueSaveManager {
 			return false;
 		}
 
-		ASSERT(!SaveStreams::outStream.is_open());
 #ifdef JSON
+		ASSERT(!SaveStreams::outStream.is_open());
 		SaveStreams::inStream.open(path, std::ios::ate);
-#else
-		SaveStreams::inStream.open(path, std::ios::binary | std::ios::ate);
-#endif
 		ASSERT(SaveStreams::inStream.is_open());
 
 		std::streamsize size = SaveStreams::inStream.tellg();
@@ -126,6 +139,24 @@ namespace RogueSaveManager {
 		std::vector<char>& data = SaveStreams::stream.GetData();
 		data.resize(size);
 		SaveStreams::inStream.read(data.data(), size);
+#endif
+
+#ifdef PACKED
+		ASSERT(!SaveStreams::outStream.is_open());
+		SaveStreams::inStream.open(path, std::ios::binary | std::ios::ate);
+		ASSERT(SaveStreams::inStream.is_open());
+
+		std::streamsize size = SaveStreams::inStream.tellg();
+		SaveStreams::inStream.seekg(0, std::ios::beg);
+		SaveStreams::stream = SaveStreamType();
+		std::vector<char>& data = SaveStreams::stream.GetData();
+		data.resize(size);
+		SaveStreams::inStream.read(data.data(), size);
+#endif
+
+#ifdef PACKED_FILE
+		SaveStreams::stream = SaveStreamType(path, true);
+#endif
 
 		char buf[5];
 		SaveStreams::stream.Read(buf, 4);
@@ -152,8 +183,12 @@ namespace RogueSaveManager {
 
 	static void CloseReadSaveFile()
 	{
+#if (defined(JSON) || defined(PACKED))
 		ASSERT(SaveStreams::inStream.is_open());
 		SaveStreams::inStream.close();
+#elif defined(PACKED_FILE)
+		SaveStreams::stream.Close();
+#endif
 	}
 
 	static void DeleteSaveFile(const std::string filename)

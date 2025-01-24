@@ -2,6 +2,7 @@
 #include "Debug/Debug.h"
 #include <charconv>
 #include <stdlib.h>
+#include <iostream>
 
 void PackedStream::Write(const char* ptr, size_t length)
 {
@@ -13,6 +14,33 @@ void PackedStream::Read(char* ptr, size_t length)
 	ASSERT(readPos + length <= data.size());
 	memcpy(ptr, data.data() + readPos, length);
 	readPos += length;
+}
+
+PackedFileStream::PackedFileStream(std::filesystem::path path, bool in)
+{
+	if (in)
+	{
+		stream = std::fstream(path, std::ios::in | std::ios::binary);
+	}
+	else
+	{
+		stream = std::fstream(path, std::ios::out | std::ios::binary);
+	}
+}
+
+void PackedFileStream::Close()
+{
+	stream.close();
+}
+
+void PackedFileStream::Write(const char* ptr, size_t length)
+{
+	stream.write(ptr, length);
+}
+
+void PackedFileStream::Read(char* ptr, size_t length)
+{
+	stream.read(ptr, length);
 }
 
 void JSONStream::BeginWrite(const char* name)

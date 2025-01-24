@@ -55,7 +55,7 @@ private:
 	size_t value;
 };
 
-const int resourceVersion = 1;
+const int resourceVersion = 2;
 
 struct ResourceRequest
 {
@@ -124,6 +124,14 @@ struct LoadContext
 bool OpenReadPackFile(std::filesystem::path packed);
 void OpenWritePackFile(std::filesystem::path path, ResourceHeader header);
 
+struct WorkerData
+{
+	std::atomic<bool> alive;
+	std::atomic<bool> working;
+	ResourceRequest request;
+	std::thread thread;
+};
+
 class ResourceManager
 {
 public:
@@ -131,7 +139,7 @@ public:
 	~ResourceManager();
 
 	//Const values
-	static const int numWorkerThreads = 4;
+	static const int numDedicatedWorkerThreads = 4;
 
 	static void InitResources();
 	void Register(const HashID& type, std::function<void(PackContext&)> pack, std::function<std::shared_ptr<void>(LoadContext&)> load);
@@ -176,6 +184,8 @@ private:
 
 	void ThreadMainLoop();
 	void CacheFileNames();
+	void LaunchDedicatedWorkers();
+	void WorkerThread(int threadNum);
 
 	//Requests
 	bool HasResourceRequests();
@@ -201,9 +211,7 @@ private:
 	std::map<HashID, std::function<void(PackContext&)>> packFunctions;
 	std::map<HashID, std::function<std::shared_ptr<void>(LoadContext&)>> loadFunctions;
 
-	std::array<std::thread, numWorkerThreads> workerThreads;
-	std::array<std::atomic<bool>, numWorkerThreads> workerFlags;
-	int numWorkers = 0;
+	std::array<WorkerData, numDedicatedWorkerThreads> workerData;
 };
 
 namespace Serialization

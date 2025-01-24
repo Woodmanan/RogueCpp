@@ -97,6 +97,7 @@ void ResourceManager::ThreadMainLoop()
 {
 	ROGUE_PROFILE;
 	CacheFileNames();
+	LaunchDedicatedWorkers();
 	
 	int count = 0;
 
@@ -112,24 +113,35 @@ void ResourceManager::ThreadMainLoop()
 		{
 			ROGUE_PROFILE_SECTION("Process Resource Request");
 			int threadIndex = FindOpenWorkerThread();
+
+			if (threadIndex == -1)
+			{
+				continue;
+			}
+
 			ResourceRequest nextRequest = PopResourceRequest();
 			if ((size_t) nextRequest.type != 0)
 			{
-				ASSERT(workerFlags[threadIndex] == false);
-				workerFlags[threadIndex] = true;
+				workerData[threadIndex].request = nextRequest;
+				workerData[threadIndex].working = true;
+				workerData[threadIndex].working.notify_all();
 				_mm_mfence();
-				workerThreads[threadIndex] = std::thread(GetMember(this, &ResourceManager::Thread_LoadRequest), nextRequest, threadIndex);
 			}
 		}
 	}
 
-	for (int i = 0; i < numWorkers; i++)
+	for (int i = 0; i < numDedicatedWorkerThreads; i++)
+	{
+		workerData[i].alive = false;
+		workerData[i].working = true;
+		workerData[i].working.notify_all();
+		_mm_mfence();
+	}
+
+	for (int i = 0; i < numDedicatedWorkerThreads; i++)
 	{
 		ROGUE_PROFILE_SECTION("Close worker thread");
-		if (workerThreads[i].joinable())
-		{
-			workerThreads[i].join();
-		}
+		workerData[i].thread.join();
 	}
 
 	return;
@@ -138,7 +150,6 @@ void ResourceManager::ThreadMainLoop()
 void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 {
 	ROGUE_PROFILE_SECTION("Thread Load Request");
-	ASSERT(workerFlags[index] == true);
 
 	HashID ID = HashID::Mix(request.type, request.name);
 	std::filesystem::path sourcePath = GetSource(request.name);
@@ -150,7 +161,6 @@ void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 		if (inProgress.contains(ID) || loadedResources.contains(ID))
 		{
 			DEBUG_PRINT("Worker %d: Quitting load of '%s' - another thread has taken this task.", index, sourcePath.string().c_str());
-			workerFlags[index] = false;
 			_mm_mfence();
 			return;
 		}
@@ -173,7 +183,6 @@ void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 	if (!std::filesystem::exists(sourcePath) && !std::filesystem::exists(packedPath))
 	{
 		InsertLoadedResource(ID, request.name, nullptr);
-		workerFlags[index] = false;
 		_mm_mfence();
 		return;
 	}
@@ -203,34 +212,20 @@ void ResourceManager::Thread_LoadRequest(ResourceRequest request, int index)
 		InsertLoadedResource(ID, request.name, resource);
 	}
 
-	workerFlags[index] = false;
 	_mm_mfence();
 }
 
 int ResourceManager::FindOpenWorkerThread()
 {
-	ASSERT(numWorkerThreads > 0 && numWorkers <= numWorkerThreads);
-	while (true)
+	for (int i = 0; i < numDedicatedWorkerThreads; i++)
 	{
-		for (int i = 0; i < numWorkerThreads; i++)
+		if (workerData[i].alive && !workerData[i].working)
 		{
-			//Easy out - if we're checking a fresh thread, go ahead and allocate it!
-			if (i >= numWorkers)
-			{
-				numWorkers = i + 1;
-				return i;
-			}
-
-			if (workerFlags[i] == false)
-			{
-				if (workerThreads[i].joinable())
-				{
-					workerThreads[i].join();
-				}
-				return i;
-			}
+			return i;
 		}
 	}
+
+	return -1;
 }
 
 void ResourceManager::CacheFileNames()
@@ -255,6 +250,34 @@ void ResourceManager::CacheFileNames()
 	}
 
 	DEBUG_PRINT("Resource Thread loaded %d files", fileNames.size());
+}
+
+void ResourceManager::LaunchDedicatedWorkers()
+{
+	for (int i = 0; i < numDedicatedWorkerThreads; i++)
+	{
+		workerData[i].alive = true;
+		workerData[i].working = false;
+		workerData[i].thread = std::thread(GetMember(this, &ResourceManager::WorkerThread), i);
+	}
+}
+
+void ResourceManager::WorkerThread(int threadNum)
+{
+	while (workerData[threadNum].alive)
+	{
+		workerData[threadNum].working.wait(false);
+
+		//Quick check on alive - out in case of death
+		if (!workerData[threadNum].alive) { return; }
+
+		//TODO: Wait for this to turn true in a better way
+		if (workerData[threadNum].working)
+		{
+			Thread_LoadRequest(workerData[threadNum].request, threadNum);
+			workerData[threadNum].working = false;
+		}
+	}
 }
 
 ResourcePointer ResourceManager::Load(const HashID& type, const HashID& name, PackContext* context)
