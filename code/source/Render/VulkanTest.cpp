@@ -72,7 +72,12 @@ void VulkanTerminal::SetDepth(short newDepth)
 
 void VulkanTerminal::InitWindow()
 {
-	glfwInit();
+	std::cout << "Got here!" << std::endl;
+	if (!glfwInit())
+	{
+		std::cout << "Failure!" << std::endl;
+		exit(1);
+	}
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Rogue Cpp", nullptr, nullptr);

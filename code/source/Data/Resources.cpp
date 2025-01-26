@@ -30,6 +30,7 @@ std::shared_ptr<void> ResourcePointer::GetResource()
 
 bool OpenReadPackFile(std::filesystem::path packed)
 {
+	ROGUE_PROFILE_SECTION("Open Read Pack File");
 	if (RogueSaveManager::OpenReadSaveFileByPath(packed))
 	{
 		ResourceHeader header;

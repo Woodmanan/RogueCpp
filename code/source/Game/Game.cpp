@@ -29,6 +29,21 @@ void Game::AddInput(Input input)
 	inputCv.notify_all();
 }
 
+bool Game::HasNextOutput()
+{
+	std::lock_guard lock(outputMutex);
+	return m_outputs.size() > 0;
+}
+
+Output Game::PopNextOutput()
+{
+	ASSERT(HasNextOutput());
+	std::lock_guard lock(outputMutex);
+	Output result = m_outputs[0];
+	m_outputs.erase(m_outputs.begin());
+	return result;
+}
+
 void Game::Save(std::string filename)
 {
 	ROGUE_PROFILE_SECTION("Save File");
@@ -42,6 +57,7 @@ void Game::Load(std::string filename)
 	ROGUE_PROFILE_SECTION("Load File");
 	if (RogueSaveManager::OpenReadSaveFile(filename))
 	{
+		//RogueSaveManager::Write("View", m_view);
 		//dataManager->LoadAll();
 		RogueSaveManager::CloseReadSaveFile();
 	}
@@ -122,9 +138,10 @@ void Game::HandleInput(const Input& input)
 {
 	switch (input.m_type)
 	{
-	case EInputType::Invalid:
+	case EInputType::InvalidInput:
 		break;
 	case EInputType::Movement:
+		//auto data = input.Get<EInputType::Movement>();
 		break;
 	case EInputType::BeginNewGame:
 		InitNewGame();
@@ -156,4 +173,10 @@ Input Game::PopNextInput()
 	Input result = m_inputs[0];
 	m_inputs.erase(m_inputs.begin());
 	return result;
+}
+
+void Game::AddOutput(Output output)
+{
+	std::lock_guard lock(outputMutex);
+	m_outputs.push_back(output);
 }

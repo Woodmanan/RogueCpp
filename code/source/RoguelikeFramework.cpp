@@ -247,15 +247,6 @@ void SetupResources()
     ResourceManager::Get()->LaunchThreads();
 }
 
-void TestResources()
-{
-    ResourceManager::Get()->Load<RogueFont>("Font", "Fix15Mono-Bold.woff");
-    ResourceManager::Get()->Load<RogueFont>("Font", "Applell.ttf");
-    ResourceManager::Get()->Load<RogueFont>("Font", "square.ttf");
-    ResourceManager::Get()->Load<RogueFont>("Font", "whitrabt.ttf");
-    ResourceManager::Get()->LoadFromConfig("Image", "image");
-}
-
 void TestEvents()
 {
     ROGUE_PROFILE_SECTION("Test Events");
@@ -310,6 +301,8 @@ int main(int argc, char* argv[])
 
     Game game = Game();
     std::thread gameThread(&Game::LaunchGame, &game);
+
+    TInput<LoadSaveGame> test;
 
     if (RogueSaveManager::FilePathExists("MySaveFile.rsf"))
     {
@@ -403,10 +396,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::West, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::West));
+                game.CreateInput<MoveInput>(Direction::West);
             }
             break;
         case GLFW_KEY_K:
@@ -417,10 +407,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::North, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::North));
+                game.CreateInput<MoveInput>(Direction::North);
             }
             break;
         case GLFW_KEY_J:
@@ -431,10 +418,11 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::South, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::South));
+                game.CreateInput<MoveInput>(Direction::South);
+                //auto move = playerLoc.Traverse(Direction::South, lookDirection);
+                //playerLoc = move.first;
+                //lookDirection = Rotate(lookDirection, move.second);
+                //memory->Move(VectorFromDirection(Direction::South));
             }
             break;
         case GLFW_KEY_L:
@@ -445,10 +433,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::East, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::East));
+                game.CreateInput<MoveInput>(Direction::East);
             }
             break;
         case GLFW_KEY_Y:
@@ -458,10 +443,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::NorthWest, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::NorthWest));
+                game.CreateInput<MoveInput>(Direction::NorthWest);
             }
             break;
         case GLFW_KEY_U:
@@ -471,10 +453,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::NorthEast, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::NorthEast));
+                game.CreateInput<MoveInput>(Direction::NorthEast);
             }
             break;
         case GLFW_KEY_B:
@@ -484,10 +463,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::SouthWest, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::SouthWest));
+                game.CreateInput<MoveInput>(Direction::SouthWest);
             }
             break;
         case GLFW_KEY_N:
@@ -497,10 +473,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                auto move = playerLoc.Traverse(Direction::SouthEast, lookDirection);
-                playerLoc = move.first;
-                lookDirection = Rotate(lookDirection, move.second);
-                memory->Move(VectorFromDirection(Direction::SouthEast));
+                game.CreateInput<MoveInput>(Direction::SouthEast);
             }
             break;
         case GLFW_KEY_SPACE:
@@ -584,7 +557,7 @@ int main(int argc, char* argv[])
                 memory->Wipe();
             }
             bresenhamPoint = Vec2(0, 0);*/
-            TestResources();
+            ResourceManager::Get()->LoadFromConfig("Image", "image");
             break;
         case GLFW_KEY_C:
             if (renderFlags & color)

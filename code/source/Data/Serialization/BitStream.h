@@ -3,6 +3,7 @@
 #include <vector>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 
 #define UseSpacesNotTabs
 
@@ -13,9 +14,49 @@
 * to provide format functions and serialization for base types.
 */
 
+struct DataBackend
+{
+	virtual ~DataBackend() {}
+	virtual void Write(const char* ptr, size_t length) = 0;
+	virtual void Read(char* ptr, size_t length) = 0;
+	virtual bool HasNextChar() = 0;
+	virtual char Peek() = 0;
+	virtual void Close() = 0;
+};
+
+struct FileBackend : public DataBackend
+{
+	FileBackend(std::filesystem::path path, bool write);
+	virtual ~FileBackend();
+	void Write(const char* ptr, size_t length) override;
+	void Read(char* ptr, size_t length) override;
+	bool HasNextChar() override;
+	char Peek() override;
+	void Close() override;
+
+	std::fstream m_stream;
+};
+
+struct VectorBackend : public DataBackend
+{
+	VectorBackend() {}
+	virtual ~VectorBackend() {}
+	void Write(const char* ptr, size_t length) override;
+	void Read(char* ptr, size_t length) override;
+	bool HasNextChar() override;
+	char Peek() override;
+	void Close() override {}
+
+	std::vector<char> m_data;
+	int m_readPos = 0;
+};
+
 class PackedStream
 {
 public:
+	PackedStream();
+	PackedStream(std::filesystem::path path, bool write);
+
 	void BeginWrite(const char* name) {}
 	void FinishWrite() {}
 	void OpenWriteScope() {}
@@ -29,6 +70,8 @@ public:
 	void CloseReadScope() {}
 	void ReadSpacing() {}
 	void ReadListSeperator() {}
+
+	void Close();
 
 	void Write(const char* ptr, size_t length);
 	void Read(char* ptr, size_t length);
@@ -49,11 +92,8 @@ public:
 	template<typename T>
 	void Read(T& value);
 
-	std::vector<char>& GetData() { return data; }
-
-private:
-	int readPos = 0;
-	std::vector<char> data;
+protected:
+	std::shared_ptr<DataBackend> m_backend;
 };
 
 template<typename T>
@@ -90,88 +130,12 @@ inline void PackedStream::Read(std::string& value)
 	value = std::string(buffer, size);
 }
 
-class PackedFileStream
-{
-public:
-	PackedFileStream() {}
-	PackedFileStream(std::filesystem::path path, bool in);
-
-	void Close();
-
-	void BeginWrite(const char* name) {}
-	void FinishWrite() {}
-	void OpenWriteScope() {}
-	void CloseWriteScope() {}
-	void WriteSpacing() {}
-	void WriteListSeperator() {}
-
-	void BeginRead(const char* name) {}
-	void FinishRead() {}
-	void OpenReadScope() {}
-	void CloseReadScope() {}
-	void ReadSpacing() {}
-	void ReadListSeperator() {}
-
-	void Write(const char* ptr, size_t length);
-	void Read(char* ptr, size_t length);
-
-	void WriteRawBytes(const char* ptr, size_t length)
-	{
-		Write(ptr, length);
-	}
-
-	void ReadRawBytes(char* ptr, size_t length)
-	{
-		Read(ptr, length);
-	}
-
-	template<typename T>
-	void Write(T& value);
-
-	template<typename T>
-	void Read(T& value);
-
-private:
-	std::fstream stream;
-};
-
-template<typename T>
-void PackedFileStream::Write(T& value)
-{
-	char* bytePtr = (char*)&value;
-	Write(bytePtr, sizeof(T));
-}
-
-template<>
-inline void PackedFileStream::Write(std::string& value)
-{
-	size_t size = value.size();
-	ASSERT(size <= 128);
-	Write(size);
-	Write(value.c_str(), size);
-}
-
-template<typename T>
-void PackedFileStream::Read(T& value)
-{
-	char* bytePtr = (char*)&value;
-	Read(bytePtr, sizeof(T));
-}
-
-template<>
-inline void PackedFileStream::Read(std::string& value)
-{
-	size_t size = 0;
-	char buffer[128];
-	Read(size);
-	ASSERT(size <= 100);
-	Read(buffer, size);
-	value = std::string(buffer, size);
-}
-
 class JSONStream
 {
 public:
+	JSONStream();
+	JSONStream(std::filesystem::path path, bool write);
+
 	void BeginWrite(const char* name);
 	void FinishWrite();
 	void OpenWriteScope();
@@ -216,17 +180,21 @@ public:
 	void Read(size_t& value);
 	void Read(std::string& value);
 
-	std::vector<char>& GetData() { return data; }
+	void Close();
 
 private:
 	void ReadNextWordIntoBuffer(char* buffer, int bufSize);
-	void ReadIntoBuffer(char* buffer, int bufSize, int numCharacters);
 
 	int HexToInt(char hex);
 	char IntToHex(int val);
 
 	int tabs = 0;
-	int readPos = 0;
-	std::vector<char> data;
+	std::shared_ptr<DataBackend> m_backend;
 };
 
+
+#ifdef _DEBUG
+typedef JSONStream DefaultStream;
+#else
+typedef PackedStream DefaultStream;
+#endif

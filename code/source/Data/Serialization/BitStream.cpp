@@ -1,46 +1,117 @@
 #include "BitStream.h"
 #include "Debug/Debug.h"
+#include "Debug/Profiling.h"
 #include <charconv>
 #include <stdlib.h>
 #include <iostream>
 
+FileBackend::FileBackend(std::filesystem::path path, bool write)
+{
+	if (write)
+	{
+		ROGUE_PROFILE_SECTION("Open Write Stream");
+		m_stream = std::fstream(path, std::ios::out | std::ios::binary);
+	}
+	else
+	{
+		ROGUE_PROFILE_SECTION("Open Read Stream");
+		m_stream = std::fstream(path, std::ios::in | std::ios::binary);
+	}
+}
+
+FileBackend::~FileBackend()
+{
+	if (m_stream.is_open())
+	{
+		m_stream.close();
+	}
+}
+
+void FileBackend::Write(const char* ptr, size_t length)
+{
+	m_stream.write(ptr, length);
+}
+
+void FileBackend::Read(char* ptr, size_t length)
+{
+	m_stream.read(ptr, length);
+}
+
+bool FileBackend::HasNextChar()
+{
+	return m_stream.peek() != EOF;
+}
+
+char FileBackend::Peek()
+{
+	ASSERT(HasNextChar());
+	return m_stream.peek();
+}
+
+void FileBackend::Close()
+{
+	m_stream.close();
+}
+
+void VectorBackend::Write(const char* ptr, size_t length)
+{
+	m_data.insert(m_data.end(), ptr, ptr + length);
+}
+
+void VectorBackend::Read(char* ptr, size_t length)
+{
+	ASSERT(m_readPos + length <= m_data.size());
+	memcpy(ptr, m_data.data() + m_readPos, length);
+	m_readPos += length;
+}
+
+bool VectorBackend::HasNextChar()
+{
+	return m_readPos < m_data.size();
+}
+
+char VectorBackend::Peek()
+{
+	ASSERT(HasNextChar());
+	return m_data[m_readPos];
+}
+
+PackedStream::PackedStream()
+{
+	m_backend = std::make_shared<VectorBackend>();
+}
+
+PackedStream::PackedStream(std::filesystem::path path, bool write)
+{
+	ROGUE_PROFILE_SECTION("Open File Data Backend");
+	m_backend = std::make_shared<FileBackend>(path, write);
+}
+
+void PackedStream::Close()
+{
+	m_backend->Close();
+}
+
 void PackedStream::Write(const char* ptr, size_t length)
 {
-	data.insert(data.end(), ptr, ptr + length);
+	ASSERT(m_backend != nullptr);
+	m_backend->Write(ptr, length);
 }
 
 void PackedStream::Read(char* ptr, size_t length)
 {
-	ASSERT(readPos + length <= data.size());
-	memcpy(ptr, data.data() + readPos, length);
-	readPos += length;
+	ASSERT(m_backend != nullptr);
+	m_backend->Read(ptr, length);
 }
 
-PackedFileStream::PackedFileStream(std::filesystem::path path, bool in)
+JSONStream::JSONStream()
 {
-	if (in)
-	{
-		stream = std::fstream(path, std::ios::in | std::ios::binary);
-	}
-	else
-	{
-		stream = std::fstream(path, std::ios::out | std::ios::binary);
-	}
+	m_backend = std::make_shared<VectorBackend>();
 }
 
-void PackedFileStream::Close()
+JSONStream::JSONStream(std::filesystem::path path, bool write)
 {
-	stream.close();
-}
-
-void PackedFileStream::Write(const char* ptr, size_t length)
-{
-	stream.write(ptr, length);
-}
-
-void PackedFileStream::Read(char* ptr, size_t length)
-{
-	stream.read(ptr, length);
+	m_backend = std::make_shared<FileBackend>(path, write);
 }
 
 void JSONStream::BeginWrite(const char* name)
@@ -137,13 +208,16 @@ void JSONStream::RemoveSpacing()
 
 void JSONStream::Skip(int characters)
 {
-	readPos += characters;
+	ASSERT(characters >= 0 && characters <= 32);
+	char skipBuffer[32];
+	Read(skipBuffer, characters);
 }
 
 //Write
 void JSONStream::Write(const char* ptr, size_t length)
 {
-	data.insert(data.end(), ptr, ptr + length);
+	ASSERT(m_backend != nullptr);
+	m_backend->Write(ptr, length);
 }
 
 void JSONStream::WriteRawBytes(const char* ptr, size_t length)
@@ -184,12 +258,12 @@ void JSONStream::Write(bool value)
 
 void JSONStream::Write(char value)
 {
-	data.push_back(value);
+	Write(&value, 1);
 }
 
 void JSONStream::Write(unsigned char value)
 {
-	data.push_back(value);
+	Write((char*) &value, 1);
 }
 
 void JSONStream::Write(short value)
@@ -245,9 +319,8 @@ void JSONStream::Write(std::string& value)
 //Reads
 void JSONStream::Read(char* ptr, size_t length)
 {
-	ASSERT(readPos + length <= data.size());
-	memcpy(ptr, data.data() + readPos, length);
-	readPos += length;
+	ASSERT(m_backend != nullptr);
+	m_backend->Read(ptr, length);
 }
 
 void JSONStream::ReadRawBytes(char* ptr, size_t length)
@@ -290,14 +363,16 @@ void JSONStream::Read(bool& value)
 
 void JSONStream::Read(char& value)
 {
-	value = data[readPos];
-	readPos++;
+	ASSERT(m_backend != nullptr);
+	m_backend->Read(&value, 1);
 }
 
 void JSONStream::Read(unsigned char& value)
 {
-	value = data[readPos];
-	readPos++;
+	ASSERT(m_backend != nullptr);
+	char onStack;
+	m_backend->Read(&onStack, 1);
+	value = onStack;
 }
 
 void JSONStream::Read(short& value)
@@ -343,9 +418,15 @@ void JSONStream::Read(std::string& value)
 	Read(strSize);
 	Skip(2);
 	char buffer[128];
-	ReadIntoBuffer(buffer, 128, strSize);
+	ASSERT(strSize < 128);
+	Read(buffer, strSize);
 	buffer[strSize] = '\0';
 	value = std::string(buffer, strSize);
+}
+
+void JSONStream::Close()
+{
+	m_backend->Close();
 }
 
 void JSONStream::ReadNextWordIntoBuffer(char* buffer, int bufSize)
@@ -355,29 +436,22 @@ void JSONStream::ReadNextWordIntoBuffer(char* buffer, int bufSize)
 	{
 		if (nextPos >= bufSize - 1) { HALT(); } //Ended up reading more than is safe - needs a bigger buffer!
 
-		if (readPos + nextPos >= data.size())
+		if (!m_backend->HasNextChar())
 		{
 			break;
 		}
 
-		char nextChar = data[readPos + nextPos];
+		char nextChar = m_backend->Peek();
 		if (nextChar == ',' || nextChar == ':')
 		{
 			break;
 		}
 
+		Read(buffer + nextPos, 1);
 		nextPos++;
 	}
 
-	ReadIntoBuffer(buffer, bufSize, nextPos);
 	buffer[nextPos] = '\0';
-}
-
-void JSONStream::ReadIntoBuffer(char* buffer, int bufSize, int numCharacters)
-{
-	ASSERT(numCharacters <= bufSize);
-	memcpy(buffer, &data[readPos], numCharacters);
-	readPos += numCharacters;
 }
 
 int JSONStream::HexToInt(char hex)

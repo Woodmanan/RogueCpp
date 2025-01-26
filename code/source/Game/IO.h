@@ -6,15 +6,9 @@
 	IO controls! Defines the structs and serialization that we will need for communicating with our game threads and servers.
 */
 
-#ifdef _DEBUG
-typedef JSONStream StreamType;
-#else
-typedef PackedStream StreamType;
-#endif
-
 enum EInputType
 {
-	Invalid,
+	InvalidInput,
 	Movement,
 	BeginNewGame,
 	BeginSeededGame,
@@ -26,9 +20,9 @@ enum EInputType
 class InputBase
 {
 public:
-	virtual EInputType GetType() const { return EInputType::Invalid; }
-	virtual void Serialize(StreamType& stream) {}
-	virtual void Deserialize(StreamType& stream) {}
+	virtual EInputType GetType() const { return EInputType::InvalidInput; }
+	virtual void Serialize(DefaultStream& stream) {}
+	virtual void Deserialize(DefaultStream& stream) {}
 };
 
 template<EInputType inputType>
@@ -39,32 +33,45 @@ public:
 	const static EInputType type = inputType;
 };
 
-class MoveInput : public TInputBase<Movement>
+template <EInputType inputType>
+class TInput : public TInputBase<inputType> {};
+
+typedef TInput<Movement> MoveInput;
+template<>
+class TInput<Movement> : public TInputBase<Movement>
 {
 public:
-	void Serialize(StreamType& stream);
-	void Deserialize(StreamType& stream);
+	TInput() { m_direction = (Direction) -1; }
+	TInput(Direction direction) { m_direction = direction; }
 
-	Vec2 direction;
+
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
+
+	Direction m_direction;
 };
 
-struct BeginSeededGameInput : public TInputBase<BeginSeededGame>
+typedef TInput<BeginSeededGame> BeginSeededGameInput;
+template<>
+class TInput<BeginSeededGame> : public TInputBase<BeginSeededGame>
 {
 public:
-	void Serialize(StreamType& stream);
-	void Deserialize(StreamType& stream);
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
 
 	int seed;
 };
 
-struct LoadSaveInput : public TInputBase<LoadSaveGame>
+typedef TInput<LoadSaveGame> LoadSaveInput;
+template<>
+class TInput<LoadSaveGame> : public TInputBase<LoadSaveGame>
 {
 public:
-	LoadSaveInput() { fileName = ""; }
-	LoadSaveInput(const std::string& file) { fileName = file; }
+	TInput() { fileName = ""; }
+	TInput(const std::string& file) { fileName = file; }
 
-	void Serialize(StreamType& stream);
-	void Deserialize(StreamType& stream);
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
 
 	std::string fileName = "";
 };
@@ -95,19 +102,85 @@ public:
 		m_data = ptr;
 	}
 
-	bool HasData()
+	bool HasData() const
 	{
 		return m_data != nullptr;
 	}
 
-	template <typename T>
-	std::shared_ptr<T> Get()
+	template <EInputType type>
+	std::shared_ptr<TInputBase<type>> Get() const
 	{
 		ASSERT(HasData());
-		std::shared_ptr<T> ptr = std::static_pointer_cast<T>(m_data);
+		ASSERT(type == m_type);
 
-		ASSERT(m_type == ptr->GetType());
+		std::shared_ptr<TInputBase<type>> ptr = std::static_pointer_cast<TInputBase<type>>(m_data);
+		return ptr;
+	}
+};
 
+enum EOutputType
+{
+	InvalidOutput,
+	ViewUpdated
+};
+
+class OutputBase
+{
+public:
+	virtual EOutputType GetType() const { return EOutputType::InvalidOutput; }
+	virtual void Serialize(DefaultStream& stream) {}
+	virtual void Deserialize(DefaultStream& stream) {}
+};
+
+template<EOutputType outputType>
+class TOutputBase : public OutputBase
+{
+public:
+	EOutputType GetType() const override { return outputType; }
+	const static EOutputType type = outputType;
+};
+
+template <EOutputType outputType>
+class TOutput : public TOutputBase<outputType> {};
+
+struct Output
+{
+public:
+	EOutputType m_type;
+	std::shared_ptr<OutputBase> m_data;
+
+	void Set(EOutputType type, std::shared_ptr<OutputBase> data = nullptr)
+	{
+		m_type = type;
+		m_data = data;
+	}
+
+	template <EOutputType type>
+	void Set()
+	{
+		m_type = type;
+		m_data = nullptr;
+	}
+
+	template <typename T>
+	void Set(std::shared_ptr<T> ptr)
+	{
+		m_type = ptr->GetType();
+		m_data = ptr;
+	}
+
+	bool HasData() const
+	{
+		return m_data != nullptr;
+	}
+
+	template <EOutputType type>
+	std::shared_ptr<TOutputBase<type>> Get() const
+	{
+		ASSERT(HasData());
+		ASSERT(type == m_type);
+
+		std::shared_ptr<TOutputBase<type>> ptr = std::static_pointer_cast<TOutputBase<type>>(m_data);
 		return ptr;
 	}
 };
@@ -127,6 +200,21 @@ namespace Serialization
 		int asInt;
 		Deserialize(asInt);
 		value = (EInputType)asInt;
+	}
+
+	template<typename Stream>
+	void SerializeObject(Stream& stream, EOutputType& value)
+	{
+		int asInt = value;
+		Serialize(stream, asInt);
+	}
+
+	template<typename Stream>
+	void DeserializeObject(Stream& stream, EOutputType& value)
+	{
+		int asInt;
+		Deserialize(asInt);
+		value = (EOutputType)asInt;
 	}
 
 	template<typename Stream>
@@ -167,6 +255,38 @@ namespace Serialization
 
 			stream.ReadSpacing();
 			value.Get<InputBase>()->Deserialize(stream);
+		}
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, Output& value)
+	{
+		Write(stream, "Type", value.m_type);
+		bool hasData = value.HasData();
+		Write(stream "Has Data", hasData);
+		if (hasData)
+		{
+			stream.WriteSpacing();
+			value.Get<OutputBase>()->Serialize(stream);
+		}
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, Output& value)
+	{
+		Read(stream, "Type", value.m_type);
+		bool hasData;
+		Read(stream, "Has Data", hasData);
+		if (hasData)
+		{
+			switch (value.m_type)
+			{
+			default:
+				HALT(); //Bad type! Whatever value this is needs a corresponding case in the switch.
+			}
+
+			stream.ReadSpacing();
+			value.Get<OutputBase>()->Deserialize(stream);
 		}
 	}
 }

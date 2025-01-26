@@ -21,6 +21,9 @@ public:
 	void LaunchGame();
 	void AddInput(Input input);
 
+	bool HasNextOutput();
+	Output PopNextOutput();
+
 	template <typename T, class... Args>
 	void CreateInput(Args&&... args)
 	{
@@ -51,10 +54,15 @@ private:
 	bool HasNextInput();
 	Input PopNextInput();
 
+	void AddOutput(Output output);
+
 	//IO Handling
 	std::mutex inputMutex;
 	std::condition_variable inputCv;
 	std::vector<Input> m_inputs;
+
+	std::mutex outputMutex;
+	std::vector<Output> m_outputs;
 
 	View los;
 };

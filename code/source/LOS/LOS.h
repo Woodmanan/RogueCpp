@@ -57,13 +57,12 @@ public:
 	int Debug_GetNumRevealed();
 	float Debug_GetHeatPercentageLocal(int x, int y);
 
-protected:
+public:
 	int m_radius = -1;
 	vector<Location> m_locations;
 	vector<uchar> m_visibility;
 	vector<Direction> m_rotations;
 #ifdef DEBUG_HOTSPOTS
-public:
 	vector<int> m_heat;
 	int m_maxHeat = 0;
 	int m_sumHeat = 0;
@@ -159,4 +158,25 @@ namespace LOS
 	Fraction Slope(int col, int row);
 	Fraction CenterSlope(int col, int row);
 	Fraction OppositeSlope(int col, int row);
+}
+
+namespace Serialization
+{
+	template<typename Stream>
+	void Serialize(Stream& stream, View& value)
+	{
+		Write(stream, "Radius", value.m_radius);
+		Write(stream, "Locations", value.m_locations);
+		Write(stream, "Visibility", value.m_visibility);
+		Write(stream, "Rotations", value.m_rotations);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, View& value)
+	{
+		Read(stream, "Radius", value.m_radius);
+		Read(stream, "Locations", value.m_locations);
+		Read(stream, "Visibility", value.m_visibility);
+		Read(stream, "Rotations", value.m_rotations);
+	}
 }

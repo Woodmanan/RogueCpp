@@ -1,31 +1,31 @@
 #include "IO.h"
 
-void MoveInput::Serialize(StreamType& stream)
+void TInput<Movement>::Serialize(DefaultStream& stream)
 {
-	Serialization::Write(stream, "Direction", direction);
+	Serialization::Write(stream, "Direction", m_direction);
 }
 
-void MoveInput::Deserialize(StreamType& stream)
+void TInput<Movement>::Deserialize(DefaultStream& stream)
 {
-	Serialization::Read(stream, "Direction", direction);
+	Serialization::Read(stream, "Direction", m_direction);
 }
 
-void BeginSeededGameInput::Serialize(StreamType& stream)
+void TInput<BeginSeededGame>::Serialize(DefaultStream& stream)
 {
 	Serialization::Write(stream, "Seed", seed);
 }
 
-void BeginSeededGameInput::Deserialize(StreamType& stream)
+void TInput<BeginSeededGame>::Deserialize(DefaultStream& stream)
 {
 	Serialization::Read(stream, "Seed", seed);
 }
 
-void LoadSaveInput::Serialize(StreamType& stream)
+void TInput<LoadSaveGame>::Serialize(DefaultStream& stream)
 {
 	Serialization::Write(stream, "File Name", fileName);
 }
 
-void LoadSaveInput::Deserialize(StreamType& stream)
+void TInput<LoadSaveGame>::Deserialize(DefaultStream& stream)
 {
 	Serialization::Read(stream, "File Name", fileName);
 }
