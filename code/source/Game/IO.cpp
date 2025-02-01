@@ -29,3 +29,13 @@ void TInput<LoadSaveGame>::Deserialize(DefaultStream& stream)
 {
 	Serialization::Read(stream, "File Name", fileName);
 }
+
+void TOutput<ViewUpdated>::Serialize(DefaultStream& stream)
+{
+	Serialization::WriteRawBytes(stream, "data", m_data);
+}
+
+void TOutput<ViewUpdated>::Deserialize(DefaultStream& stream)
+{
+	Serialization::ReadRawBytes(stream, "data", m_data);
+}

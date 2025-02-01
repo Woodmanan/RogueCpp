@@ -3,12 +3,12 @@
 #define INTERLEAVE
 static const unsigned int masks[] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
 
-int Map::IndexIntoMap(Vec2 location)
+int Map::IndexIntoMap(Vec2 location) const
 {
     return IndexIntoMap(location.x, location.y);
 }
 
-int Map::IndexIntoMap(short x, short y)
+int Map::IndexIntoMap(short x, short y) const
 {
 #ifdef INTERLEAVE
     int bigX = x >> m_interleaveBits;
@@ -37,7 +37,17 @@ Tile& Map::GetTile(Vec2 location)
 {
     return m_tiles[IndexIntoMap(location)];
 }
+
 Tile& Map::GetTile(ushort x, ushort y)
+{
+    return m_tiles[IndexIntoMap(x, y)];
+}
+
+const Tile& Map::GetTile(Vec2 location) const
+{
+    return m_tiles[IndexIntoMap(location)];
+}
+const Tile& Map::GetTile(ushort x, ushort y) const
 {
     return m_tiles[IndexIntoMap(x, y)];
 }

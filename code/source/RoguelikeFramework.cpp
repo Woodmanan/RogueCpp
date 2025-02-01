@@ -90,6 +90,31 @@ void Render_View(View& view, Window* window, Location playerLocation)
     }
 }
 
+void Render_Player_Data(PlayerData& data, Window* window, Location playerLocation)
+{
+    ROGUE_PROFILE;
+    View& view = data.GetCurrentView();
+    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
+
+    for (int i = -maxRadius; i <= maxRadius; i++)
+    {
+        for (int j = -maxRadius; j <= maxRadius; j++)
+        {
+            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
+
+            bool visible = view.GetVisibilityLocal(i, j);
+            if (view.GetLocationLocal(i, j).GetValid())
+            {
+                if (visible)
+                {
+                    BackingTile& tile = data.GetTileFor(view.GetLocationLocal(i, j));
+                    window->Put(windowCoord.x, windowCoord.y, tile.m_renderCharacter, tile.m_foregroundColor, tile.m_backgroundColor);
+                }
+            }
+        }
+    }
+}
+
 void Render_Passes(View& view, Window* window, Location playerLocation)
 {
     ROGUE_PROFILE;
@@ -302,11 +327,9 @@ int main(int argc, char* argv[])
     Game game = Game();
     std::thread gameThread(&Game::LaunchGame, &game);
 
-    TInput<LoadSaveGame> test;
-
     if (RogueSaveManager::FilePathExists("MySaveFile.rsf"))
     {
-        game.CreateInput<LoadSaveInput>("MySaveFile.rsf");
+        game.CreateInput<LoadSaveGame>("MySaveFile.rsf");
     }
     else
     {
@@ -314,6 +337,8 @@ int main(int argc, char* argv[])
         startInput.Set<BeginNewGame>();
         game.AddInput(startInput);
     }
+
+    PlayerData playerData;
 
     Vec2 size(64, 64);
     THandle<Map> map;
@@ -396,7 +421,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::West);
+                game.CreateInput<Movement>(Direction::West);
             }
             break;
         case GLFW_KEY_K:
@@ -407,7 +432,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::North);
+                game.CreateInput<Movement>(Direction::North);
             }
             break;
         case GLFW_KEY_J:
@@ -418,7 +443,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::South);
+                game.CreateInput<Movement>(Direction::South);
                 //auto move = playerLoc.Traverse(Direction::South, lookDirection);
                 //playerLoc = move.first;
                 //lookDirection = Rotate(lookDirection, move.second);
@@ -433,7 +458,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::East);
+                game.CreateInput<Movement>(Direction::East);
             }
             break;
         case GLFW_KEY_Y:
@@ -443,7 +468,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::NorthWest);
+                game.CreateInput<Movement>(Direction::NorthWest);
             }
             break;
         case GLFW_KEY_U:
@@ -453,7 +478,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::NorthEast);
+                game.CreateInput<Movement>(Direction::NorthEast);
             }
             break;
         case GLFW_KEY_B:
@@ -463,7 +488,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::SouthWest);
+                game.CreateInput<Movement>(Direction::SouthWest);
             }
             break;
         case GLFW_KEY_N:
@@ -473,7 +498,7 @@ int main(int argc, char* argv[])
             }
             else
             {
-                game.CreateInput<MoveInput>(Direction::SouthEast);
+                game.CreateInput<Movement>(Direction::SouthEast);
             }
             break;
         case GLFW_KEY_SPACE:
@@ -780,6 +805,24 @@ int main(int argc, char* argv[])
 
         k = GLFW_KEY_G;
 
+        //Handle output
+        if (game.HasNextOutput())
+        {
+            ROGUE_PROFILE_SECTION("Handle Output");
+            Output output = game.PopNextOutput();
+
+            switch (output.m_type)
+            {
+            case ViewUpdated:
+                playerData.UpdateViewPlayer(output.Get<ViewUpdated>());
+                break;
+            default:
+                // Unhandled case! Either invalid, or this output type needs to be handled.
+                HALT();
+                break;
+            }
+        }
+
         terminal_clear();
 
         auto currentTime = chrono::system_clock::now();
@@ -787,6 +830,7 @@ int main(int argc, char* argv[])
 
         //Update UI Layout
         gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_height() });
+        Render_Player_Data(playerData, renderWindow, playerLoc);
 
         //LOS::Calculate(view, playerLoc, lookDirection, maxPass);
         //memory->Update(view);

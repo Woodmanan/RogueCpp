@@ -43,7 +43,7 @@ namespace RogueResources
 namespace RogueSaveManager
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, RogueImage& value)
+	void Serialize(Stream& stream, const RogueImage& value)
 	{
 		Write(stream, "Width", value.m_width);
 		Write(stream, "Width", value.m_height);

@@ -151,7 +151,7 @@ public:
 		_internalOffset = other._internalOffset;
 	}
 
-	bool IsValid() //Check if 'valid' bit is set to true;
+	bool IsValid() const //Check if 'valid' bit is set to true;
 	{
 		return !(_internalOffset & 0x80000000);
 	}
@@ -164,11 +164,11 @@ public:
 		return GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
 	}
 
-	signed char GetIndex() { return (signed char) (_internalOffset >> 24) & (0xFF); }
+	signed char GetIndex() const { return (signed char) (_internalOffset >> 24) & (0xFF); }
 
-	unsigned int GetOffset() { return (_internalOffset & 0x00FFFFFF); }
+	unsigned int GetOffset() const { return (_internalOffset & 0x00FFFFFF); }
 
-	unsigned int& GetInternalOffset() { return _internalOffset; }
+	const unsigned int& GetInternalOffset() const { return _internalOffset; }
 	void SetInternalOffset(unsigned int internalOffset) { _internalOffset = internalOffset; }
 
 protected:
@@ -227,6 +227,11 @@ public:
 		return *GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
+	friend bool operator<(const THandle& l, const THandle& r)
+	{
+		return l.GetInternalOffset() < r.GetInternalOffset();
+	}
+
 #ifdef LINK_HANDLE
 protected:
 	T* linked = nullptr;
@@ -274,7 +279,7 @@ public:
 namespace Serialization
 {
 	template <typename Stream>
-	void Serialize(Stream& stream, Handle& value)
+	void Serialize(Stream& stream, const Handle& value)
 	{
 		Write(stream, "Valid", value.IsValid());
 		if (value.IsValid())
@@ -297,7 +302,7 @@ namespace Serialization
 	}
 
 	template <typename Stream, typename T>
-	void Serialize(Stream& stream, THandle<T>& value)
+	void Serialize(Stream& stream, const THandle<T>& value)
 	{
 		bool valid = value.IsValid();
 		Write(stream, "Valid", valid);

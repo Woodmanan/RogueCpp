@@ -244,7 +244,7 @@ void JSONStream::WriteRawBytes(const char* ptr, size_t length)
 	}
 }
 
-void JSONStream::Write(bool value)
+void JSONStream::Write(const bool value)
 {
 	if (value)
 	{
@@ -256,23 +256,23 @@ void JSONStream::Write(bool value)
 	}
 }
 
-void JSONStream::Write(char value)
+void JSONStream::Write(const char value)
 {
 	Write(&value, 1);
 }
 
-void JSONStream::Write(unsigned char value)
+void JSONStream::Write(const unsigned char value)
 {
 	Write((char*) &value, 1);
 }
 
-void JSONStream::Write(short value)
+void JSONStream::Write(const short value)
 {
 	int asInt = value;
 	Write(asInt);
 }
 
-void JSONStream::Write(int value)
+void JSONStream::Write(const int value)
 {
 	char buffer[16];
 	std::fill_n(buffer, 16, '\0');
@@ -280,7 +280,7 @@ void JSONStream::Write(int value)
 	Write(buffer, strlen(buffer));
 }
 
-void JSONStream::Write(unsigned int value)
+void JSONStream::Write(const unsigned int value)
 {
 	char buffer[16];
 	std::fill_n(buffer, 16, '\0');
@@ -288,7 +288,7 @@ void JSONStream::Write(unsigned int value)
 	Write(buffer, strlen(buffer));
 }
 
-void JSONStream::Write(float value)
+void JSONStream::Write(const float value)
 {
 	char buffer[32];
 	std::fill_n(buffer, 32, '\0');
@@ -296,7 +296,7 @@ void JSONStream::Write(float value)
 	Write(buffer, strlen(buffer));
 }
 
-void JSONStream::Write(size_t value)
+void JSONStream::Write(const size_t value)
 {
 	char buffer[32];
 	std::fill_n(buffer, 32, '\0');
@@ -304,7 +304,7 @@ void JSONStream::Write(size_t value)
 	Write(buffer, strlen(buffer));
 }
 
-void JSONStream::Write(std::string& value)
+void JSONStream::Write(const std::string& value)
 {
 	char buffer[128];
 	std::fill_n(buffer, 128, '\0');

@@ -148,7 +148,7 @@ namespace RogueResources
 namespace Serialization
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, MaterialDefinition& value)
+	void Serialize(Stream& stream, const MaterialDefinition& value)
 	{
 		Write(stream, "ID", value.ID);
 		Write(stream, "Name", value.name);
@@ -176,7 +176,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, Material& value)
+	void Serialize(Stream& stream, const Material& value)
 	{
 		Write(stream, "ID", value.m_materialID);
 		Write(stream, "Mass", value.m_mass);
@@ -192,7 +192,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, Reaction& value)
+	void Serialize(Stream& stream, const Reaction& value)
 	{
 		Write(stream, "Name", value.name);
 		Write(stream, "Reactants", value.m_reactants);
@@ -212,7 +212,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, MaterialContainer& value)
+	void Serialize(Stream& stream, const MaterialContainer& value)
 	{
 		Write(stream, "Materials", value.m_materials);
 		Write(stream, "Layers", value.m_layers);

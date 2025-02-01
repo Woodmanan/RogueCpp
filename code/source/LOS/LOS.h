@@ -163,7 +163,7 @@ namespace LOS
 namespace Serialization
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, View& value)
+	void Serialize(Stream& stream, const View& value)
 	{
 		Write(stream, "Radius", value.m_radius);
 		Write(stream, "Locations", value.m_locations);

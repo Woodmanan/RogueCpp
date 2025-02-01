@@ -36,7 +36,6 @@ public:
 template <EInputType inputType>
 class TInput : public TInputBase<inputType> {};
 
-typedef TInput<Movement> MoveInput;
 template<>
 class TInput<Movement> : public TInputBase<Movement>
 {
@@ -51,7 +50,6 @@ public:
 	Direction m_direction;
 };
 
-typedef TInput<BeginSeededGame> BeginSeededGameInput;
 template<>
 class TInput<BeginSeededGame> : public TInputBase<BeginSeededGame>
 {
@@ -62,7 +60,6 @@ public:
 	int seed;
 };
 
-typedef TInput<LoadSaveGame> LoadSaveInput;
 template<>
 class TInput<LoadSaveGame> : public TInputBase<LoadSaveGame>
 {
@@ -108,12 +105,12 @@ public:
 	}
 
 	template <EInputType type>
-	std::shared_ptr<TInputBase<type>> Get() const
+	std::shared_ptr<TInput<type>> Get() const
 	{
 		ASSERT(HasData());
 		ASSERT(type == m_type);
 
-		std::shared_ptr<TInputBase<type>> ptr = std::static_pointer_cast<TInputBase<type>>(m_data);
+		std::shared_ptr<TInput<type>> ptr = std::static_pointer_cast<TInput<type>>(m_data);
 		return ptr;
 	}
 };
@@ -142,6 +139,25 @@ public:
 
 template <EOutputType outputType>
 class TOutput : public TOutputBase<outputType> {};
+
+template <>
+class TOutput<ViewUpdated> : public TOutputBase<ViewUpdated>
+{
+public:
+	TOutput() {}
+	TOutput(DefaultStream stream)
+	{
+		m_data.clear();
+		std::shared_ptr<VectorBackend> backend = dynamic_pointer_cast<VectorBackend>(stream.GetDataBackend());
+		ASSERT(backend != nullptr);
+		m_data.insert(m_data.end(), backend->m_data.begin(), backend->m_data.end());
+	}
+
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
+
+	std::vector<char> m_data;
+};
 
 struct Output
 {
@@ -175,12 +191,12 @@ public:
 	}
 
 	template <EOutputType type>
-	std::shared_ptr<TOutputBase<type>> Get() const
+	std::shared_ptr<TOutput<type>> Get() const
 	{
 		ASSERT(HasData());
 		ASSERT(type == m_type);
 
-		std::shared_ptr<TOutputBase<type>> ptr = std::static_pointer_cast<TOutputBase<type>>(m_data);
+		std::shared_ptr<TOutput<type>> ptr = std::static_pointer_cast<TOutput<type>>(m_data);
 		return ptr;
 	}
 };
@@ -188,7 +204,7 @@ public:
 namespace Serialization
 {
 	template<typename Stream>
-	void SerializeObject(Stream& stream, EInputType& value)
+	void SerializeObject(Stream& stream, const EInputType& value)
 	{
 		int asInt = value;
 		Serialize(stream, asInt);
@@ -203,7 +219,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void SerializeObject(Stream& stream, EOutputType& value)
+	void SerializeObject(Stream& stream, const EOutputType& value)
 	{
 		int asInt = value;
 		Serialize(stream, asInt);
@@ -218,7 +234,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, Input& value)
+	void Serialize(Stream& stream, const Input& value)
 	{
 		Write(stream, "Type", value.m_type);
 		bool hasData = value.HasData();
@@ -259,7 +275,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, Output& value)
+	void Serialize(Stream& stream, const Output& value)
 	{
 		Write(stream, "Type", value.m_type);
 		bool hasData = value.HasData();

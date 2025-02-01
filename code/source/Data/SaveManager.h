@@ -33,7 +33,7 @@ namespace RogueSaveManager {
 
 
 	template <typename T>
-	static void Write(const char* name, T value)
+	static void Write(const char* name, const T& value)
 	{
 		ROGUE_PROFILE_SECTION("File::Write");
 		Serialization::Write(Stream::stream, name, value);

@@ -217,7 +217,7 @@ private:
 namespace Serialization
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, HashID& value)
+	void Serialize(Stream& stream, const HashID& value)
 	{
 		size_t asSize = value;
 		Write(stream, "Value", asSize);
@@ -232,7 +232,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, ResourceHeader& value)
+	void Serialize(Stream& stream, const ResourceHeader& value)
 	{
 		Write(stream, "Resource Version", value.version);
 		Write(stream, "Dependencies", value.dependencies);

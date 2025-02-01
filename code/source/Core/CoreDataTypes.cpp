@@ -43,7 +43,7 @@ Location::Location(ushort x, ushort y, ushort z)
 #endif
 }
 
-bool Location::GetValid()
+bool Location::GetValid() const
 {
 #ifdef _DEBUG
     return m_valid;
@@ -68,7 +68,7 @@ void Location::SetValid(bool valid)
 #endif
 }
 
-ushort Location::x()
+ushort Location::x() const
 {
     ASSERT(GetValid());
 #ifdef _DEBUG
@@ -78,7 +78,7 @@ ushort Location::x()
 #endif
 }
 
-ushort Location::y()
+ushort Location::y() const
 {
     ASSERT(GetValid());
 #ifdef _DEBUG
@@ -88,7 +88,7 @@ ushort Location::y()
 #endif
 }
 
-ushort Location::z()
+ushort Location::z() const
 {
     ASSERT(GetValid());
 #ifdef _DEBUG
@@ -98,7 +98,7 @@ ushort Location::z()
 #endif
 }
 
-Vec3 Location::GetVector()
+Vec3 Location::GetVector() const
 {
     return Vec3(x(), y(), z());
 }

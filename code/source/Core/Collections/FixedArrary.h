@@ -123,7 +123,7 @@ private:
 namespace Serialization
 {
 	template<typename Stream, class T, size_t N>
-	void Serialize(Stream& stream, FixedArray<T, N>& values)
+	void Serialize(Stream& stream, const FixedArray<T, N>& values)
 	{
 		size_t size = values.size();
 		Write(stream, "Size", size);

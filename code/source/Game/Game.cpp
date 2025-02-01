@@ -29,6 +29,12 @@ void Game::AddInput(Input input)
 	inputCv.notify_all();
 }
 
+void Game::AddOutput(Output output)
+{
+	std::lock_guard lock(outputMutex);
+	m_outputs.push_back(output);
+}
+
 bool Game::HasNextOutput()
 {
 	std::lock_guard lock(outputMutex);
@@ -141,7 +147,18 @@ void Game::HandleInput(const Input& input)
 	case EInputType::InvalidInput:
 		break;
 	case EInputType::Movement:
-		//auto data = input.Get<EInputType::Movement>();
+		{
+			ROGUE_PROFILE_SECTION("Handle Movement Input");
+			std::shared_ptr<TInput<Movement>> data = input.Get<Movement>();
+			auto move = playerLoc.Traverse(data->m_direction, lookDirection);
+			playerLoc = move.first;
+			lookDirection = Rotate(lookDirection, move.second);
+
+			//auto data = input.Get<EInputType::Movement>();
+			los.SetRadius(10);
+			LOS::Calculate(los, playerLoc, lookDirection);
+			m_playerData.UpdateViewGame(los);
+		}
 		break;
 	case EInputType::BeginNewGame:
 		InitNewGame();
@@ -173,10 +190,4 @@ Input Game::PopNextInput()
 	Input result = m_inputs[0];
 	m_inputs.erase(m_inputs.begin());
 	return result;
-}
-
-void Game::AddOutput(Output output)
-{
-	std::lock_guard lock(outputMutex);
-	m_outputs.push_back(output);
 }

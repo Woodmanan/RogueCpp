@@ -50,7 +50,7 @@ public:
 namespace Serialization
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, TileMemory& value)
+	void Serialize(Stream& stream, const TileMemory& value)
 	{
 		Write(stream, "Size", value.m_size);
 		Write(stream, "Local Position", value.m_localPosition);

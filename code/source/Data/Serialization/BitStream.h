@@ -87,24 +87,29 @@ public:
 	}
 
 	template<typename T>
-	void Write(T& value);
+	void Write(const T& value);
 
 	template<typename T>
 	void Read(T& value);
+
+	std::shared_ptr<DataBackend> GetDataBackend()
+	{
+		return m_backend;
+	}
 
 protected:
 	std::shared_ptr<DataBackend> m_backend;
 };
 
 template<typename T>
-void PackedStream::Write(T& value)
+void PackedStream::Write(const T& value)
 {
 	char* bytePtr = (char*)&value;
 	Write(bytePtr, sizeof(T));
 }
 
 template<>
-inline void PackedStream::Write(std::string& value)
+inline void PackedStream::Write(const std::string& value)
 {
 	size_t size = value.size();
 	ASSERT(size <= 128);
@@ -157,15 +162,15 @@ public:
 	//Write
 	void Write(const char* ptr, size_t length);
 	void WriteRawBytes(const char* ptr, size_t length);
-	void Write(bool value);
-	void Write(char value);
-	void Write(unsigned char value);
-	void Write(short value);
-	void Write(int value);
-	void Write(unsigned int value);
-	void Write(float value);
-	void Write(size_t value);
-	void Write(std::string& value);
+	void Write(const bool value);
+	void Write(const char value);
+	void Write(const unsigned char value);
+	void Write(const short value);
+	void Write(const int value);
+	void Write(const unsigned int value);
+	void Write(const float value);
+	void Write(const size_t value);
+	void Write(const std::string& value);
 
 	//Reads
 	void Read(char* ptr, size_t length);
@@ -181,6 +186,11 @@ public:
 	void Read(std::string& value);
 
 	void Close();
+
+	std::shared_ptr<DataBackend> GetDataBackend()
+	{
+		return m_backend;
+	}
 
 private:
 	void ReadNextWordIntoBuffer(char* buffer, int bufSize);

@@ -92,7 +92,7 @@ public:
 namespace Serialization
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, Rect& value)
+	void Serialize(Stream& stream, const Rect& value)
 	{
 		Write(stream, "x", value.x);
 		Write(stream, "y", value.y);
@@ -110,7 +110,7 @@ namespace Serialization
 	}
 
 	template<typename Stream>
-	void Serialize(Stream& stream, Anchors& value)
+	void Serialize(Stream& stream, const Anchors& value)
 	{
 		Write(stream, "Min X", value.minX);
 		Write(stream, "Max X", value.maxX);

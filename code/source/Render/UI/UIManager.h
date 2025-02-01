@@ -47,7 +47,7 @@ private:
 namespace Serialization
 {
 	template<typename Stream>
-	void Serialize(Stream& stream, WindowSettings& value)
+	void Serialize(Stream& stream, const WindowSettings& value)
 	{
 		Write(stream, "ID", value.id);
 		Write(stream, "Anchors", value.anchors);

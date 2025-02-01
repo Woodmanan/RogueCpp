@@ -87,11 +87,13 @@ public:
     vector<THandle<BackingTile>> m_backingTiles;
     vector<Tile> m_tiles;
 
-    int IndexIntoMap(Vec2 location);
-    int IndexIntoMap(short x, short y);
+    int IndexIntoMap(Vec2 location) const;
+    int IndexIntoMap(short x, short y) const;
 
     Tile& GetTile(Vec2 location);
     Tile& GetTile(ushort x, ushort y);
+    const Tile& GetTile(Vec2 location) const;
+    const Tile& GetTile(ushort x, ushort y) const;
 
     void SetTile(Vec2 location, int index);
     void SetTile(Vec2 location, THandle<BackingTile> tile);
@@ -129,7 +131,7 @@ public:
 namespace Serialization
 {
     template<typename Stream>
-    void Serialize(Stream& stream, BackingTile& value)
+    void Serialize(Stream& stream, const BackingTile& value)
     {
         Write(stream, "Char", value.m_renderCharacter);
         Write(stream, "FGColor", value.m_foregroundColor);
@@ -153,7 +155,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, TileStats& value)
+    void Serialize(Stream& stream, const TileStats& value)
     {
         Write(stream, "Neighbors", value.m_neighbors);
         Write(stream, "Materials", value.m_materialContainer);
@@ -167,7 +169,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, Map& value)
+    void Serialize(Stream& stream, const Map& value)
     {
         Write(stream, "Z", value.z);
         Write(stream, "Size", value.m_size);
@@ -218,7 +220,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, Tile& value)
+    void Serialize(Stream& stream, const Tile& value)
     {
         Write(stream, "Backing", value.m_backingTile);
         Write(stream, "Stats", value.m_stats);
@@ -232,7 +234,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, TileNeighbors& value)
+    void Serialize(Stream& stream, const TileNeighbors& value)
     {
         Write(stream, "N", value.N);
         Write(stream, "NDir", value.N_Direction);

@@ -3,6 +3,7 @@
 #include "glm/glm.hpp"
 #include "Debug/Debug.h"
 #include <type_traits>
+#include <tuple>
 #include "Data/Serialization/Serialization.h"
 
 class Tile;
@@ -198,13 +199,13 @@ public:
     Location(ushort x, ushort y, ushort z);
     Location(Vec3 vector) : Location(vector.x, vector.y, vector.z) {};
 
-    bool GetValid();
+    bool GetValid() const;
     void SetValid(bool valid);
-    ushort x();
-    ushort y();
-    ushort z();
+    ushort x() const;
+    ushort y() const;
+    ushort z() const;
 
-    Vec3 GetVector();
+    Vec3 GetVector() const;
     void SetVector(Vec3 vector);
 
     Vec2 AsVec2();
@@ -212,8 +213,18 @@ public:
     Tile& GetTile();
     Tile* operator ->();
 
+    friend bool operator<(const Location& l, const Location& r)
+    {
 #ifndef _DEBUG
-    int& GetData() { return m_data; }
+        return l.m_data < r.m_data;
+#else
+        return std::tie(l.m_valid, l.m_x, l.m_y, l.m_z) <
+            std::tie(r.m_valid, r.m_x, r.m_y, r.m_z);
+#endif
+    }
+
+#ifndef _DEBUG
+    const int& GetData() const { return m_data; }
     void SetData(int newData) { m_data = newData; }
 #endif // _DEBUG
 
@@ -387,7 +398,7 @@ inline Color Blend(Color f, Color s, float percent)
 namespace Serialization
 {
     template<typename Stream>
-    void SerializeObject(Stream& stream, Direction& direction)
+    void SerializeObject(Stream& stream, const Direction& direction)
     {
         int asInt = direction;
         Serialize(stream, asInt);
@@ -402,7 +413,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, Vec2& value)
+    void Serialize(Stream& stream, const Vec2& value)
     {
         Write(stream, "x", value.x);
         Write(stream, "y", value.y);
@@ -416,7 +427,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, Vec3& value)
+    void Serialize(Stream& stream, const Vec3& value)
     {
         Write(stream, "x", value.x);
         Write(stream, "y", value.y);
@@ -432,7 +443,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, Location& value)
+    void Serialize(Stream& stream, const Location& value)
     {
 #ifdef _DEBUG
         bool valid = value.GetValid();
@@ -462,7 +473,7 @@ namespace Serialization
     }
 
     template<typename Stream>
-    void Serialize(Stream& stream, Color& value)
+    void Serialize(Stream& stream, const Color& value)
     {
         if constexpr (std::is_same<Stream, JSONStream>::value)
         {

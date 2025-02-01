@@ -1,6 +1,7 @@
 #pragma once
 #include "GameHeaders.h"
 #include "IO.h"
+#include "PlayerData.h"
 
 /*
  * Big game state! This represents a thread-specific black-box which is runnign
@@ -20,16 +21,17 @@ public:
 
 	void LaunchGame();
 	void AddInput(Input input);
+	void AddOutput(Output output);
 
 	bool HasNextOutput();
 	Output PopNextOutput();
 
-	template <typename T, class... Args>
+	template <EInputType inputType, class... Args>
 	void CreateInput(Args&&... args)
 	{
 		Input input;
-		std::shared_ptr<T> ptr = std::make_shared<T>(std::forward<Args>(args)...);
-		input.Set<T>(ptr);
+		std::shared_ptr<TInput<inputType>> ptr = std::make_shared<TInput<inputType>>(std::forward<Args>(args)...);
+		input.Set(ptr);
 		AddInput(input);
 	}
 
@@ -39,6 +41,16 @@ public:
 		Input input;
 		input.Set<inputType>();
 		AddInput(input);
+	}
+
+	template <typename T, class... Args>
+	void CreateOutput(Args&&... args)
+	{
+		ROGUE_PROFILE_SECTION("Create Output");
+		Output output;
+		std::shared_ptr<T> ptr = std::make_shared<T>(std::forward<Args>(args)...);
+		output.Set<T>(ptr);
+		AddOutput(output);
 	}
 
 	void Save(std::string filename);
@@ -54,8 +66,6 @@ private:
 	bool HasNextInput();
 	Input PopNextInput();
 
-	void AddOutput(Output output);
-
 	//IO Handling
 	std::mutex inputMutex;
 	std::condition_variable inputCv;
@@ -64,5 +74,8 @@ private:
 	std::mutex outputMutex;
 	std::vector<Output> m_outputs;
 
+	Location playerLoc = Location(0,0,0);
+	Direction lookDirection = Direction::North;
 	View los;
+	PlayerData m_playerData;
 };
