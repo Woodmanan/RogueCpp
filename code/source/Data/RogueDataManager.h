@@ -232,6 +232,11 @@ public:
 		return l.GetInternalOffset() < r.GetInternalOffset();
 	}
 
+	friend bool operator==(const THandle& l, const THandle& r)
+	{
+		return l.GetInternalOffset() == r.GetInternalOffset();
+	}
+
 #ifdef LINK_HANDLE
 protected:
 	T* linked = nullptr;

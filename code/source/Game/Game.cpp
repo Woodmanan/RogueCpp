@@ -85,6 +85,7 @@ void Game::InitNewGame()
 	materialManager->Init();
 
 	Vec2 mapSize = Vec2(64, 64);
+	THandle<Map> map;
 
 	for (int i = 0; i < 1; i++)
 	{
@@ -94,7 +95,7 @@ void Game::InitNewGame()
 		wallMat.AddMaterial("Dirt", 1000);
 		wallMat.AddMaterial("Stone", 1000, true);
 
-		THandle<Map> map = dataManager->Allocate<Map>(mapSize, i, 2);
+		map = dataManager->Allocate<Map>(mapSize, i, 2);
 		map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, -1, wallMat);
 		map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, 1, groundMat);
 		map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, 1, groundMat);
@@ -107,10 +108,15 @@ void Game::InitNewGame()
 
 		map->FillTilesExc(Vec2(0, 0), mapSize, 0);
 		map->FillTilesExc(Vec2(1, 1), Vec2(mapSize.x - 1, mapSize.y - 1), 1);
-
-		THandle<TileMemory> memory = dataManager->Allocate<TileMemory>(map);
-		memory->SetLocalPosition(Location(0,0,0));
 	}
+
+	//Game ready! Temp - boot up first view
+	m_playerData.GetCurrentMemory() = TileMemory(map);
+	los.SetRadius(10);
+	LOS::Calculate(los, playerLoc, lookDirection);
+	m_playerData.UpdateViewGame(los);
+
+	CreateOutput<GameReady>();
 }
 
 void Game::MainLoop()
@@ -153,6 +159,7 @@ void Game::HandleInput(const Input& input)
 			auto move = playerLoc.Traverse(data->m_direction, lookDirection);
 			playerLoc = move.first;
 			lookDirection = Rotate(lookDirection, move.second);
+			m_playerData.GetCurrentMemory().Move(VectorFromDirection(data->m_direction));
 
 			//auto data = input.Get<EInputType::Movement>();
 			los.SetRadius(10);

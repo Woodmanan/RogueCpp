@@ -118,6 +118,7 @@ public:
 enum EOutputType
 {
 	InvalidOutput,
+	GameReady,
 	ViewUpdated
 };
 
@@ -145,7 +146,7 @@ class TOutput<ViewUpdated> : public TOutputBase<ViewUpdated>
 {
 public:
 	TOutput() {}
-	TOutput(DefaultStream stream)
+	TOutput(PackedStream stream)
 	{
 		m_data.clear();
 		std::shared_ptr<VectorBackend> backend = dynamic_pointer_cast<VectorBackend>(stream.GetDataBackend());

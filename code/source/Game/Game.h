@@ -43,13 +43,21 @@ public:
 		AddInput(input);
 	}
 
-	template <typename T, class... Args>
+	template <EOutputType outputType, class... Args>
 	void CreateOutput(Args&&... args)
 	{
 		ROGUE_PROFILE_SECTION("Create Output");
 		Output output;
-		std::shared_ptr<T> ptr = std::make_shared<T>(std::forward<Args>(args)...);
-		output.Set<T>(ptr);
+		std::shared_ptr<TOutput<outputType>> ptr = std::make_shared<TOutput<outputType>>(std::forward<Args>(args)...);
+		output.Set(ptr);
+		AddOutput(output);
+	}
+
+	template <EOutputType outputType>
+	void CreateOutput()
+	{
+		Output output;
+		output.Set<outputType>();
 		AddOutput(output);
 	}
 

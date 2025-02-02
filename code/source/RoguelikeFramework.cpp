@@ -93,26 +93,46 @@ void Render_View(View& view, Window* window, Location playerLocation)
 void Render_Player_Data(PlayerData& data, Window* window, Location playerLocation)
 {
     ROGUE_PROFILE;
+
     View& view = data.GetCurrentView();
-    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
-
-    for (int i = -maxRadius; i <= maxRadius; i++)
+    TileMemory& memory = data.GetCurrentMemory();
+    for (int i = 0; i < window->m_rect.w; i++)
     {
-        for (int j = -maxRadius; j <= maxRadius; j++)
+        for (int j = 0; j < window->m_rect.h; j++)
         {
-            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
+            int localX = i - window->m_rect.w / 2;
+            int localY = -j + window->m_rect.h / 2;
 
-            bool visible = view.GetVisibilityLocal(i, j);
-            if (view.GetLocationLocal(i, j).GetValid())
+            int x = memory.m_localPosition.x + localX;
+            int y = memory.m_localPosition.y + localY;
+
+            if (memory.ValidTile(x, y))
             {
+                BackingTile& tile = data.GetTileForLocal(x, y);
+
+                bool visible = (std::abs(localX) <= view.GetRadius() && std::abs(localY) <= view.GetRadius() && view.GetVisibilityLocal(localX, localY));
+
                 if (visible)
                 {
-                    BackingTile& tile = data.GetTileFor(view.GetLocationLocal(i, j));
-                    window->Put(windowCoord.x, windowCoord.y, tile.m_renderCharacter, tile.m_foregroundColor, tile.m_backgroundColor);
+                    window->Put(i, j, tile.m_renderCharacter, tile.m_foregroundColor, tile.m_backgroundColor);
                 }
+                else
+                {
+                    Color greyish = Color(10, 10, 10);
+                    Color fgBlend = Blend(tile.m_foregroundColor, greyish, 0.5f);
+                    Color bgBlend = Blend(tile.m_backgroundColor, greyish, 0.5f);
+                    window->Put(i, j, tile.m_renderCharacter, fgBlend, bgBlend);
+                }
+            }
+            else
+            {
+                window->Put(i, j, '2', Color(0, 0, 0), Color(0, 0, 0));
             }
         }
     }
+
+    //Temp! Render character character
+    window->Put(window->m_rect.w / 2, window->m_rect.h / 2, '@', Color(0,0,0), Color(255,255,255));
 }
 
 void Render_Passes(View& view, Window* window, Location playerLocation)
@@ -326,6 +346,7 @@ int main(int argc, char* argv[])
 
     Game game = Game();
     std::thread gameThread(&Game::LaunchGame, &game);
+    bool gameReady = false;
 
     if (RogueSaveManager::FilePathExists("MySaveFile.rsf"))
     {
@@ -813,6 +834,9 @@ int main(int argc, char* argv[])
 
             switch (output.m_type)
             {
+            case GameReady:
+                gameReady = true;
+                break;
             case ViewUpdated:
                 playerData.UpdateViewPlayer(output.Get<ViewUpdated>());
                 break;
@@ -821,6 +845,12 @@ int main(int argc, char* argv[])
                 HALT();
                 break;
             }
+        }
+
+        //Catch if the game is still loading - don't render until then!
+        if (!gameReady)
+        {
+            continue;
         }
 
         terminal_clear();

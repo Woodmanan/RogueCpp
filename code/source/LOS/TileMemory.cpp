@@ -38,34 +38,6 @@ void TileMemory::Wipe()
 	std::fill(m_tiles.begin(), m_tiles.end(), Tile());
 }
 
-void TileMemory::Render(Window* window)
-{
-	ASSERT(window != nullptr);
-	Color black = Color(0x00, 0x00, 0x00, 0xFF);
-	Color empty = Color(0x03, 0x03, 0x03, 0xFF);
-	terminal_bkcolor(empty);
-
-	for (int i = 0; i < window->m_rect.w; i++)
-	{
-		for (int j = 0; j < window->m_rect.h; j++)
-		{
-			int x = m_localPosition.x + i - window->m_rect.w / 2;
-			int y = m_localPosition.y - (j - window->m_rect.h / 2);
-
-			if (ValidTile(x, y))
-			{
-				Tile& tile = GetTileByLocal(x, y);
-
-				if (tile.m_backingTile.IsValid())
-				{
-					Color blend = Blend(tile.m_backingTile->m_foregroundColor, black, 0.5f);
-					window->Put(i, j, tile.m_backingTile->m_renderCharacter, blend, empty);
-				}
-			}
-		}
-	}
-}
-
 void TileMemory::SetLocalPosition(Location location)
 {
 	m_localPosition = Vec2(location.x(), location.y());
