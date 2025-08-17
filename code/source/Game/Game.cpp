@@ -143,7 +143,7 @@ void Game::MainLoop()
 			inputCv.wait(lock, [this] { return m_inputs.size() > 0; });
 		}
 
-		while (HasNextInput())
+		while (active && HasNextInput())
 		{
 			ROGUE_PROFILE_SECTION("Game loop Step");
 			HandleInput(PopNextInput());

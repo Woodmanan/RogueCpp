@@ -210,14 +210,14 @@ void FontManager::PackFont(PackContext& packContext)
 std::shared_ptr<void> FontManager::LoadFont(LoadContext& loadContext)
 {
 	ROGUE_PROFILE_SECTION("FontManager::Load");
-	std::vector<unsigned char> buffer;
+	std::vector<unsigned char>* buffer = new std::vector<unsigned char>();
 
 	OpenReadPackFile(loadContext.source);
-	RogueSaveManager::ReadAsBuffer("Buffer", buffer);
+	RogueSaveManager::ReadAsBuffer("Buffer", *buffer);
 	RogueSaveManager::CloseReadSaveFile();
 
-	RogueFont* font = new RogueFont(m_library, buffer);
-	font->SelectCharmap(FT_ENCODING_UNICODE);
+	//RogueFont* font = new RogueFont(m_library, buffer);
+	//font->SelectCharmap(FT_ENCODING_UNICODE);
 
-	return std::shared_ptr<RogueFont>(font);
+	return std::shared_ptr<std::vector<unsigned char>>(buffer);
 }

@@ -22,7 +22,6 @@
 #include "Core/Materials/Materials.h"
 #include "Core/Events/Event.h"
 #include "Debug/Profiling.h"
-#include "Render/VulkanTest.h"
 #include "Render/Fonts/FontManager.h"
 #include "Render/Terminal.h"
 #include "Game/Game.h"
@@ -244,32 +243,32 @@ Direction ReadDirection(Direction currentRotation)
 
     switch (terminal_read())
     {
-    case GLFW_KEY_K:
-    case GLFW_KEY_UP:
+    case EKey::K:
+    case EKey::UP:
         direction = North;
         break;
-    case GLFW_KEY_U:
+    case EKey::U:
         direction = NorthEast;
         break;
-    case GLFW_KEY_L:
-    case GLFW_KEY_RIGHT:
+    case EKey::L:
+    case EKey::RIGHT:
         direction = East;
         break;
-    case GLFW_KEY_N:
+    case EKey::N:
         direction = SouthEast;
         break;
-    case GLFW_KEY_J:
-    case GLFW_KEY_DOWN:
+    case EKey::J:
+    case EKey::DOWN:
         direction = South;
         break;
-    case GLFW_KEY_B:
+    case EKey::B:
         direction = SouthWest;
         break;
-    case GLFW_KEY_H:
-    case GLFW_KEY_LEFT:
+    case EKey::H:
+    case EKey::LEFT:
         direction = West;
         break;
-    case GLFW_KEY_Y:
+    case EKey::Y:
         direction = NorthWest;
         break;
     }
@@ -406,7 +405,7 @@ int main(int argc, char* argv[])
     char buffer[50];
     wchar_t wbuffer[50];
 
-    terminal_open();
+    terminal_custom_init();
     terminal_print(34, 20, "Hello World! I am here!");
     terminal_refresh();
 
@@ -420,7 +419,7 @@ int main(int argc, char* argv[])
     bool shouldBreak = false;
     long frame = 0;
     while (!shouldBreak && !terminal_should_close()) {
-        glfwPollEvents();
+        terminal_update();
 
         if (terminal_has_input())
         {
@@ -428,17 +427,18 @@ int main(int argc, char* argv[])
         }
         switch (k)
         {
-        case GLFW_KEY_Q:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::Q:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
-                RogueSaveManager::DeleteSaveFile("MySaveFile.rsf");
+                RogueSaveManager::DeleteSaveFile("TestSave.rsf");
                 RogueSaveManager::DeleteSaveFile("UISettings.rsf");
+                game.CreateInput<ExitGame>();
             }
             shouldBreak = true;
             break;
-        case GLFW_KEY_H:
-        case GLFW_KEY_LEFT:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::H:
+        case EKey::LEFT:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(-1, 0);
             }
@@ -447,9 +447,9 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::West);
             }
             break;
-        case GLFW_KEY_K:
-        case GLFW_KEY_UP:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::K:
+        case EKey::UP:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(0, 1);
             }
@@ -458,9 +458,9 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::North);
             }
             break;
-        case GLFW_KEY_J:
-        case GLFW_KEY_DOWN:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::J:
+        case EKey::DOWN:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(0, -1);
             }
@@ -473,9 +473,9 @@ int main(int argc, char* argv[])
                 //memory->Move(VectorFromDirection(Direction::South));
             }
             break;
-        case GLFW_KEY_L:
-        case GLFW_KEY_RIGHT:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::L:
+        case EKey::RIGHT:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(1, 0);
             }
@@ -484,8 +484,8 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::East);
             }
             break;
-        case GLFW_KEY_Y:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::Y:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(-1, 1);
             }
@@ -494,8 +494,8 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::NorthWest);
             }
             break;
-        case GLFW_KEY_U:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::U:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(1, 1);
             }
@@ -504,8 +504,8 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::NorthEast);
             }
             break;
-        case GLFW_KEY_B:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::B:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(-1, -1);
             }
@@ -514,8 +514,8 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::SouthWest);
             }
             break;
-        case GLFW_KEY_N:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::N:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 bresenhamPoint = bresenhamPoint + Vec2(1, -1);
             }
@@ -524,11 +524,11 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::SouthEast);
             }
             break;
-        case GLFW_KEY_SPACE:
+        case EKey::SPACE:
             //map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
-        case GLFW_KEY_EQUAL:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::EQUAL:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 maxPass = maxPass + 1;
             }
@@ -538,8 +538,8 @@ int main(int argc, char* argv[])
                 view.SetRadius(radius);
             }
             break;
-        case GLFW_KEY_MINUS:
-            if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::MINUS:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
             {
                 maxPass = std::max(1, maxPass - 1);
             }
@@ -549,7 +549,13 @@ int main(int argc, char* argv[])
                 view.SetRadius(radius);
             }
             break;
-        case GLFW_KEY_ENTER:
+        case EKey::ENTER:
+            if (terminal_get_key(EKey::LEFT_SHIFT))
+            {
+                terminal_fullscreen();
+                break;
+            }
+
             if (!warpPosition.GetValid())
             {
                 warpPosition = playerLoc;
@@ -561,7 +567,7 @@ int main(int argc, char* argv[])
                 map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
                 map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
 
-                if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+                if (terminal_get_key(EKey::LEFT_SHIFT))
                 {
                     Direction direction = ReadDirection(lookDirection);
                     map->CreateDirectionalPortal(warpPosition.AsVec2(), playerLoc.AsVec2(), direction);
@@ -573,7 +579,7 @@ int main(int argc, char* argv[])
                 warpPosition = Location();
             }
             break;
-        case GLFW_KEY_D:
+        case EKey::D:
             if (!warpPosition.GetValid())
             {
                 warpPosition = playerLoc;
@@ -594,12 +600,12 @@ int main(int argc, char* argv[])
                 warpPosition = Location();
             }
             break;
-        case GLFW_KEY_S:
+        case EKey::S:
             game.CreateInput<SaveAndExit>();
             shouldBreak = true;
             break;
-        case GLFW_KEY_R:
-            /*if (!terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+        case EKey::R:
+            /*if (!terminal_get_key(EKey::LEFT_SHIFT))
             {
                 map->Reset();
                 map->FillTilesExc(Vec2(0, 0), Vec2(size.x - 0, size.y - 0), 1);
@@ -608,7 +614,7 @@ int main(int argc, char* argv[])
             bresenhamPoint = Vec2(0, 0);*/
             ResourceManager::Get()->LoadFromConfig("Image", "image");
             break;
-        case GLFW_KEY_C:
+        case EKey::C:
             if (renderFlags & color)
             {
                 renderFlags ^= color;
@@ -633,33 +639,33 @@ int main(int argc, char* argv[])
                 renderFlags |= color;
             }
             break;
-        case GLFW_KEY_X:
+        case EKey::X:
             renderFlags ^= background;
             break;
-        case GLFW_KEY_9:
+        case EKey::NUM_9:
             lookDirection = Rotate(lookDirection, West);
             break;
-        case GLFW_KEY_0:
+        case EKey::NUM_0:
             lookDirection = Rotate(lookDirection, East);
             break;
-        case GLFW_KEY_W:
+        case EKey::W:
             memory->Wipe();
             break;
-        case GLFW_KEY_PAGE_UP:
+        case EKey::PAGE_UP:
             //TODO: RESIZING
             x++;
             y++;
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
             //terminal_set(&buffer[0]);
             break;
-        case GLFW_KEY_PAGE_DOWN:
+        case EKey::PAGE_DOWN:
             //TODO: RESIZING
             x--;
             y--;
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
             //terminal_set(&buffer[0]);
             break;
-        case GLFW_KEY_A: //Anchors!
+        case EKey::A: //Anchors!
             Window* selected = nullptr;
 
             terminal_clear();
@@ -671,7 +677,7 @@ int main(int argc, char* argv[])
             }
             terminal_refresh();
 
-            while (selected == nullptr)
+            /*while (selected == nullptr)
             {
                 if (terminal_has_input())
                 {
@@ -695,7 +701,7 @@ int main(int argc, char* argv[])
                             break;
                     }
                 }
-            }
+            }*/
 
             bool moving = true;
             while (moving)
@@ -707,38 +713,38 @@ int main(int argc, char* argv[])
 
                 if (terminal_has_input())
                 {
-                    if (terminal_get_key(GLFW_KEY_LEFT_SHIFT))
+                    if (terminal_get_key(EKey::LEFT_SHIFT))
                     {
                         switch (terminal_peek())
                         {
-                            case GLFW_KEY_UP:
+                            case EKey::UP:
                                 selected->m_anchors.minYOffset--;
                                 break;
-                            case GLFW_KEY_DOWN:
+                            case EKey::DOWN:
                                 selected->m_anchors.maxYOffset++;
                                 break;
-                            case GLFW_KEY_LEFT:
+                            case EKey::LEFT:
                                 selected->m_anchors.minXOffset--;
                                 break;
-                            case GLFW_KEY_RIGHT:
+                            case EKey::RIGHT:
                                 selected->m_anchors.maxXOffset++;
                                 break;
                         }
                     }
-                    else if (terminal_get_key(GLFW_KEY_LEFT_CONTROL))
+                    else if (terminal_get_key(EKey::LEFT_CONTROL))
                     {
                         switch (terminal_peek())
                         {
-                        case GLFW_KEY_UP:
+                        case EKey::UP:
                             selected->m_anchors.maxYOffset--;
                             break;
-                        case GLFW_KEY_DOWN:
+                        case EKey::DOWN:
                             selected->m_anchors.minYOffset++;
                             break;
-                        case GLFW_KEY_LEFT:
+                        case EKey::LEFT:
                             selected->m_anchors.maxXOffset--;
                             break;
-                        case GLFW_KEY_RIGHT:
+                        case EKey::RIGHT:
                             selected->m_anchors.minXOffset++;
                             break;
                         }
@@ -747,19 +753,19 @@ int main(int argc, char* argv[])
                     {
                         switch (terminal_peek())
                         {
-                            case GLFW_KEY_UP:
+                            case EKey::UP:
                                 selected->m_anchors.minYOffset--;
                                 selected->m_anchors.maxYOffset--;
                                 break;
-                            case GLFW_KEY_DOWN:
+                            case EKey::DOWN:
                                 selected->m_anchors.minYOffset++;
                                 selected->m_anchors.maxYOffset++;
                                 break;
-                            case GLFW_KEY_LEFT:
+                            case EKey::LEFT:
                                 selected->m_anchors.minXOffset--;
                                 selected->m_anchors.maxXOffset--;
                                 break;
-                            case GLFW_KEY_RIGHT:
+                            case EKey::RIGHT:
                                 selected->m_anchors.minXOffset++;
                                 selected->m_anchors.maxXOffset++;
                                 break;
@@ -768,7 +774,7 @@ int main(int argc, char* argv[])
 
                     switch (terminal_read())
                     {
-                    case GLFW_KEY_X: {
+                    case EKey::X: {
                         char buf1[50];
                         std::snprintf(buf1, 50, "");
                         terminal_read_str(1, 1, &buf1[0], 50);
@@ -782,7 +788,7 @@ int main(int argc, char* argv[])
                         selected->m_anchors.maxXOffset = 0;
                         break;
                     }
-                    case GLFW_KEY_Y: {
+                    case EKey::Y: {
                         char buf1[50];
                         std::snprintf(buf1, 50, "");
                         terminal_read_str(1, 1, &buf1[0], 50);
@@ -796,13 +802,13 @@ int main(int argc, char* argv[])
                         selected->m_anchors.maxYOffset = 0;
                         break;
                     }
-                    case GLFW_KEY_Q:
+                    case EKey::Q:
                         moving = false;
                         uiManager.CreateSettingsForAllWindows();
                         uiManager.SaveSettings();
                         break;
-                    case GLFW_KEY_P:
-                        while (true)
+                    case EKey::P:
+                        /*while (true)
                         {
                             terminal_clear();
                             gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_width() });
@@ -819,7 +825,7 @@ int main(int argc, char* argv[])
                                 selected->SetParent(hovered);
                                 break;
                             }
-                        }
+                        }*/
                         break;
                     }
                 }
@@ -827,7 +833,7 @@ int main(int argc, char* argv[])
             }
         }
 
-        k = GLFW_KEY_G;
+        k = EKey::G;
 
         //Handle output
         if (game.HasNextOutput())
@@ -905,16 +911,16 @@ int main(int argc, char* argv[])
             renderWindow->Put(renderWindow->m_rect.w / 2, renderWindow->m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
         }*/
 
-
+        renderWindow->Put(renderWindow->m_rect.w / 2, renderWindow->m_rect.h / 2, '@', Color(255, 0, 255), Color(0, 0, 0));
         xbar->SetColor(Color(255, 100, 0));
         //xbar->SetFill(((float)playerLoc.x()) / (map->m_size.x - 1), 0.03f);
         xlabel->SetString("x:");
-        //xlabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
+        //xlabel->SetAlignment(EKey::ALIGN_DEFAULT);
 
         ybar->SetColor(Color(255, 100, 0));
         //ybar->SetFill(((float)playerLoc.y()) / (map->m_size.y - 1), 0.03f);
         ylabel->SetString("y:");
-        //ylabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
+        //ylabel->SetAlignment(EKey::ALIGN_DEFAULT);
         gameWindow->RenderContent(frameTime.count());
 
         char fpsString[20];

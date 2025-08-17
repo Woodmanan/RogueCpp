@@ -1,5 +1,5 @@
-#include "Terminal.h"
-
+#include "VulkanTerminal.h"
+#ifdef VULKAN_RENDER
 int terminal_open()
 {
 	terminal = new VulkanTerminal();
@@ -130,7 +130,8 @@ int terminal_peek()
 	return 0;
 }
 
-bool terminal_get_key(int keycode)
+bool terminal_get(int keycode)
 {
 	return glfwGetKey(terminal->GetWindow(), keycode) == GLFW_PRESS;
 }
+#endif
