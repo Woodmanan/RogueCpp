@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <stdexcept>
+#include <vector>
 
 template<typename Class, typename rType, typename... Args>
 std::function<rType(Args...)> GetMember(Class* instance, rType(Class::* member)(Args...))
@@ -37,3 +38,5 @@ void string_format_print(const std::string& format, Args ... args)
 std::vector<std::string> string_split(const std::string& string, const std::string& splitOn);
 
 float string_to_float(const std::string& string);
+
+float optional_string_to_float(std::vector<std::string>& tokens, int index, float defaultValue);

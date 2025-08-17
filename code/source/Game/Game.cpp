@@ -9,6 +9,7 @@
 thread_local Game* Game::game = nullptr;
 thread_local RogueDataManager* Game::dataManager = nullptr;
 thread_local MaterialManager* Game::materialManager = nullptr;
+thread_local StatManager* Game::statManager = nullptr;
 
 Game::Game()
 {
@@ -54,7 +55,11 @@ void Game::Save(std::string filename)
 {
 	ROGUE_PROFILE_SECTION("Save File");
 	RogueSaveManager::OpenWriteSaveFile(filename);
-	//dataManager->SaveAll();
+	dataManager->SaveAll();
+	RogueSaveManager::Write("PlayerLoc", playerLoc);
+	RogueSaveManager::Write("LookDir", lookDirection);
+	RogueSaveManager::Write("LOS", los);
+	RogueSaveManager::Write("PlayerData", m_playerData);
 	RogueSaveManager::CloseWriteSaveFile();
 }
 
@@ -64,7 +69,11 @@ void Game::Load(std::string filename)
 	if (RogueSaveManager::OpenReadSaveFile(filename))
 	{
 		//RogueSaveManager::Write("View", m_view);
-		//dataManager->LoadAll();
+		dataManager->LoadAll();
+		RogueSaveManager::Read("PlayerLoc", playerLoc);
+		RogueSaveManager::Read("LookDir", lookDirection);
+		RogueSaveManager::Read("LOS", los);
+		RogueSaveManager::Read("PlayerData", m_playerData);
 		RogueSaveManager::CloseReadSaveFile();
 	}
 }
@@ -80,11 +89,15 @@ void Game::InitNewGame()
 	Game::dataManager->RegisterArena<TileNeighbors>(20);
 	Game::dataManager->RegisterArena<TileMemory>(20);
 	Game::dataManager->RegisterArena<MaterialContainer>(20);
+	Game::dataManager->RegisterArena<StatContainer>(200);
+
+	Game::statManager = new StatManager();
+	statManager->Init();
 
 	Game::materialManager = new MaterialManager();
 	materialManager->Init();
 
-	Vec2 mapSize = Vec2(64, 64);
+	Vec2 mapSize = Vec2(128, 128);
 	THandle<Map> map;
 
 	for (int i = 0; i < 1; i++)
@@ -173,6 +186,12 @@ void Game::HandleInput(const Input& input)
 	case EInputType::BeginSeededGame:
 		break;
 	case EInputType::LoadSaveGame:
+		{
+			InitNewGame();
+			auto data = input.Get<LoadSaveGame>();
+			Load(data->fileName);
+			m_playerData.UpdateViewGame(los);
+		}
 		break;
 	case EInputType::SaveAndExit:
 		Save("TestSave.rsf");

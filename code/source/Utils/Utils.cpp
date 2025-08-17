@@ -24,3 +24,13 @@ float string_to_float(const std::string& string)
     if (string.empty()) { return 0; }
     return strtof(string.c_str(), nullptr);
 }
+
+float optional_string_to_float(std::vector<std::string>& tokens, int index, float defaultValue)
+{
+    if (index >= 0 && index < tokens.size() && !tokens[index].empty())
+    {
+        return strtof(tokens[index].c_str(), nullptr);
+    }
+
+    return defaultValue;
+}

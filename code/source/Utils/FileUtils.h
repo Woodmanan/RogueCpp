@@ -4,13 +4,8 @@
 #include <fstream>
 #include <vector>
 
-void SkipLine(ifstream& stream)
+inline void SkipLine(std::ifstream& stream)
 {
 	std::string line;
 	std::getline(stream, line);
-}
-
-std::vector<std::string> GetLineTokens(ifstream& stream)
-{
-
 }

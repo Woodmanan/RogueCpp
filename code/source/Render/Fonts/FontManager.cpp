@@ -23,7 +23,8 @@ RogueFont::~RogueFont()
 bool RogueFont::SetSize(uint xSize, uint ySize)
 {
 	m_size = Vec2((int)xSize, (int)ySize);
-	return !FT_Set_Pixel_Sizes(m_face, xSize, ySize);
+	uint size = std::max(xSize, ySize);
+	return !FT_Set_Pixel_Sizes(m_face, 0, size);
 }
 
 bool RogueFont::HasActiveCharmap()

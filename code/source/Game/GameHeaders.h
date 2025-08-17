@@ -7,6 +7,7 @@
 #include "Map/Map.h"
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
+#include "Core/Stats/StatManager.h"
 #include "Core/Materials/Materials.h"
 #include "Core/Events/Event.h"
 #include "Data/RegisterSaveTypes.h"

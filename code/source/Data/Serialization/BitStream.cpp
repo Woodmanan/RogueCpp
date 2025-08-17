@@ -87,6 +87,14 @@ PackedStream::PackedStream(std::filesystem::path path, bool write)
 	m_backend = std::make_shared<FileBackend>(path, write);
 }
 
+void PackedStream::AllWritesFinished()
+{
+	if (m_scratchBits > 0)
+	{
+		WriteScratchBit();
+	}
+}
+
 void PackedStream::Close()
 {
 	m_backend->Close();
@@ -95,13 +103,92 @@ void PackedStream::Close()
 void PackedStream::Write(const char* ptr, size_t length)
 {
 	ASSERT(m_backend != nullptr);
-	m_backend->Write(ptr, length);
+	for (size_t i = 0; i < length; i++)
+	{
+		WriteBits(ptr + i, 8);
+	}
 }
 
 void PackedStream::Read(char* ptr, size_t length)
 {
 	ASSERT(m_backend != nullptr);
-	m_backend->Read(ptr, length);
+	for (size_t i = 0; i < length; i++)
+	{
+		ReadBits(ptr + i, 8);
+	}
+}
+
+void PackedStream::WriteBits(const char* word, int bits)
+{
+	ASSERT(m_scratchBits < 8);
+	ASSERT(bits <= 8);
+	int wordAsInt = *word;
+	unsigned int value = (wordAsInt & 0xFF) << m_scratchBits;
+
+	unsigned int mask = (0xFF >> (8 - bits)) << m_scratchBits;
+
+	m_scratch &= ~mask;
+	m_scratch |= value;
+	m_scratchBits += bits;
+
+	if (m_scratchBits >= 8)
+	{
+		WriteScratchBit();
+	}
+}
+
+void PackedStream::WriteScratchBit()
+{
+	char end = (m_scratch & 0xFF);
+	m_backend->Write(&end, 1);
+	m_scratch = m_scratch >> 8;
+	m_scratchBits = std::max(0, m_scratchBits - 8);
+}
+
+void PackedStream::WriteAlign()
+{
+	const int numToWrite = (32 - m_scratchBits) % 8;
+
+	if (numToWrite > 0)
+	{
+		char zero = 0;
+		WriteBits(&zero, numToWrite);
+		ASSERT(m_scratchBits == 0);
+	}
+}
+
+void PackedStream::ReadBits(char* ptr, int bits)
+{
+	if (m_scratchBits < bits)
+	{
+		ReadScratchBit();
+	}
+
+	*ptr = (m_scratch & (0xFF >> (8 - bits)));
+	m_scratchBits -= bits;
+	m_scratch = m_scratch >> bits;
+}
+
+void PackedStream::ReadScratchBit()
+{
+	ASSERT(m_scratchBits < 8);
+	char byte;
+	m_backend->Read(&byte, 1);
+	int shiftValue = byte;
+	m_scratch |= ((shiftValue & 0xFF) << m_scratchBits);
+	m_scratchBits += 8;
+}
+
+void PackedStream::ReadAlign()
+{
+	int readBits = m_scratchBits;
+	if (readBits > 0)
+	{
+		char value;
+		ReadBits(&value, readBits);
+		ASSERT(value == 0);
+		ASSERT(m_scratchBits == 0);
+	}
 }
 
 JSONStream::JSONStream()
@@ -208,8 +295,8 @@ void JSONStream::RemoveSpacing()
 
 void JSONStream::Skip(int characters)
 {
-	ASSERT(characters >= 0 && characters <= 32);
-	char skipBuffer[32];
+	ASSERT(characters >= 0 && characters <= 64);
+	char skipBuffer[64];
 	Read(skipBuffer, characters);
 }
 

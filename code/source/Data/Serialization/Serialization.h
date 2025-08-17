@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 namespace Serialization
 {
@@ -148,6 +149,49 @@ namespace Serialization
 
 	template<typename Stream, typename K, typename V>
 	void Deserialize(Stream& stream, std::map<K, V>& values)
+	{
+		size_t size;
+		Read(stream, "Size", size);
+		stream.BeginRead("Values");
+		stream.OpenReadScope();
+		for (size_t i = 0; i < size; i++)
+		{
+			stream.ReadSpacing();
+			stream.OpenReadScope();
+			K key;
+			V value;
+			Read(stream, "Key", key);
+			Read(stream, "Value", value);
+			values[key] = value;
+			stream.CloseReadScope();
+			stream.ReadListSeperator();
+		}
+		stream.CloseReadScope();
+		stream.FinishRead();
+	}
+
+	template<typename Stream, typename K, typename V>
+	void Serialize(Stream& stream, const std::unordered_map<K, V>& values)
+	{
+		size_t size = values.size();
+		Write(stream, "Size", size);
+		stream.BeginWrite("Values");
+		stream.OpenWriteScope();
+		for (auto it : values)
+		{
+			stream.WriteSpacing();
+			stream.OpenWriteScope();
+			Write(stream, "Key", it.first);
+			Write(stream, "Value", it.second);
+			stream.CloseWriteScope();
+			stream.WriteListSeperator();
+		}
+		stream.CloseWriteScope();
+		stream.FinishWrite();
+	}
+
+	template<typename Stream, typename K, typename V>
+	void Deserialize(Stream& stream, std::unordered_map<K, V>& values)
 	{
 		size_t size;
 		Read(stream, "Size", size);

@@ -8,6 +8,7 @@
 #include "Data/SaveManager.h"
 #include "Data/RegisterSaveTypes.h"
 #include "Data/Resources.h"
+#include "Core/Stats/StatManager.h"
 #include "Map/Map.h"
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
@@ -284,6 +285,7 @@ void SetupResources()
     ResourceManager::Get()->Register("Mat", &RogueResources::PackMaterial, &RogueResources::LoadMaterial);
     ResourceManager::Get()->Register("Reaction", &RogueResources::PackReaction, &RogueResources::LoadReaction);
     ResourceManager::Get()->Register("Image", &RogueResources::PackImage, &RogueResources::LoadImage);
+    ResourceManager::Get()->Register("Stats", &RogueResources::PackStatDefinition, RogueResources::LoadStatDefinition);
 
     auto PackFont = GetMember(FontManager::Get(), &FontManager::PackFont);
     auto LoadFont = GetMember(FontManager::Get(), &FontManager::LoadFont);
@@ -348,9 +350,9 @@ int main(int argc, char* argv[])
     std::thread gameThread(&Game::LaunchGame, &game);
     bool gameReady = false;
 
-    if (RogueSaveManager::FilePathExists("MySaveFile.rsf"))
+    if (RogueSaveManager::FilePathExists("TestSave.rsf"))
     {
-        game.CreateInput<LoadSaveGame>("MySaveFile.rsf");
+        game.CreateInput<LoadSaveGame>("TestSave.rsf");
     }
     else
     {
@@ -594,6 +596,7 @@ int main(int argc, char* argv[])
             break;
         case GLFW_KEY_S:
             game.CreateInput<SaveAndExit>();
+            shouldBreak = true;
             break;
         case GLFW_KEY_R:
             /*if (!terminal_get_key(GLFW_KEY_LEFT_SHIFT))
@@ -913,6 +916,11 @@ int main(int argc, char* argv[])
         ylabel->SetString("y:");
         //ylabel->SetAlignment(GLFW_KEY_ALIGN_DEFAULT);
         gameWindow->RenderContent(frameTime.count());
+
+        char fpsString[20];
+        std::snprintf(fpsString, 20, "%f", 1.0f / frameTime.count());
+
+        terminal_print(0, 0, fpsString);
 
         {
             ROGUE_PROFILE_SECTION("Render");

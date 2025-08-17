@@ -16,6 +16,7 @@ public:
 	static thread_local Game* game;
 	static thread_local RogueDataManager* dataManager;
 	static thread_local MaterialManager* materialManager;
+	static thread_local StatManager* statManager;
 
 	bool active = true;
 

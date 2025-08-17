@@ -93,6 +93,7 @@ namespace RogueSaveManager {
 
 	static void CloseWriteSaveFile()
 	{
+		Stream::stream.AllWritesFinished();
 		Stream::stream.Close();
 	}
 

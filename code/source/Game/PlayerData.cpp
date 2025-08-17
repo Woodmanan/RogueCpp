@@ -54,6 +54,8 @@ void PlayerData::UpdateViewGame(View& newView)
 		}
 	}
 
+	afterStream.AllWritesFinished();
+
 	m_currentView = newView;
 	Game::game->CreateOutput<ViewUpdated>(afterStream);
 }

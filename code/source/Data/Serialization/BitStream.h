@@ -63,6 +63,7 @@ public:
 	void CloseWriteScope() {}
 	void WriteSpacing() {}
 	void WriteListSeperator() {}
+	void AllWritesFinished();
 
 	void BeginRead(const char* name) {}
 	void FinishRead() {}
@@ -76,14 +77,24 @@ public:
 	void Write(const char* ptr, size_t length);
 	void Read(char* ptr, size_t length);
 
+	void WriteBits(const char* word, int bits);
+	void WriteScratchBit();
+	void WriteAlign();
+
+	void ReadBits(char* ptr, int bits);
+	void ReadScratchBit();
+	void ReadAlign();
+
 	void WriteRawBytes(const char* ptr, size_t length)
 	{
-		Write(ptr, length);
+		WriteAlign();
+		m_backend->Write(ptr, length);
 	}
 
 	void ReadRawBytes(char* ptr, size_t length)
 	{
-		Read(ptr, length);
+		ReadAlign();
+		m_backend->Read(ptr, length);
 	}
 
 	template<typename T>
@@ -97,6 +108,9 @@ public:
 		return m_backend;
 	}
 
+	uint32_t m_scratch = 0;
+	int m_scratchBits = 0;
+
 protected:
 	std::shared_ptr<DataBackend> m_backend;
 };
@@ -106,6 +120,13 @@ void PackedStream::Write(const T& value)
 {
 	char* bytePtr = (char*)&value;
 	Write(bytePtr, sizeof(T));
+}
+
+template<>
+inline void PackedStream::Write(const bool& value)
+{
+	char* bytePtr = (char*)&value;
+	WriteBits(bytePtr, 1);
 }
 
 template<>
@@ -122,6 +143,13 @@ void PackedStream::Read(T& value)
 {
 	char* bytePtr = (char*)&value;
 	Read(bytePtr, sizeof(T));
+}
+
+template<>
+inline void PackedStream::Read(bool& value)
+{
+	char* bytePtr = (char*)&value;
+	ReadBits(bytePtr, 1);
 }
 
 template<>
@@ -147,6 +175,7 @@ public:
 	void CloseWriteScope();
 	void WriteSpacing();
 	void WriteListSeperator();
+	void AllWritesFinished() {}
 
 	void BeginRead(const char* name);
 	void FinishRead();

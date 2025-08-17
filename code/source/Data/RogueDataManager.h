@@ -112,6 +112,7 @@ public:
 
 	void SaveAll()
 	{
+		ROGUE_PROFILE_SECTION("DataManager::SaveAll");
 		for (int i = 0; i < arenas.size(); i++)
 		{
 			arenas[i]->WriteInternals();
@@ -120,6 +121,7 @@ public:
 
 	void LoadAll()
 	{
+		ROGUE_PROFILE_SECTION("DataManager::LoadAll");
 		for (int i = 0; i < arenas.size(); i++)
 		{
 			arenas[i]->ReadInternals();
