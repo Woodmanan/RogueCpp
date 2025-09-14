@@ -17,42 +17,40 @@ void PlayerData::UpdateViewGame(View& newView)
 	PackedStream afterStream;
 
 	int maxRadius = newView.GetRadius();
-	bool updatedBacking = false;
-	bool updatedTiles = false;
 
+	Serialization::Write(afterStream, "First Send", !hasSent);
+	if (!hasSent)
+	{
+		//Send all data first!
+		Serialization::Write(afterStream, "View", newView);
+		Serialization::Write(afterStream, "Memory", m_memory);
+		Serialization::Write(afterStream, "Backing Tiles", m_backingTiles);
+		hasSent = true;
+	}
+
+	Serialization::Write(afterStream, "MaxRadius", maxRadius);
+	Serialization::Write(afterStream, "Position", m_memory.m_localPosition);
 	for (int i = -maxRadius; i <= maxRadius; i++)
 	{
 		for (int j = -maxRadius; j <= maxRadius; j++)
 		{
 			bool visible = newView.GetVisibilityLocal(i, j);
-			Location loc = newView.GetLocationLocal(i, j);
-			if (visible && loc.GetValid())
+			Serialization::Write(afterStream, "Visible", visible);
+
+			if (visible)
 			{
-				THandle<BackingTile> tile = newView.GetLocationLocal(i, j)->m_backingTile;
-				if (!m_backingTiles.contains(tile))
+				Location loc = newView.GetLocationLocal(i, j);
+				bool tileUpdate = (loc.GetValid() && !m_memory.ValidTile(i, j)) || (loc.GetTile() != m_memory.GetTileByLocal(i, j));
+				Serialization::Write(afterStream, "Update Tile", tileUpdate);
+				if (tileUpdate)
 				{
-					updatedBacking = true;
-					m_backingTiles[tile] = tile.GetReference();
+					WriteTileUpdate(afterStream, i, j, loc.GetTile());
 				}
 			}
 		}
 	}
 
 	m_memory.Update(newView);
-
-	//TODO: Make this work by delta!
-	{
-		ROGUE_PROFILE_SECTION("Serialization");
-		Serialization::Write(afterStream, "View", newView);
-
-		Serialization::Write(afterStream, "Memory", m_memory);
-
-		Serialization::Write(afterStream, "Update Backing", updatedBacking);
-		if (updatedBacking)
-		{
-			Serialization::Write(afterStream, "Backing Tiles", m_backingTiles);
-		}
-	}
 
 	afterStream.AllWritesFinished();
 
@@ -68,13 +66,34 @@ void PlayerData::UpdateViewPlayer(std::shared_ptr<TOutput<ViewUpdated>> updated)
 	ASSERT(backend != nullptr);
 	backend->m_data.insert(backend->m_data.end(), updated->m_data.begin(), updated->m_data.end());
 
-	Serialization::Read(stream, "View", m_currentView);
-
-	Serialization::Read(stream, "Memory", m_memory);
-	
-	if (Serialization::Read<PackedStream, bool>(stream, "Update Backing"))
+	if (Serialization::Read<PackedStream, bool>(stream, "First Send"))
 	{
+		//Send all data first!
+		Serialization::Read(stream, "View", m_currentView);
+		Serialization::Read(stream, "Memory", m_memory);
 		Serialization::Read(stream, "Backing Tiles", m_backingTiles);
+	}
+
+	int newRadius;
+	Serialization::Read(stream, "MaxRadius", newRadius);
+	Serialization::Read(stream, "Position", m_memory.m_localPosition);
+
+	m_currentView.SetRadius(newRadius);
+	for (int i = -newRadius; i <= newRadius; i++)
+	{
+		for (int j = -newRadius; j <= newRadius; j++)
+		{
+			bool visible = Serialization::Read<PackedStream, bool>(stream, "Visible");
+			m_currentView.SetVisibilityLocal(i, j, visible);
+
+			if (visible)
+			{
+				if (Serialization::Read<PackedStream, bool>(stream, "Update Tile"))
+				{ 
+					ReadTileUpdate(stream, i, j);
+				}
+			}
+		}
 	}
 }
 
@@ -82,4 +101,33 @@ BackingTile& PlayerData::GetTileForLocal(int x, int y)
 {
 	Tile& tile = m_memory.GetTileByLocal(x, y);
 	return m_backingTiles[tile.m_backingTile];
+}
+
+void PlayerData::WriteTileUpdate(PackedStream& stream, int x, int y, Tile& tile)
+{
+	THandle<BackingTile> backing = tile.m_backingTile;
+	ASSERT(backing.IsValid());
+	//TODO: Update this to handle backing tile updates
+	Serialization::Write(stream, "Handle", backing);
+
+	bool updateBacking = !m_backingTiles.contains(backing);// || backing.GetReference() != m_backingTiles[backing];
+	Serialization::Write(stream, "Update backing", updateBacking);
+	if (updateBacking)
+	{
+		m_backingTiles[backing] = backing.GetReference();
+		Serialization::Write(stream, "Backing", backing.GetReference());
+	}
+}
+
+void PlayerData::ReadTileUpdate(PackedStream& stream, int x, int y)
+{
+	Tile tile;
+	Serialization::Read(stream, "Handle", tile.m_backingTile);
+	ASSERT(tile.m_backingTile.IsValid());
+	if (Serialization::Read<PackedStream, bool>(stream, "Update backing"))
+	{
+		m_backingTiles[tile.m_backingTile] = Serialization::Read<PackedStream, BackingTile>(stream, "Backing");
+	}
+
+	m_memory.SetTileByLocal(x, y, tile);
 }

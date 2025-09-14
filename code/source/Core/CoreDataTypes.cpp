@@ -5,6 +5,11 @@
 #include "Debug/Profiling.h"
 #include "Game/ThreadManagers.h"
 
+bool Tile::operator==(const Tile& other)
+{
+    return (m_backingTile == other.m_backingTile) && (m_stats == other.m_stats);
+}
+
 Location::Location()
 {
 #ifdef _DEBUG

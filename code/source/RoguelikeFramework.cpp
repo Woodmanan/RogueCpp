@@ -96,6 +96,7 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
 
     View& view = data.GetCurrentView();
     TileMemory& memory = data.GetCurrentMemory();
+
     for (int i = 0; i < window->m_rect.w; i++)
     {
         for (int j = 0; j < window->m_rect.h; j++)
@@ -103,12 +104,9 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
             int localX = i - window->m_rect.w / 2;
             int localY = -j + window->m_rect.h / 2;
 
-            int x = memory.m_localPosition.x + localX;
-            int y = memory.m_localPosition.y + localY;
-
-            if (memory.ValidTile(x, y))
+            if (memory.ValidTile(localX, localY))
             {
-                BackingTile& tile = data.GetTileForLocal(x, y);
+                BackingTile& tile = data.GetTileForLocal(localX, localY);
 
                 bool visible = (std::abs(localX) <= view.GetRadius() && std::abs(localY) <= view.GetRadius() && view.GetVisibilityLocal(localX, localY));
 
@@ -126,7 +124,7 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
             }
             else
             {
-                window->Put(i, j, '2', Color(0, 0, 0), Color(0, 0, 0));
+                window->Put(i, j, '2', Color(255, 0, 0), Color(0, 0, 0));
             }
         }
     }
@@ -404,6 +402,9 @@ int main(int argc, char* argv[])
     int pos_y = 20;
     char buffer[50];
     wchar_t wbuffer[50];
+
+
+    std::cout << "Here!" << std::endl;
 
     terminal_custom_init();
     terminal_print(34, 20, "Hello World! I am here!");

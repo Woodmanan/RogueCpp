@@ -30,6 +30,9 @@ public:
 	float m_movementCost;
     MaterialContainer m_baseMaterials;
     int m_index = -1;
+
+    bool operator==(const BackingTile& other) const = default;
+    bool operator!=(const BackingTile& other) const = default;
 };
 
 class TileStats
@@ -65,6 +68,8 @@ class Tile
 public:
 	THandle<BackingTile> m_backingTile;
 	THandle<TileStats> m_stats;
+
+    bool operator==(const Tile& other);
 };
 
 class Map

@@ -103,6 +103,11 @@ void View::SetRotationLocal(int x, int y, Direction direction)
 	m_rotations[GetIndexByLocal(x, y)] = direction;
 }
 
+void View::SetVisibilityLocal(int x, int y, bool visible)
+{
+	m_visibility[GetIndexByLocal(x, y)] = visible;
+}
+
 void View::Debug_AddHeatLocal(int x, int y)
 {
 #ifdef DEBUG_HOTSPOTS

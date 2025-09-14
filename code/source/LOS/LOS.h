@@ -48,6 +48,7 @@ public:
 	//Setters
 	void SetLocationLocal(int x, int y, Location location);
 	void SetRotationLocal(int x, int y, Direction direction);
+	void SetVisibilityLocal(int x, int y, bool visible);
 
 	//Debug tools (should compile out)
 	void Debug_AddHeatLocal(int x, int y);

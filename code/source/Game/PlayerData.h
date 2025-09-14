@@ -14,9 +14,17 @@ public:
 	void UpdateViewPlayer(std::shared_ptr<TOutput<ViewUpdated>> updated);
 	BackingTile& GetTileForLocal(int x, int y);
 
+private:
+    void WriteTileUpdate(PackedStream& stream, int x, int y, Tile& tile);
+    void ReadTileUpdate(PackedStream& stream, int x, int y);
+
+public:
 	std::map<THandle<BackingTile>, BackingTile> m_backingTiles;
 	TileMemory m_memory;
 	View m_currentView;
+
+    //Unsaved data
+    bool hasSent = false;
 };
 
 namespace Serialization

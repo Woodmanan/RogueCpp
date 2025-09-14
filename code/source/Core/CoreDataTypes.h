@@ -362,6 +362,7 @@ union Color
         a = _a;
     }
 
+    bool operator==(const Color& other) const { return color == other.color; }
     operator glm::vec4() const { return glm::vec4(((float)r) / 255, ((float)g) / 255, ((float)b) / 255, ((float)a) / 255); }
 };
 

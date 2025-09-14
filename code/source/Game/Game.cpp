@@ -123,13 +123,7 @@ void Game::InitNewGame()
 		map->FillTilesExc(Vec2(1, 1), Vec2(mapSize.x - 1, mapSize.y - 1), 1);
 	}
 
-	//Game ready! Temp - boot up first view
 	m_playerData.GetCurrentMemory() = TileMemory(map);
-	los.SetRadius(10);
-	LOS::Calculate(los, playerLoc, lookDirection);
-	m_playerData.UpdateViewGame(los);
-
-	CreateOutput<GameReady>();
 }
 
 void Game::MainLoop()
@@ -175,13 +169,19 @@ void Game::HandleInput(const Input& input)
 			m_playerData.GetCurrentMemory().Move(VectorFromDirection(data->m_direction));
 
 			//auto data = input.Get<EInputType::Movement>();
-			los.SetRadius(10);
+			los.SetRadius(30);
 			LOS::Calculate(los, playerLoc, lookDirection);
 			m_playerData.UpdateViewGame(los);
 		}
 		break;
 	case EInputType::BeginNewGame:
 		InitNewGame();
+		//Game ready! Temp - boot up first view
+		los.SetRadius(30);
+		LOS::Calculate(los, playerLoc, lookDirection);
+		m_playerData.UpdateViewGame(los);
+
+		CreateOutput<GameReady>();
 		break;
 	case EInputType::BeginSeededGame:
 		break;
@@ -191,6 +191,7 @@ void Game::HandleInput(const Input& input)
 			auto data = input.Get<LoadSaveGame>();
 			Load(data->fileName);
 			m_playerData.UpdateViewGame(los);
+			CreateOutput<GameReady>();
 		}
 		break;
 	case EInputType::SaveAndExit:
