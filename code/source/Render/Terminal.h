@@ -103,7 +103,12 @@ inline void terminal_set_font(string name)
 
 inline void terminal_custom_init()
 {
-	terminal_open();
+	std::cout << "Here!" << std::endl;
+	if (!terminal_open())
+	{
+		std::cout << "Terminal failed to init!" << std::endl;
+	}
+	std::cout << "Here!" << std::endl;
 	terminal_set("window: title='Unnamed Roguelike', size=80x25, resizable=true, fullscreen=false;");
 }
 

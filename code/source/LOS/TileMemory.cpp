@@ -27,7 +27,7 @@ void TileMemory::Update(View& los)
 		{
 			if (los.GetVisibilityLocal(x, y))
 			{
-				SetTileByLocal(x + m_localPosition.x, y + m_localPosition.y, los.GetLocationLocal(x, y));
+				SetTileByLocal(x, y, los.GetLocationLocal(x, y));
 			}
 		}
 	}
@@ -48,8 +48,8 @@ void TileMemory::SetTileByLocal(int x, int y, Location location)
 	ASSERT(location.GetValid());
 	if (m_wrap)
 	{
-		x = (x + m_size.x) % m_size.x;
-		y = (y + m_size.y) % m_size.y;
+		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
+		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
 	}
 
 	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
@@ -57,12 +57,25 @@ void TileMemory::SetTileByLocal(int x, int y, Location location)
 	m_tiles[IndexIntoTilemap(x, y)] = location.GetTile();
 }
 
+void TileMemory::SetTileByLocal(int x, int y, Tile tile)
+{
+	if (m_wrap)
+	{
+		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
+		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
+	}
+
+	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
+
+	m_tiles[IndexIntoTilemap(x, y)] = tile;
+}
+
 bool TileMemory::ValidTile(int x, int y)
 {
 	if (m_wrap)
 	{
-		x = (x + m_size.x) % m_size.x;
-		y = (y + m_size.y) % m_size.y;
+		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
+		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
 	}
 
 	return (x >= 0 && x < m_size.x && y >= 0 && y < m_size.y);
@@ -73,8 +86,8 @@ Tile& TileMemory::GetTileByLocal(int x, int y)
 	ASSERT(ValidTile(x, y));
 	if (m_wrap)
 	{
-		x = (x + m_size.x) % m_size.x;
-		y = (y + m_size.y) % m_size.y;
+		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
+		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
 	}
 
 	return m_tiles[IndexIntoTilemap(x, y)];

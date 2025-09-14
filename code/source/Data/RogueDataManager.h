@@ -35,7 +35,7 @@ using namespace std;
 * about when handles are actively pointing to an object.
 */
 #ifdef _DEBUG
-#define LINK_HANDLE
+#//define LINK_HANDLE
 #endif
 
 class Handle;

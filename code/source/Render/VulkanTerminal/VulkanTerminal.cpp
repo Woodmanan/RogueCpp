@@ -1,6 +1,6 @@
 #include "VulkanTerminal.h"
 #ifdef VULKAN_RENDER
-int terminal_open()
+int `erminal_open()
 {
 	terminal = new VulkanTerminal();
 	keys = new std::vector<int>();

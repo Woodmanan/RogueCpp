@@ -34,6 +34,7 @@ public:
 
 	void SetLocalPosition(Location location);
 	void SetTileByLocal(int x, int y, Location location);
+	void SetTileByLocal(int x, int y, Tile tile);
 	bool ValidTile(int x, int y);
 	Tile& GetTileByLocal(int x, int y);
 	int IndexIntoTilemap(short x, short y);
