@@ -20,12 +20,7 @@ struct MaterialDefinition
 	int ID;
 	string name;
 	float density;
-	float meltingPoint;
-	float boilingPoint;
-	float specificHeat;
-	float thermalConductivity;
-	float electricalResistance;
-	float hardness;
+	float movementCost;
 };
 
 struct Material
@@ -49,12 +44,13 @@ struct Material
 
 struct MaterialContainer
 {
+	MaterialContainer(bool inverted = false) : m_inverted(inverted) {}
 	static const int maxIndices = 10;
 
 	FixedArray<Material, maxIndices> m_materials;
 	FixedArray<int, maxIndices> m_layers;
 
-	float m_heat = 0;
+	bool m_inverted = false;
 
 	void AddMaterial(int materialIndex, float mass, bool staticMaterial, int index = -1);
 	void AddMaterial(const std::string& name, float mass, bool staticMaterial = false);
@@ -75,9 +71,9 @@ struct MixtureContainer
 
 	float m_heat;
 
-	void LoadMixture(MaterialContainer& one, MaterialContainer& two);
+	void LoadMixture(const MaterialContainer& one, const MaterialContainer& two);
 	void LoadMixture(MaterialContainer& single, int layer);
-	int LoadContainer(MaterialContainer& container, FixedArray<Material, maxIndices>& sortedArray);
+	int LoadContainer(const MaterialContainer& container, FixedArray<Material, maxIndices>& sortedArray);
 	int GetIndexOf(const MaterialDefinition& material);
 };
 
@@ -89,6 +85,7 @@ struct Reaction
 	vector<Material> m_products;
 
 	float m_minHeat;
+	float m_maxHeat;
 	float m_deltaHeat;
 
 	void SortReactantsByID();
@@ -121,15 +118,16 @@ public:
 	void AddMaterialDefinition(MaterialDefinition material);
 	void AddReaction(Reaction reaction);
 
-	void EvaluateReaction(MaterialContainer& one, MaterialContainer& two);
-	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two);
+	bool CheckReaction(MaterialContainer& one, MaterialContainer& two, float& heat) const;
+	void EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat);
+	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two, float& heat);
 
 	const MaterialDefinition& GetMaterialByID(int index);
 	const MaterialDefinition& GetMaterialByName(const std::string& name);
 	
 private:
 	void SortReactions();
-	bool ReactionMatchesMixture(Reaction& reaction, MixtureContainer& mixture);
+	bool ReactionMatchesMixture(const Reaction& reaction, MixtureContainer& mixture, const float& heat) const;
 	float GetReactionMultiple(Reaction& reaction, MixtureContainer& mixture);
 
 	vector<MaterialDefinition> m_materialDefinitions;
@@ -153,12 +151,7 @@ namespace Serialization
 		Write(stream, "ID", value.ID);
 		Write(stream, "Name", value.name);
 		Write(stream, "Density", value.density);
-		Write(stream, "Melting Point", value.meltingPoint);
-		Write(stream, "Boiling Point", value.boilingPoint);
-		Write(stream, "Specific Heat", value.specificHeat);
-		Write(stream, "Thermal Conductivity", value.thermalConductivity);
-		Write(stream, "Electrical Resistance", value.electricalResistance);
-		Write(stream, "Hardness", value.hardness);
+		Write(stream, "Movement Cost", value.movementCost);
 	}
 
 	template<typename Stream>
@@ -167,12 +160,7 @@ namespace Serialization
 		Read(stream, "ID", value.ID);
 		Read(stream, "Name", value.name);
 		Read(stream, "Density", value.density);
-		Read(stream, "Melting Point", value.meltingPoint);
-		Read(stream, "Boiling Point", value.boilingPoint);
-		Read(stream, "Specific Heat", value.specificHeat);
-		Read(stream, "Thermal Conductivity", value.thermalConductivity);
-		Read(stream, "Electrical Resistance", value.electricalResistance);
-		Read(stream, "Hardness", value.hardness);
+		Read(stream, "Movement Cost", value.movementCost);
 	}
 
 	template<typename Stream>
@@ -198,6 +186,7 @@ namespace Serialization
 		Write(stream, "Reactants", value.m_reactants);
 		Write(stream, "Products", value.m_products);
 		Write(stream, "Min Heat", value.m_minHeat);
+		Write(stream, "Max Heat", value.m_maxHeat);
 		Write(stream, "Delta Heat", value.m_deltaHeat);
 	}
 
@@ -208,6 +197,7 @@ namespace Serialization
 		Read(stream, "Reactants", value.m_reactants);
 		Read(stream, "Products", value.m_products);
 		Read(stream, "Min Heat", value.m_minHeat);
+		Read(stream, "Max Heat", value.m_maxHeat);
 		Read(stream, "Delta Heat", value.m_deltaHeat);
 	}
 
@@ -216,7 +206,6 @@ namespace Serialization
 	{
 		Write(stream, "Materials", value.m_materials);
 		Write(stream, "Layers", value.m_layers);
-		Write(stream, "Heat", value.m_heat);
 	}
 
 	template<typename Stream>
@@ -224,6 +213,5 @@ namespace Serialization
 	{
 		Read(stream, "Materials", value.m_materials);
 		Read(stream, "Layers", value.m_layers);
-		Read(stream, "Heat", value.m_heat);
 	}
 }

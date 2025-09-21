@@ -1,6 +1,7 @@
 #include "PlayerData.h"
 #include "Data/Serialization/Serialization.h"
 #include "Game/Game.h"
+#include "LOS/TileMemory.h"
 
 PlayerData::PlayerData()
 {
@@ -44,7 +45,7 @@ void PlayerData::UpdateViewGame(View& newView)
 				Serialization::Write(afterStream, "Update Tile", tileUpdate);
 				if (tileUpdate)
 				{
-					WriteTileUpdate(afterStream, i, j, loc.GetTile());
+					WriteTileUpdate(afterStream, i, j, m_memory.GetTileByLocal(i, j), DataTile::FromTile(loc.GetTile()));
 				}
 			}
 		}
@@ -53,6 +54,8 @@ void PlayerData::UpdateViewGame(View& newView)
 	m_memory.Update(newView);
 
 	afterStream.AllWritesFinished();
+	std::shared_ptr<VectorBackend> backend = dynamic_pointer_cast<VectorBackend>(afterStream.GetDataBackend());
+	std::cout << backend->m_data.size() << std::endl;
 
 	m_currentView = newView;
 	Game::game->CreateOutput<ViewUpdated>(afterStream);
@@ -97,18 +100,28 @@ void PlayerData::UpdateViewPlayer(std::shared_ptr<TOutput<ViewUpdated>> updated)
 	}
 }
 
-BackingTile& PlayerData::GetTileForLocal(int x, int y)
+DataTile& PlayerData::GetTileForLocal(int x, int y)
 {
-	Tile& tile = m_memory.GetTileByLocal(x, y);
+	return m_memory.GetTileByLocal(x, y);
+}
+
+BackingTile& PlayerData::GetBackingTileForLocal(int x, int y)
+{
+	DataTile& tile = m_memory.GetTileByLocal(x, y);
 	return m_backingTiles[tile.m_backingTile];
 }
 
-void PlayerData::WriteTileUpdate(PackedStream& stream, int x, int y, Tile& tile)
+void PlayerData::WriteTileUpdate(PackedStream& stream, int x, int y, const DataTile& oldTile, const DataTile& newTile)
 {
-	THandle<BackingTile> backing = tile.m_backingTile;
+	bool updateHandle = (oldTile.m_backingTile != newTile.m_backingTile);
+	Serialization::Write(stream, "Update backing handle", updateHandle);
+	THandle<BackingTile> backing = newTile.m_backingTile;
 	ASSERT(backing.IsValid());
-	//TODO: Update this to handle backing tile updates
-	Serialization::Write(stream, "Handle", backing);
+
+	if (updateHandle)
+	{
+		Serialization::Write(stream, "Handle", backing);
+	}
 
 	bool updateBacking = !m_backingTiles.contains(backing);// || backing.GetReference() != m_backingTiles[backing];
 	Serialization::Write(stream, "Update backing", updateBacking);
@@ -117,17 +130,26 @@ void PlayerData::WriteTileUpdate(PackedStream& stream, int x, int y, Tile& tile)
 		m_backingTiles[backing] = backing.GetReference();
 		Serialization::Write(stream, "Backing", backing.GetReference());
 	}
+
+	Serialization::Write(stream, "Temperature", newTile.m_temperature);
 }
 
 void PlayerData::ReadTileUpdate(PackedStream& stream, int x, int y)
 {
-	Tile tile;
-	Serialization::Read(stream, "Handle", tile.m_backingTile);
-	ASSERT(tile.m_backingTile.IsValid());
+	DataTile tile = m_memory.GetTileByLocal(x, y);
+
+	if (Serialization::Read<PackedStream, bool>(stream, "Update backing handle"))
+	{
+		Serialization::Read(stream, "Handle", tile.m_backingTile);
+		ASSERT(tile.m_backingTile.IsValid());
+	}
+
 	if (Serialization::Read<PackedStream, bool>(stream, "Update backing"))
 	{
 		m_backingTiles[tile.m_backingTile] = Serialization::Read<PackedStream, BackingTile>(stream, "Backing");
 	}
+
+	Serialization::Read(stream, "Temperature", tile.m_temperature);
 
 	m_memory.SetTileByLocal(x, y, tile);
 }

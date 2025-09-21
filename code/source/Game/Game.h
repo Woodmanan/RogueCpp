@@ -83,6 +83,7 @@ private:
 	std::mutex outputMutex;
 	std::vector<Output> m_outputs;
 
+	THandle<Map> m_currentMap;
 	Location playerLoc = Location(0,0,0);
 	Direction lookDirection = Direction::North;
 	View los;

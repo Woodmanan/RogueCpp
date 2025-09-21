@@ -11,12 +11,49 @@
 static const unsigned int masks[] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
 static const unsigned int interleaveBits = 4;
 
+ETemperature TemperatureFromHeat(float heat)
+{
+	if (heat <= 0.0f)
+	{
+		return ETemperature::Freezing;
+	}
+	else if (heat <= 20.0f)
+	{
+		return ETemperature::Cold;
+	}
+	else if (heat <= 40.0f)
+	{
+		return ETemperature::Average;
+	}
+	else if (heat <= 60)
+	{
+		return ETemperature::Hot;
+	}
+	else
+	{
+		return ETemperature::Burning;
+	}
+}
+
+DataTile DataTile::FromTile(const Tile& tile)
+{
+	DataTile data;
+	data.m_backingTile = tile.m_backingTile;
+	data.m_temperature = TemperatureFromHeat(tile.m_heat);
+	return data;
+}
+
+bool DataTile::operator==(const Tile& other)
+{
+	return (m_backingTile == other.m_backingTile) && (m_temperature == TemperatureFromHeat(other.m_heat));
+}
+
 TileMemory::TileMemory(THandle<Map> map)
 {
 	ASSERT(map.IsValid());
 	m_z = map->z;
 	m_size = map->m_size;
-	m_tiles.resize(m_size.x * m_size.y, Tile());
+	m_tiles.resize(m_size.x * m_size.y, DataTile());
 }
 
 void TileMemory::Update(View& los)
@@ -35,7 +72,7 @@ void TileMemory::Update(View& los)
 
 void TileMemory::Wipe()
 {
-	std::fill(m_tiles.begin(), m_tiles.end(), Tile());
+	std::fill(m_tiles.begin(), m_tiles.end(), DataTile());
 }
 
 void TileMemory::SetLocalPosition(Location location)
@@ -54,10 +91,23 @@ void TileMemory::SetTileByLocal(int x, int y, Location location)
 
 	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
 
-	m_tiles[IndexIntoTilemap(x, y)] = location.GetTile();
+	m_tiles[IndexIntoTilemap(x, y)] = DataTile::FromTile(location.GetTile());
 }
 
-void TileMemory::SetTileByLocal(int x, int y, Tile tile)
+void TileMemory::SetTileByLocal(int x, int y, const Tile& tile)
+{
+	if (m_wrap)
+	{
+		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
+		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
+	}
+
+	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
+
+	m_tiles[IndexIntoTilemap(x, y)] = DataTile::FromTile(tile);
+}
+
+void TileMemory::SetTileByLocal(int x, int y, const DataTile& tile)
 {
 	if (m_wrap)
 	{
@@ -81,7 +131,7 @@ bool TileMemory::ValidTile(int x, int y)
 	return (x >= 0 && x < m_size.x && y >= 0 && y < m_size.y);
 }
 
-Tile& TileMemory::GetTileByLocal(int x, int y)
+DataTile& TileMemory::GetTileByLocal(int x, int y)
 {
 	ASSERT(ValidTile(x, y));
 	if (m_wrap)

@@ -170,6 +170,10 @@ namespace Serialization
 		Write(stream, "Locations", value.m_locations);
 		Write(stream, "Visibility", value.m_visibility);
 		Write(stream, "Rotations", value.m_rotations);
+
+#ifdef DEBUG_HOTSPOTS
+		Write(stream, "Hotspots", value.m_heat);
+#endif
 	}
 
 	template<typename Stream>
@@ -179,5 +183,9 @@ namespace Serialization
 		Read(stream, "Locations", value.m_locations);
 		Read(stream, "Visibility", value.m_visibility);
 		Read(stream, "Rotations", value.m_rotations);
+
+#ifdef DEBUG_HOTSPOTS
+		Read(stream, "Hotspots", value.m_heat);
+#endif
 	}
 }

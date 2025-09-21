@@ -1,7 +1,13 @@
 #include "Map.h"
+#include "Game/Game.h"
 
 #define INTERLEAVE
 static const unsigned int masks[] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
+
+bool Tile::operator==(const Tile& other)
+{
+    return (m_backingTile == other.m_backingTile) && (m_stats == other.m_stats) && (m_heat == other.m_heat);
+}
 
 int Map::IndexIntoMap(Vec2 location) const
 {
@@ -22,8 +28,6 @@ int Map::IndexIntoMap(short x, short y) const
 	return (location.x + (m_size.x * location.y));
 #endif
 }
-
-
 
 int Map::LinkBackingTile(THandle<BackingTile> tile)
 {
@@ -324,4 +328,77 @@ void Map::CreateBidirectionalPortal(Vec2 open, Direction openDir, Vec2 exit, Dir
     SetNeighbor(exit, reverseExit, openLoc, ReverseRotation(rotation));
     SetNeighbor(exit, TurnClockwise(reverseExit), openLocCL, ReverseRotation(rotation));
     SetNeighbor(exit, TurnCounterClockwise(reverseExit), openLocCCL, ReverseRotation(rotation));
+}
+
+void Map::Simulate()
+{
+    ROGUE_PROFILE_SECTION("Map Simulation");
+    static vector<float> heatScratch;
+    if (heatScratch.size() < m_size.x * m_size.y)
+    {
+        heatScratch.resize(m_size.x * m_size.y);
+    }
+
+    for (int x = 0; x < m_size.x; x++)
+    {
+        for (int y = 0; y < m_size.y; y++)
+        {
+            heatScratch[IndexIntoMap(x, y)] = 0;
+        }
+    }
+
+    for (int x = 0; x < m_size.x; x++)
+    {
+        for (int y = 0; y < m_size.y; y++)
+        {
+            RunSimulationStep(Vec2(x, y), 1, heatScratch);
+        }
+    }
+
+    int numReactions = 0;
+    for (int x = 0; x < m_size.x; x++)
+    {
+        for (int y = 0; y < m_size.y; y++)
+        {
+            float delta = heatScratch[IndexIntoMap(x, y)];
+            if (delta != 0.0f)
+            {
+                Tile& tile = GetTile(x, y);
+                tile.m_heat += delta;
+                if (!tile.m_stats.IsValid())
+                {
+                    if (Game::materialManager->CheckReaction(tile.m_backingTile->m_defaultFloorMaterials, tile.m_backingTile->m_defaultVolumeMaterials, tile.m_heat))
+                    {
+                        numReactions++;
+                    }
+                }
+            }
+        }
+    }
+
+    std::cout << "Num reactions: " << numReactions << std::endl;
+}
+
+void Map::RunSimulationStep(Vec2 location, int timeStep, vector<float>& heatScratch)
+{
+    Tile& tile = GetTile(location);
+
+    for (Direction dir : {North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest})
+    {
+        Location neighbor = GetNeighbor(location, dir);
+
+        float diff = (neighbor.GetTile().m_heat - tile.m_heat) * timeStep * 0.1f * 0.125f;
+
+        if (abs(diff) > 0.01f)
+        {
+            heatScratch[IndexIntoMap(location)] += diff;
+            heatScratch[IndexIntoMap(neighbor.AsVec2())] -= diff;
+        }
+    }
+
+    float diffFromDefault = (m_defaultHeat - tile.m_heat) * timeStep * 0.05f * .125f;
+    if (abs(diffFromDefault) > 0.01f)
+    {
+        heatScratch[IndexIntoMap(location)] += diffFromDefault;
+    }
 }

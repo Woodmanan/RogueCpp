@@ -1,5 +1,8 @@
 #pragma once
 #include "Core/CoreDataTypes.h"
+#include "Map/Map.h"
+#include "Data/Serialization/BitStream.h"
+#include "Data/Serialization/Serialization.h"
 #include <vector>
 
 class Tile;
@@ -13,6 +16,24 @@ class THandle;
 class Window;
 
 using namespace std;
+
+enum class ETemperature
+{
+	Freezing,
+	Cold,
+	Average,
+	Hot,
+	Burning
+};
+
+struct DataTile
+{
+	THandle<BackingTile> m_backingTile;
+	ETemperature m_temperature = ETemperature::Average;
+
+	static DataTile FromTile(const Tile& tile);
+	bool operator==(const Tile& other);
+};
 
 class TileMemory
 {
@@ -34,12 +55,13 @@ public:
 
 	void SetLocalPosition(Location location);
 	void SetTileByLocal(int x, int y, Location location);
-	void SetTileByLocal(int x, int y, Tile tile);
+	void SetTileByLocal(int x, int y, const Tile& tile);
+	void SetTileByLocal(int x, int y, const DataTile& tile);
 	bool ValidTile(int x, int y);
-	Tile& GetTileByLocal(int x, int y);
+	DataTile& GetTileByLocal(int x, int y);
 	int IndexIntoTilemap(short x, short y);
 
-	vector<Tile> m_tiles;
+	vector<DataTile> m_tiles;
 
 	Vec2 m_size;
 	Vec2 m_localPosition;
@@ -49,6 +71,35 @@ public:
 
 namespace Serialization
 {
+	template<typename Stream>
+	void SerializeObject(Stream& stream, const ETemperature& value)
+	{
+		char asInt = (char) value;
+		Serialize(stream, asInt);
+	}
+
+	template<typename Stream>
+	void DeserializeObject(Stream& stream, ETemperature& value)
+	{
+		char tempAsInt;
+		Deserialize(stream, tempAsInt);
+		value = (ETemperature) tempAsInt;
+	}
+
+	template<typename Stream>
+	void Serialize(Stream& stream, const DataTile& value)
+	{
+		Write(stream, "Backing Tile", value.m_backingTile);
+		Write(stream, "Temperature", value.m_temperature);
+	}
+
+	template<typename Stream>
+	void Deserialize(Stream& stream, DataTile& value)
+	{
+		Read(stream, "Backing Tile", value.m_backingTile);
+		Read(stream, "Temperature", value.m_temperature);
+	}
+
 	template<typename Stream>
 	void Serialize(Stream& stream, const TileMemory& value)
 	{

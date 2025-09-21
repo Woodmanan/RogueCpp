@@ -60,6 +60,7 @@ void Game::Save(std::string filename)
 	RogueSaveManager::Write("LookDir", lookDirection);
 	RogueSaveManager::Write("LOS", los);
 	RogueSaveManager::Write("PlayerData", m_playerData);
+	RogueSaveManager::Write("Map", m_currentMap);
 	RogueSaveManager::CloseWriteSaveFile();
 }
 
@@ -74,6 +75,7 @@ void Game::Load(std::string filename)
 		RogueSaveManager::Read("LookDir", lookDirection);
 		RogueSaveManager::Read("LOS", los);
 		RogueSaveManager::Read("PlayerData", m_playerData);
+		RogueSaveManager::Read("Map", m_currentMap);
 		RogueSaveManager::CloseReadSaveFile();
 	}
 }
@@ -104,25 +106,42 @@ void Game::InitNewGame()
 	{
 		MaterialContainer groundMat;
 		groundMat.AddMaterial("Dirt", 1000);
-		MaterialContainer wallMat;
-		wallMat.AddMaterial("Dirt", 1000);
-		wallMat.AddMaterial("Stone", 1000, true);
 
-		map = dataManager->Allocate<Map>(mapSize, i, 2);
-		map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, -1, wallMat);
-		map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('0', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('1', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('2', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('3', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('4', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
-		map->LinkBackingTile<BackingTile>('5', Color(60, 60, 255), Color(0, 0, 0), false, 1, groundMat);
+		MaterialContainer airMat(true);
+		airMat.AddMaterial("Air", 1);
 
-		map->FillTilesExc(Vec2(0, 0), mapSize, 0);
-		map->FillTilesExc(Vec2(1, 1), Vec2(mapSize.x - 1, mapSize.y - 1), 1);
+		MaterialContainer wallMat(true);
+		wallMat.AddMaterial("Wood", 1000, true);
+
+		map = dataManager->Allocate<Map>(mapSize, i, 0.0f, 2);
+		map->LinkBackingTile<BackingTile>('#', Color(120, 120, 120), Color(0, 0, 0), true, groundMat, wallMat);
+		map->LinkBackingTile<BackingTile>('.', Color(100, 200, 100), Color(0, 0, 0), false, groundMat, airMat);
+		map->LinkBackingTile<BackingTile>('S', Color(200, 100, 200), Color(80, 80, 80), false, groundMat, airMat);
+		map->LinkBackingTile<BackingTile>('T', Color(60, 60, 255), Color(0, 0, 0), false, groundMat, wallMat);
+
+		map->FillTilesExc(Vec2(0, 0), mapSize, 1);
+		//map->FillTilesExc(Vec2(1, 1), Vec2(mapSize.x - 1, mapSize.y - 1), 1);
+
+		std::srand(std::time({}));
+		for (int i = 0; i < 100; i++)
+		{
+			int r = (std::rand() % 5) + 1;
+			int x = std::rand() % (mapSize.x - r);
+			int y = std::rand() % (mapSize.y - r);
+
+			map->FillTilesExc(Vec2(x, y), Vec2(x + r, y + r), 0);
+		}
+
+		for (int i = 0; i < 200; i++)
+		{
+			int x = std::rand() % (mapSize.x - 1);
+			int y = std::rand() % (mapSize.y - 1);
+
+			map->FillTilesExc(Vec2(x, y), Vec2(x + 1, y + 1), 3);
+		}
 	}
 
+	m_currentMap = map;
 	m_playerData.GetCurrentMemory() = TileMemory(map);
 }
 
@@ -167,6 +186,40 @@ void Game::HandleInput(const Input& input)
 			playerLoc = move.first;
 			lookDirection = Rotate(lookDirection, move.second);
 			m_playerData.GetCurrentMemory().Move(VectorFromDirection(data->m_direction));
+
+			m_currentMap->Simulate();
+
+			for (int x = 0; x < m_currentMap->m_size.x; x++)
+			{
+				for (int y = 0; y < m_currentMap->m_size.y; y++)
+				{
+					if (m_currentMap->GetTile(x, y).m_backingTile->m_renderCharacter == 'T')
+					{
+						m_currentMap->GetTile(x, y).m_heat += 20;
+					}
+				}
+			}
+
+			//auto data = input.Get<EInputType::Movement>();
+			los.SetRadius(30);
+			LOS::Calculate(los, playerLoc, lookDirection);
+			m_playerData.UpdateViewGame(los);
+		}
+		break;
+	case EInputType::Wait:
+		{
+			m_currentMap->Simulate();
+
+			for (int x = 0; x < m_currentMap->m_size.x; x++)
+			{
+				for (int y = 0; y < m_currentMap->m_size.y; y++)
+				{
+					if (m_currentMap->GetTile(x, y).m_backingTile->m_renderCharacter == 'T')
+					{
+						m_currentMap->GetTile(x, y).m_heat += 20;
+					}
+				}
+			}
 
 			//auto data = input.Get<EInputType::Movement>();
 			los.SetRadius(30);

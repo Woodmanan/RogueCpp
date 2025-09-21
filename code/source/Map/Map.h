@@ -14,21 +14,24 @@ class BackingTile
 {
 public:
     BackingTile() {}
-    BackingTile(char character, Color foreground, Color background, bool blocksVision, float movementCost, MaterialContainer materials) :
+    BackingTile(char character, Color foreground, Color background, bool blocksVision, MaterialContainer floorMaterials, MaterialContainer volumeMaterials) :
         m_renderCharacter(character),
         m_foregroundColor(foreground),
         m_backgroundColor(background),
         m_blocksVision(blocksVision),
-        m_movementCost(movementCost),
-        m_baseMaterials(materials)
-    {}
+        m_defaultFloorMaterials(floorMaterials),
+        m_defaultVolumeMaterials(volumeMaterials)
+    {
+        ASSERT(m_defaultVolumeMaterials.m_inverted);
+        m_defaultVolumeMaterials.m_inverted = true;
+    }
 
 	char m_renderCharacter;
     Color m_foregroundColor;
     Color m_backgroundColor;
 	bool m_blocksVision;
-	float m_movementCost;
-    MaterialContainer m_baseMaterials;
+    MaterialContainer m_defaultFloorMaterials; //Materials that make up the floor
+    MaterialContainer m_defaultVolumeMaterials; //Materials that fill the standing volume of the tile
     int m_index = -1;
 
     bool operator==(const BackingTile& other) const = default;
@@ -39,7 +42,8 @@ class TileStats
 {
 public:
     THandle<TileNeighbors> m_neighbors;
-    THandle<MaterialContainer> m_materialContainer;
+    MaterialContainer m_floorMaterials; //Materials that make up the floor
+    MaterialContainer m_volumeMaterials; //Materials that fill the standing volume of the tile
 };
 
 class TileNeighbors
@@ -66,8 +70,12 @@ public:
 class Tile
 {
 public:
+    Tile() : m_heat(0) {}
+    Tile(float baseHeat) : m_heat(baseHeat) {}
+
 	THandle<BackingTile> m_backingTile;
 	THandle<TileStats> m_stats;
+    float m_heat;
 
     bool operator==(const Tile& other);
 };
@@ -76,18 +84,19 @@ class Map
 {
 public:
     Map() {}
-    Map(Vec2 size, int mapZ, int interleave = 2) : m_size(size), m_interleaveBits(interleave)
+    Map(Vec2 size, int mapZ, float defaultHeat, int interleave = 2) : m_size(size), m_interleaveBits(interleave), m_defaultHeat(defaultHeat)
     {
         ASSERT(size.x % (1 << (interleave)) == 0);
         ASSERT(size.y % (1 << (interleave)) == 0);
 
-        m_tiles.resize(size.x * size.y, Tile());
+        m_tiles.resize(size.x * size.y, Tile(defaultHeat));
         z = mapZ;
     }
 
     Vec2 m_size;
     int m_interleaveBits;
     int z;
+    float m_defaultHeat;
 
     vector<THandle<BackingTile>> m_backingTiles;
     vector<Tile> m_tiles;
@@ -122,7 +131,14 @@ public:
     void CreatePortal(Vec2 open, Vec2 exit);
     void CreateDirectionalPortal(Vec2 open, Vec2 exit, Direction direction);
     void CreateBidirectionalPortal(Vec2 open, Direction openDir, Vec2 exit, Direction exitDir);
+    
+    //Simulation controls
+public:
+    void Simulate();
+private:
+    void RunSimulationStep(Vec2 location, int timeStep, vector<float>& heatScratch);
 
+public:
     int LinkBackingTile(THandle<BackingTile> tile);
     template<typename T, class... Args>
     int LinkBackingTile(Args&&... args)
@@ -142,8 +158,8 @@ namespace Serialization
         Write(stream, "FGColor", value.m_foregroundColor);
         Write(stream, "BGColor", value.m_backgroundColor);
         Write(stream, "Blocks Vision", value.m_blocksVision);
-        Write(stream, "Movement Cost", value.m_movementCost);
-        Write(stream, "Base Materials", value.m_baseMaterials);
+        Write(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
+        Write(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
         Write(stream, "Index", value.m_index);
     }
 
@@ -154,8 +170,8 @@ namespace Serialization
         Read(stream, "FGColor", value.m_foregroundColor);
         Read(stream, "BGColor", value.m_backgroundColor);
         Read(stream, "Blocks Vision", value.m_blocksVision);
-        Read(stream, "Movement Cost", value.m_movementCost);
-        Read(stream, "Base Materials", value.m_baseMaterials);
+        Read(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
+        Read(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
         Read(stream, "Index", value.m_index);
     }
 
@@ -163,14 +179,16 @@ namespace Serialization
     void Serialize(Stream& stream, const TileStats& value)
     {
         Write(stream, "Neighbors", value.m_neighbors);
-        Write(stream, "Materials", value.m_materialContainer);
+        Write(stream, "Floor", value.m_floorMaterials);
+        Write(stream, "Volume", value.m_volumeMaterials);
     }
 
     template <typename Stream>
     void Deserialize(Stream& stream, TileStats& value)
     {
         Read(stream, "Neighbors", value.m_neighbors);
-        Read(stream, "Materials", value.m_materialContainer);
+        Read(stream, "Floor", value.m_floorMaterials);
+        Read(stream, "Volume", value.m_volumeMaterials);
     }
 
     template<typename Stream>
@@ -179,6 +197,7 @@ namespace Serialization
         Write(stream, "Z", value.z);
         Write(stream, "Size", value.m_size);
         Write(stream, "Interleave", value.m_interleaveBits);
+        Write(stream, "Default Heat", value.m_defaultHeat);
         Write(stream, "Backing Tiles", value.m_backingTiles);
         if constexpr (std::is_same<Stream, JSONStream>::value)
         {
@@ -204,6 +223,7 @@ namespace Serialization
         Read(stream, "Z", value.z);
         Read(stream, "Size", value.m_size);
         Read(stream, "Interleave", value.m_interleaveBits);
+        Read(stream, "Default Heat", value.m_defaultHeat);
         Read(stream, "Backing Tiles", value.m_backingTiles);
         value.m_tiles = std::vector<Tile>(value.m_size.x * value.m_size.y, Tile());
         if constexpr (std::is_same<Stream, JSONStream>::value)
@@ -229,6 +249,7 @@ namespace Serialization
     {
         Write(stream, "Backing", value.m_backingTile);
         Write(stream, "Stats", value.m_stats);
+        Write(stream, "Heat", value.m_heat);
     }
 
     template <typename Stream>
@@ -236,6 +257,7 @@ namespace Serialization
     {
         Read(stream, "Backing", value.m_backingTile);
         Read(stream, "Stats", value.m_stats);
+        Read(stream, "Heat", value.m_heat);
     }
 
     template<typename Stream>

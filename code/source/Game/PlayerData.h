@@ -12,10 +12,11 @@ public:
 	TileMemory& GetCurrentMemory() { return m_memory; }
 	void UpdateViewGame(View& newView);
 	void UpdateViewPlayer(std::shared_ptr<TOutput<ViewUpdated>> updated);
-	BackingTile& GetTileForLocal(int x, int y);
+	DataTile& GetTileForLocal(int x, int y);
+    BackingTile& GetBackingTileForLocal(int x, int y);
 
 private:
-    void WriteTileUpdate(PackedStream& stream, int x, int y, Tile& tile);
+    void WriteTileUpdate(PackedStream& stream, int x, int y, const DataTile& oldTile, const DataTile& newTile);
     void ReadTileUpdate(PackedStream& stream, int x, int y);
 
 public:

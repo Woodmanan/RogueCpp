@@ -106,7 +106,7 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
 
             if (memory.ValidTile(localX, localY))
             {
-                BackingTile& tile = data.GetTileForLocal(localX, localY);
+                BackingTile& tile = data.GetBackingTileForLocal(localX, localY);
 
                 bool visible = (std::abs(localX) <= view.GetRadius() && std::abs(localY) <= view.GetRadius() && view.GetVisibilityLocal(localX, localY));
 
@@ -131,6 +131,52 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
 
     //Temp! Render character character
     window->Put(window->m_rect.w / 2, window->m_rect.h / 2, '@', Color(0,0,0), Color(255,255,255));
+}
+
+void Render_Temperature(PlayerData& data, Window* window, Location playerLocation)
+{
+    ROGUE_PROFILE;
+
+    View& view = data.GetCurrentView();
+    TileMemory& memory = data.GetCurrentMemory();
+
+    for (int i = 0; i < window->m_rect.w; i++)
+    {
+        for (int j = 0; j < window->m_rect.h; j++)
+        {
+            int localX = i - window->m_rect.w / 2;
+            int localY = -j + window->m_rect.h / 2;
+
+            if (memory.ValidTile(localX, localY))
+            {
+                DataTile& tile = data.GetTileForLocal(localX, localY);
+                BackingTile& backing = data.GetBackingTileForLocal(localX, localY);
+
+                bool visible = (std::abs(localX) <= view.GetRadius() && std::abs(localY) <= view.GetRadius() && view.GetVisibilityLocal(localX, localY));
+
+                Color cold = Color(0, 0, 70);
+                Color hot = Color(255, 0, 0);
+                Color fgBlend = backing.m_foregroundColor;
+                Color bgBlend = Blend(cold, hot, std::clamp(((float)tile.m_temperature / 4.0f), 0.0f, 1.0f));
+
+                if (visible)
+                {
+                    window->Put(i, j, backing.m_renderCharacter, bgBlend, bgBlend);
+                }
+                else
+                {
+                    window->Put(i, j, backing.m_renderCharacter, Blend(bgBlend, Color(50, 50, 50), .8f), bgBlend);
+                }
+            }
+            else
+            {
+                window->Put(i, j, '2', Color(255, 0, 0), Color(0, 0, 0));
+            }
+        }
+    }
+
+    //Temp! Render character character
+    window->Put(window->m_rect.w / 2, window->m_rect.h / 2, '@', Color(0, 0, 0), Color(255, 255, 255));
 }
 
 void Render_Passes(View& view, Window* window, Location playerLocation)
@@ -346,6 +392,7 @@ int main(int argc, char* argv[])
     Game game = Game();
     std::thread gameThread(&Game::LaunchGame, &game);
     bool gameReady = false;
+    EDrawState drawState = EDrawState::Normal;
 
     if (RogueSaveManager::FilePathExists("TestSave.rsf"))
     {
@@ -526,7 +573,12 @@ int main(int argc, char* argv[])
             }
             break;
         case EKey::SPACE:
+            game.CreateInput<Wait>();
+            std::cout << "Temp: " << (int) playerData.GetTileForLocal(0, 0).m_temperature << std::endl;
             //map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
+            break;
+        case EKey::TAB:
+            CycleDrawState(drawState);
             break;
         case EKey::EQUAL:
             if (terminal_get_key(EKey::LEFT_SHIFT))
@@ -657,14 +709,14 @@ int main(int argc, char* argv[])
             x++;
             y++;
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
-            //terminal_set(&buffer[0]);
+            terminal_set(&buffer[0]);
             break;
         case EKey::PAGE_DOWN:
             //TODO: RESIZING
             x--;
             y--;
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
-            //terminal_set(&buffer[0]);
+            terminal_set(&buffer[0]);
             break;
         case EKey::A: //Anchors!
             Window* selected = nullptr;
@@ -870,7 +922,17 @@ int main(int argc, char* argv[])
 
         //Update UI Layout
         gameWindow->UpdateLayout({ 0, 0, (short)terminal_width(), (short)terminal_height() });
-        Render_Player_Data(playerData, renderWindow, playerLoc);
+
+        switch (drawState)
+        {
+        case EDrawState::Normal:
+            Render_Player_Data(playerData, renderWindow, playerLoc);
+            break;
+        case EDrawState::Temperature:
+            Render_Temperature(playerData, renderWindow, playerLoc);
+            break;
+        }
+        
 
         //LOS::Calculate(view, playerLoc, lookDirection, maxPass);
         //memory->Update(view);

@@ -178,7 +178,7 @@ void MaterialContainer::SortLayerByDensity(int startIndex, int endIndex)
 
 	if (startIndex != endIndex)
 	{
-		sort(m_materials.begin() + startIndex, m_materials.begin() + endIndex, [](const Material& rhs, const Material& lhs)
+		sort(m_materials.begin() + startIndex, m_materials.begin() + endIndex, [&](const Material& rhs, const Material& lhs)
 			{
 				const float rhsDensity = rhs.GetMaterial().density;
 				const float lhsDensity = lhs.GetMaterial().density;
@@ -186,12 +186,12 @@ void MaterialContainer::SortLayerByDensity(int startIndex, int endIndex)
 				{
 					return rhs.m_materialID < lhs.m_materialID;
 				}
-				return rhsDensity > lhsDensity;
+				return (rhsDensity > lhsDensity) != m_inverted; //XOR with m_inverted to reverse density sort on inverted containers
 			});
 	}
 }
 
-void MixtureContainer::LoadMixture(MaterialContainer& one, MaterialContainer& two)
+void MixtureContainer::LoadMixture(const MaterialContainer& one, const MaterialContainer& two)
 {
 	m_materials.clear();
 	m_mixture.clear();
@@ -267,7 +267,7 @@ void MixtureContainer::LoadMixture(MaterialContainer& single, int layer)
 	}
 }
 
-int MixtureContainer::LoadContainer(MaterialContainer& container, FixedArray<Material, MixtureContainer::maxIndices>& sortedArray)
+int MixtureContainer::LoadContainer(const MaterialContainer& container, FixedArray<Material, MixtureContainer::maxIndices>& sortedArray)
 {
 	ASSERT(container.m_layers.size() > 0);
 	int startIndex = container.m_layers.size() - 2;
@@ -338,7 +338,27 @@ void MaterialManager::AddReaction(Reaction reaction)
 	m_reactions.push_back(reaction);
 }
 
-void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two)
+bool MaterialManager::CheckReaction(MaterialContainer& one, MaterialContainer& two, float& heat) const
+{
+	ROGUE_PROFILE_SECTION("Check Reaction");
+	//Having an empty container invalidates a reaction - self reaction will catch it!
+	if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return false; }
+
+	MixtureContainer mixture;
+	mixture.LoadMixture(one, two);
+
+	for (const Reaction& reaction : m_reactions)
+	{
+		if (ReactionMatchesMixture(reaction, mixture, heat))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat)
 {
 	//Having an empty container invalidates a reaction - self reaction will catch it!
 	if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return; }
@@ -348,15 +368,15 @@ void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer
 
 	for (Reaction& reaction : m_reactions)
 	{
-		if (ReactionMatchesMixture(reaction, mixture))
+		if (ReactionMatchesMixture(reaction, mixture, heat))
 		{
- 			ExecuteReaction(reaction, mixture, one, two);
+ 			ExecuteReaction(reaction, mixture, one, two, heat);
 			return;
 		}
 	}
 }
 
-void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two)
+void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two, float& heat)
 {
 	float reactionMultiple = GetReactionMultiple(reaction, mixture);
 
@@ -395,6 +415,8 @@ void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixt
 		one.AddMaterial(Material(material.m_materialID, material.m_mass * oneAmount * reactionMultiple, false));
 		two.AddMaterial(Material(material.m_materialID, material.m_mass * twoAmount * reactionMultiple, false));
 	}
+
+	heat += (reaction.m_deltaHeat * reactionMultiple);
 }
 
 const MaterialDefinition& MaterialManager::GetMaterialByID(int index)
@@ -431,8 +453,13 @@ void MaterialManager::SortReactions()
 		});
 }
 
-bool MaterialManager::ReactionMatchesMixture(Reaction& reaction, MixtureContainer& mixture)
+bool MaterialManager::ReactionMatchesMixture(const Reaction& reaction, MixtureContainer& mixture, const float& heat) const
 {
+	if (heat < reaction.m_minHeat || heat > reaction.m_maxHeat)
+	{
+		return false;
+	}
+
 	auto mixtureIterator = mixture.m_materials.begin();
 
 	for (const Material& reactant : reaction.m_reactants)
@@ -494,22 +521,17 @@ namespace RogueResources
 
 			std::vector<std::string> tokens = string_split(line, ",");
 
-			ASSERT(tokens.size() == 8);
+			ASSERT(tokens.size() == 3);
 
 			if (tokens[0].empty()) { continue; }
 
-			//Name,Density,Melting Point,Boiling Point,Specific Heat,Thermal Conductivity,Electrical Resistance,Moh's Hardness
+			//Name, Density, Movement Cost
 
 			MaterialDefinition definition;
 			definition.ID = -1;
 			definition.name = tokens[0];
 			definition.density = string_to_float(tokens[1]);
-			definition.meltingPoint = string_to_float(tokens[2]);
-			definition.boilingPoint = string_to_float(tokens[3]);
-			definition.specificHeat = string_to_float(tokens[4]);
-			definition.thermalConductivity = string_to_float(tokens[5]);
-			definition.electricalResistance = string_to_float(tokens[6]);
-			definition.hardness = string_to_float(tokens[7]);
+			definition.movementCost = string_to_float(tokens[2]);
 
 			materials.push_back(definition);
 		}
@@ -570,7 +592,7 @@ namespace RogueResources
 
 			std::vector<std::string> tokens = string_split(line, ",");
 
-			ASSERT(tokens.size() == 5);
+			ASSERT(tokens.size() == 6);
 
 			if (tokens[0].empty()) { continue; }
 
@@ -603,7 +625,8 @@ namespace RogueResources
 			}
 
 			nextReaction.m_minHeat = string_to_float(tokens[3]);
-			nextReaction.m_deltaHeat = string_to_float(tokens[4]);
+			nextReaction.m_maxHeat = string_to_float(tokens[4]);
+			nextReaction.m_deltaHeat = string_to_float(tokens[5]);
 			nextReaction.SortReactantsByID();
 
 			reactions.push_back(nextReaction);
