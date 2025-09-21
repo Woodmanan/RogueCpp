@@ -96,8 +96,19 @@ public:
 		return arenas[index]->Get<void>(offset);
 	}
 
+	const void* ResolveHandle(int index, unsigned int offset) const
+	{
+		return arenas[index]->Get<void>(offset);
+	}
+
 	template <typename T>
 	T* ResolveHandle(int index, unsigned int offset)
+	{
+		return arenas[index]->Get<T>(offset);
+	}
+
+	template <typename T>
+	const T* ResolveHandle(int index, unsigned int offset) const
 	{
 		return arenas[index]->Get<T>(offset);
 	}
@@ -218,6 +229,11 @@ public:
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
 #endif
+		return GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
+	}
+
+	const T* operator ->() const
+	{
 		return GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 

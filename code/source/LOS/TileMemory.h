@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/CoreDataTypes.h"
 #include "Map/Map.h"
+#include "Core/Materials/Materials.h"
 #include "Data/Serialization/BitStream.h"
 #include "Data/Serialization/Serialization.h"
 #include <vector>
@@ -30,6 +31,8 @@ struct DataTile
 {
 	THandle<BackingTile> m_backingTile;
 	ETemperature m_temperature = ETemperature::Average;
+	char m_renderChar;
+	Color m_color;
 
 	static DataTile FromTile(const Tile& tile);
 	bool operator==(const Tile& other);
@@ -74,16 +77,13 @@ namespace Serialization
 	template<typename Stream>
 	void SerializeObject(Stream& stream, const ETemperature& value)
 	{
-		char asInt = (char) value;
-		Serialize(stream, asInt);
+		stream.WriteEnum(value);
 	}
 
 	template<typename Stream>
 	void DeserializeObject(Stream& stream, ETemperature& value)
 	{
-		char tempAsInt;
-		Deserialize(stream, tempAsInt);
-		value = (ETemperature) tempAsInt;
+		stream.ReadEnum(value);
 	}
 
 	template<typename Stream>
@@ -91,6 +91,8 @@ namespace Serialization
 	{
 		Write(stream, "Backing Tile", value.m_backingTile);
 		Write(stream, "Temperature", value.m_temperature);
+		Write(stream, "Render Char", value.m_renderChar);
+		Write(stream, "Visible Color", value.m_color);
 	}
 
 	template<typename Stream>
@@ -98,6 +100,8 @@ namespace Serialization
 	{
 		Read(stream, "Backing Tile", value.m_backingTile);
 		Read(stream, "Temperature", value.m_temperature);
+		Read(stream, "Render Char", value.m_renderChar);
+		Read(stream, "Visible Color", value.m_color);
 	}
 
 	template<typename Stream>

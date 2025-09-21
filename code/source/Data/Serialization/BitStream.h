@@ -1,5 +1,6 @@
 #pragma once
 #include <Debug/Debug.h>
+#include "include/magic_enum/magic_enum.hpp"
 #include <vector>
 #include <filesystem>
 #include <fstream>
@@ -97,6 +98,12 @@ public:
 		m_backend->Read(ptr, length);
 	}
 
+	template<typename E>
+	void WriteEnum(const E& value);
+
+	template<typename E>
+	void ReadEnum(E& value);
+
 	template<typename T>
 	void Write(const T& value);
 
@@ -115,6 +122,23 @@ protected:
 	std::shared_ptr<DataBackend> m_backend;
 };
 
+template<typename E>
+void PackedStream::WriteEnum(const E& value)
+{
+	auto asInteger = magic_enum::enum_integer(value);
+	Write(asInteger);
+}
+
+template<typename E>
+void PackedStream::ReadEnum(E& value)
+{
+	int asInteger;
+	Read(asInteger);
+	auto enumValue = magic_enum::enum_cast<E>(asInteger);
+	ASSERT(enumValue.has_value());
+	value = enumValue.value();
+}
+
 template<typename T>
 void PackedStream::Write(const T& value)
 {
@@ -127,6 +151,24 @@ inline void PackedStream::Write(const bool& value)
 {
 	char* bytePtr = (char*)&value;
 	WriteBits(bytePtr, 1);
+}
+
+template<>
+inline void PackedStream::Write(const int& value)
+{
+	bool fitsInInt8 = (char) (INT8_MIN <= value && value <= INT8_MAX);
+	Write(fitsInInt8);
+
+	if (fitsInInt8)
+	{
+		char asChar = value;
+		Write(&asChar, 1);
+	}
+	else
+	{
+		char* bytePtr = (char*)&value;
+		Write(bytePtr, 4);
+	}
 }
 
 template<>
@@ -150,6 +192,26 @@ inline void PackedStream::Read(bool& value)
 {
 	char* bytePtr = (char*)&value;
 	ReadBits(bytePtr, 1);
+}
+
+template<>
+inline void PackedStream::Read(int& value)
+{
+
+	bool fitsInInt8;
+	Read(fitsInInt8);
+
+	if (fitsInInt8)
+	{
+		char asChar;
+		Read(&asChar, 1);
+		value = (int) asChar;
+	}
+	else
+	{
+		char* bytePtr = (char*)&value;
+		Read(bytePtr, 4);
+	}
 }
 
 template<>
@@ -200,6 +262,7 @@ public:
 	void Write(const float value);
 	void Write(const size_t value);
 	void Write(const std::string& value);
+	void Write(const std::string_view& value);
 
 	//Reads
 	void Read(char* ptr, size_t length);
@@ -213,6 +276,12 @@ public:
 	void Read(float& value);
 	void Read(size_t& value);
 	void Read(std::string& value);
+
+	template<typename E>
+	void WriteEnum(const E& value);
+
+	template<typename E>
+	void ReadEnum(E& value);
 
 	void Close();
 
@@ -230,6 +299,22 @@ private:
 	int tabs = 0;
 	std::shared_ptr<DataBackend> m_backend;
 };
+
+template<typename E>
+void JSONStream::WriteEnum(const E& value)
+{
+	std::string_view enum_name = magic_enum::enum_name(value);
+	Write(enum_name);
+}
+
+template<typename E>
+void JSONStream::ReadEnum(E& value)
+{
+	string enum_name;
+	Read(enum_name);
+
+	value = magic_enum::enum_cast<E>(enum_name, magic_enum::case_insensitive).value();
+}
 
 
 #ifdef _DEBUG

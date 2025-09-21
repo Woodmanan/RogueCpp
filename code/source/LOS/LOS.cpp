@@ -373,12 +373,12 @@ namespace LOS
 
 	bool IsWall(Location location)
 	{
-		return location.GetValid() && location->m_backingTile->m_blocksVision;
+		return location.GetValid() && location->m_wall;
 	}
 
 	bool IsFloor(Location location)
 	{
-		return location.GetValid() && !location->m_backingTile->m_blocksVision;
+		return location.GetValid() && !location->m_wall;
 	}
 
 	bool RequiresRecast(Location location)

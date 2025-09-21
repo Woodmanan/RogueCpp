@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/Collections/FixedArrary.h"
 #include "Data/Resources.h"
+#include "Core/CoreDataTypes.h"
 
 #include <string>
 #include <vector>
@@ -12,7 +13,8 @@ enum Phase
 	Solid,
 	Liquid,
 	Gas,
-	Plasma
+	Plasma,
+	Immaterial
 };
 
 struct MaterialDefinition
@@ -21,6 +23,10 @@ struct MaterialDefinition
 	string name;
 	float density;
 	float movementCost;
+	char floorChar;
+	char wallChar;
+	Color color;
+	Phase phase;
 };
 
 struct Material
@@ -119,7 +125,7 @@ public:
 	void AddReaction(Reaction reaction);
 
 	bool CheckReaction(MaterialContainer& one, MaterialContainer& two, float& heat) const;
-	void EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat);
+	bool EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat);
 	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two, float& heat);
 
 	const MaterialDefinition& GetMaterialByID(int index);
@@ -146,12 +152,28 @@ namespace RogueResources
 namespace Serialization
 {
 	template<typename Stream>
+	void SerializeObject(Stream& stream, const Phase& value)
+	{
+		stream.WriteEnum(value);
+	}
+
+	template<typename Stream>
+	void DeserializeObject(Stream& stream, Phase& value)
+	{
+		stream.ReadEnum(value);
+	}
+
+	template<typename Stream>
 	void Serialize(Stream& stream, const MaterialDefinition& value)
 	{
 		Write(stream, "ID", value.ID);
 		Write(stream, "Name", value.name);
 		Write(stream, "Density", value.density);
 		Write(stream, "Movement Cost", value.movementCost);
+		Write(stream, "Floor Char", value.floorChar);
+		Write(stream, "Wall Char", value.wallChar);
+		Write(stream, "Color", value.color);
+		Write(stream, "Phase", value.phase);
 	}
 
 	template<typename Stream>
@@ -161,6 +183,10 @@ namespace Serialization
 		Read(stream, "Name", value.name);
 		Read(stream, "Density", value.density);
 		Read(stream, "Movement Cost", value.movementCost);
+		Read(stream, "Floor Char", value.floorChar);
+		Read(stream, "Wall Char", value.wallChar);
+		Read(stream, "Color", value.color);
+		Read(stream, "Phase", value.phase);
 	}
 
 	template<typename Stream>

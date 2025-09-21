@@ -1,0 +1,7 @@
+Stat,Min,Max,Min (Ref),Max (Ref)
+Health,0,,,MaxHealth
+MaxHealth,0,,,
+Mana,0,,,MaxMana
+MaxMana,0,,,
+Stamina,0,,,MaxStamina
+MaxStamina,,,,

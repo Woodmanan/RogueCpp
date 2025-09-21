@@ -5,7 +5,9 @@
 #include "Render/Windows/Window.h"
 #include "Render/Terminal.h"
 #include "LOS.h"
+#include "Game/Game.h"
 #include <algorithm>
+#include <tuple>
 
 #define INTERLEAVE_TILES
 static const unsigned int masks[] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
@@ -40,12 +42,32 @@ DataTile DataTile::FromTile(const Tile& tile)
 	DataTile data;
 	data.m_backingTile = tile.m_backingTile;
 	data.m_temperature = TemperatureFromHeat(tile.m_heat);
+
+	pair<int, bool> materialInfo = tile.GetVisibleMaterial();
+	const MaterialDefinition& material = Game::materialManager->GetMaterialByID(materialInfo.first);
+	if (materialInfo.second)
+	{
+		data.m_renderChar = material.wallChar;
+	}
+	else
+	{
+		data.m_renderChar = material.floorChar;
+	}
+	data.m_color = material.color;
 	return data;
 }
 
 bool DataTile::operator==(const Tile& other)
 {
-	return (m_backingTile == other.m_backingTile) && (m_temperature == TemperatureFromHeat(other.m_heat));
+	pair<int, bool> materialInfo = other.GetVisibleMaterial();
+	const MaterialDefinition& material = Game::materialManager->GetMaterialByID(materialInfo.first);
+	char renderChar = material.floorChar;
+	if (materialInfo.second)
+	{
+		renderChar = material.wallChar;
+	}
+	const Color& color = material.color;
+	return (m_backingTile == other.m_backingTile) && (m_temperature == TemperatureFromHeat(other.m_heat) && (m_renderChar == renderChar) && (m_color == color));
 }
 
 TileMemory::TileMemory(THandle<Map> map)

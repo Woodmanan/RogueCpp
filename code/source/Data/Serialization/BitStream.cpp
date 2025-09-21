@@ -403,6 +403,18 @@ void JSONStream::Write(const std::string& value)
 	Write(buffer, strlen(buffer));
 }
 
+void JSONStream::Write(const std::string_view& value)
+{
+	char buffer[128];
+	std::fill_n(buffer, 128, '\0');
+	std::to_chars(buffer, buffer + 128, value.size());
+	int pos = strlen(buffer);
+	buffer[pos] = ':';
+	buffer[pos + 1] = ' ';
+	strncpy(buffer + pos + 2, value.data(), 126 - pos);
+	Write(buffer, strlen(buffer));
+}
+
 //Reads
 void JSONStream::Read(char* ptr, size_t length)
 {

@@ -1,9 +1,8 @@
-Name,Density,Melting Point,Boiling Point,Specific Heat,Thermal Conductivity,Electrical Resistance,Moh's Hardness
-Copper,8.935,1357,2835,0.385,401,16.78,3
-Iron,7.874,1811,,0.451,,,4.5
-Oxygen,,,,,,,
-Steel,7.8,,,0.48,45,,4.5
-Wood,0.65,99999,99999,1.2,0.14,,2
-Water,1,273,373,4.2,0.6,,0
-Dirt,1.25,1470,1710,0.2,0.5,400,0
-Stone,2.6,1350,3700,1,1.8,5000,5
+Name,Density,Movement Cost,Floor Char,Wall Char,Color,Phase
+Dirt,4,1,.,#,#7B3F00,Solid
+Stone,5,1,.,#,#777777,Solid
+Water,2,2,~,~,#DEF4FC,Liquid
+Mud,3,2,~,~,#7B3F00,Liquid
+Wood,1,1,.,#,#Bb7F00,Solid
+Fire,0,-1,F,F,#ff0000,Immaterial
+Air,0.1,-1,_,,#DEF4FC,Gas

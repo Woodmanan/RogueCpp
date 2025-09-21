@@ -1,2 +1,6 @@
-Reaction Name,In,Out,Base Temp,Delta Temp
-Rust,4 Iron + 6 Water,_ + 5 Iron,0,0
+Reaction Name,In,Out,Min Heat,Max Heat,Delta Temp
+Mud Mixing,1 Dirt + 1 Water,2 Mud + _,0,100,0
+Mud Drying,1 Mud,1 Dirt,100,1000,0
+Burning,0.1 Wood + 0.1 Fire,0.1 Fire + _,0,10000,0.3
+Ignition,0.1 Wood,0.09 Wood + .01 Fire,200,100000,0
+Extinguish,0.1 Fire,_,-1000,1000,0

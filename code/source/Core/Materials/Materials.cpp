@@ -86,7 +86,7 @@ void MaterialContainer::RemoveMaterial(const MaterialDefinition& material, float
 	{
 		if (m_materials[i].m_materialID != material.ID) { continue; }
 		
-		if (m_materials[i].m_mass > mass)
+		if ((m_materials[i].m_mass - mass) > 0.01f)
 		{
 			m_materials[i].m_mass -= mass;
 			return;
@@ -358,10 +358,10 @@ bool MaterialManager::CheckReaction(MaterialContainer& one, MaterialContainer& t
 	return false;
 }
 
-void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat)
+bool MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat)
 {
 	//Having an empty container invalidates a reaction - self reaction will catch it!
-	if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return; }
+	if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return false; }
 
 	MixtureContainer mixture;
 	mixture.LoadMixture(one, two);
@@ -371,9 +371,11 @@ void MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer
 		if (ReactionMatchesMixture(reaction, mixture, heat))
 		{
  			ExecuteReaction(reaction, mixture, one, two, heat);
-			return;
+			return true;
 		}
 	}
+
+	return false;
 }
 
 void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two, float& heat)
@@ -521,17 +523,21 @@ namespace RogueResources
 
 			std::vector<std::string> tokens = string_split(line, ",");
 
-			ASSERT(tokens.size() == 3);
+			ASSERT(tokens.size() == 7);
 
 			if (tokens[0].empty()) { continue; }
 
-			//Name, Density, Movement Cost
+			//Name, Density, Movement Cost, floor char, wall char, Color, Phase
 
 			MaterialDefinition definition;
 			definition.ID = -1;
 			definition.name = tokens[0];
 			definition.density = string_to_float(tokens[1]);
 			definition.movementCost = string_to_float(tokens[2]);
+			definition.floorChar = tokens[3].empty() ? '\0' : tokens[3][0];
+			definition.wallChar = tokens[4].empty() ? '\0' : tokens[4][0];
+			definition.color = string_to_color(tokens[5]);
+			definition.phase = magic_enum::enum_cast<Phase>(tokens[6]).value();
 
 			materials.push_back(definition);
 		}
@@ -565,12 +571,12 @@ namespace RogueResources
 				TResourcePointer<std::vector<MaterialDefinition>> materials = materialLists[i];
 				for (int j = 0; j < materials->size(); j++)
 				{
-					index++;
 					const MaterialDefinition& material = materials->operator[](j);
 					if (material.name == name)
 					{
 						return index;
 					}
+					index++;
 				}
 			}
 

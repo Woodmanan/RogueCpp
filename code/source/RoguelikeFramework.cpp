@@ -25,6 +25,7 @@
 #include "Render/Fonts/FontManager.h"
 #include "Render/Terminal.h"
 #include "Game/Game.h"
+#include "Utils/Utils.h"
 
 #include "Data/Serialization/BitStream.h"
 #include "Data/Serialization/Serialization.h"
@@ -46,50 +47,6 @@ uint32_t heat = 0x8;
 uint32_t rotations = 0x10;
 uint32_t background = 0x20;
 
-void Render_Map(THandle<Map> map, Window* window, Location playerLocation)
-{
-    ROGUE_PROFILE;
-    for (int i = 0; i < window->m_rect.w; i++)
-    {
-        for (int j = 0; j < window->m_rect.h; j++)
-        {
-            Vec2 playerOffset = Vec2(i, window->m_rect.h - j) - (window->m_rect.size / 2);
-            Location mapLocation = playerLocation + playerOffset;
-            if (mapLocation.GetValid() && mapLocation.InMap())
-            {
-                THandle<BackingTile> tile = mapLocation->m_backingTile;
-                window->Put(i, j, tile->m_renderCharacter,
-                    Color(0x99, 0x99, 0x99),
-                    tile->m_backgroundColor);
-            }
-        }
-    }
-}
-
-void Render_View(View& view, Window* window, Location playerLocation)
-{
-    ROGUE_PROFILE;
-    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
-
-    for (int i = -maxRadius; i <= maxRadius; i++)
-    {
-        for (int j = -maxRadius; j <= maxRadius; j++)
-        {
-            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
-
-            bool visible = view.GetVisibilityLocal(i, j);
-            if (view.GetLocationLocal(i, j).GetValid())
-            {
-                if (visible)
-                {
-                    THandle<BackingTile> tile = view.GetLocationLocal(i,j)->m_backingTile;
-                    window->Put(windowCoord.x, windowCoord.y, tile->m_renderCharacter, tile->m_foregroundColor, tile->m_backgroundColor);
-                }
-            }
-        }
-    }
-}
-
 void Render_Player_Data(PlayerData& data, Window* window, Location playerLocation)
 {
     ROGUE_PROFILE;
@@ -106,20 +63,21 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
 
             if (memory.ValidTile(localX, localY))
             {
+                DataTile& dataTile = data.GetTileForLocal(localX, localY);
                 BackingTile& tile = data.GetBackingTileForLocal(localX, localY);
 
                 bool visible = (std::abs(localX) <= view.GetRadius() && std::abs(localY) <= view.GetRadius() && view.GetVisibilityLocal(localX, localY));
 
                 if (visible)
                 {
-                    window->Put(i, j, tile.m_renderCharacter, tile.m_foregroundColor, tile.m_backgroundColor);
+                    window->Put(i, j, dataTile.m_renderChar, dataTile.m_color, dataTile.m_color);
                 }
                 else
                 {
                     Color greyish = Color(10, 10, 10);
-                    Color fgBlend = Blend(tile.m_foregroundColor, greyish, 0.5f);
-                    Color bgBlend = Blend(tile.m_backgroundColor, greyish, 0.5f);
-                    window->Put(i, j, tile.m_renderCharacter, fgBlend, bgBlend);
+                    Color fgBlend = Blend(dataTile.m_color, greyish, 0.5f);
+                    Color bgBlend = Blend(dataTile.m_color, greyish, 0.5f);
+                    window->Put(i, j, dataTile.m_renderChar, fgBlend, bgBlend);
                 }
             }
             else
@@ -156,16 +114,16 @@ void Render_Temperature(PlayerData& data, Window* window, Location playerLocatio
 
                 Color cold = Color(0, 0, 70);
                 Color hot = Color(255, 0, 0);
-                Color fgBlend = backing.m_foregroundColor;
+                Color fgBlend = tile.m_color;
                 Color bgBlend = Blend(cold, hot, std::clamp(((float)tile.m_temperature / 4.0f), 0.0f, 1.0f));
 
                 if (visible)
                 {
-                    window->Put(i, j, backing.m_renderCharacter, bgBlend, bgBlend);
+                    window->Put(i, j, tile.m_renderChar, bgBlend, bgBlend);
                 }
                 else
                 {
-                    window->Put(i, j, backing.m_renderCharacter, Blend(bgBlend, Color(50, 50, 50), .8f), bgBlend);
+                    window->Put(i, j, tile.m_renderChar, Blend(bgBlend, Color(50, 50, 50), .8f), bgBlend);
                 }
             }
             else
@@ -177,83 +135,6 @@ void Render_Temperature(PlayerData& data, Window* window, Location playerLocatio
 
     //Temp! Render character character
     window->Put(window->m_rect.w / 2, window->m_rect.h / 2, '@', Color(0, 0, 0), Color(255, 255, 255));
-}
-
-void Render_Passes(View& view, Window* window, Location playerLocation)
-{
-    ROGUE_PROFILE;
-    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
-
-    for (int i = -maxRadius; i <= maxRadius; i++)
-    {
-        for (int j = -maxRadius; j <= maxRadius; j++)
-        {
-            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
-
-            bool visible = view.GetVisibilityLocal(i, j);
-            if (view.GetLocationLocal(i, j).GetValid())
-            {
-                if (visible)
-                {
-                    int step = view.GetVisibilityPassIndex(i, j) - 1;
-                    Color color = passColors[step % 5];
-                    window->Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, color, Color(0, 0, 0));
-                }
-            }
-        }
-    }
-}
-
-void Render_Hotspots(View& view, Window* window, Location playerLocation)
-{
-    ROGUE_PROFILE;
-    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
-
-    for (int i = -maxRadius; i <= maxRadius; i++)
-    {
-        for (int j = -maxRadius; j <= maxRadius; j++)
-        {
-            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
-
-            bool visible = view.GetVisibilityLocal(i, j);
-            if (visible)
-            {
-                Color green = Color(0x00, 0x11, 0x00);
-                Color red = Color(0xFF, 0x00, 0x00);
-                float heatPercent = view.Debug_GetHeatPercentageLocal(i, j);
-                Color blend = Blend(green, red, heatPercent);
-                Color black = Color(0, 0, 0);
-                window->Put(windowCoord.x, windowCoord.y, view.GetLocationLocal(i, j)->m_backingTile->m_renderCharacter, blend, black);
-            }
-        }
-    }
-}
-
-char rotationChars[8] = {
-    '0', '1', '2', '3', '4', '5', '6', '7'
-};
-
-void Render_Rotations(View& view, Window* window, Location playerLocation)
-{
-    ROGUE_PROFILE;
-    int maxRadius = std::min(view.GetRadius(), (int)window->m_rect.w);
-
-    for (int i = -maxRadius; i <= maxRadius; i++)
-    {
-        for (int j = -maxRadius; j <= maxRadius; j++)
-        {
-            Vec2 windowCoord = Vec2(i, -j) + (window->m_rect.size) / 2;
-
-            bool visible = view.GetVisibilityLocal(i, j);
-            if (visible)
-            {
-                char direction = view.GetRotationLocal(i, j);
-                char rotationChar = rotationChars[direction];
-                Color green = Color(0x17, 0xD9, 0x2A);
-                window->Put(windowCoord.x, windowCoord.y, rotationChar, green, Color(0, 0, 0));
-            }
-        }
-    }
 }
 
 void RenderBresenham(Window* window, Vec2 endpoint)
@@ -572,9 +453,11 @@ int main(int argc, char* argv[])
                 game.CreateInput<Movement>(Direction::SouthEast);
             }
             break;
+        case EKey::F:
+            game.CreateInput<DEBUG_FIRE>();
+            break;
         case EKey::SPACE:
             game.CreateInput<Wait>();
-            std::cout << "Temp: " << (int) playerData.GetTileForLocal(0, 0).m_temperature << std::endl;
             //map->SetTile(playerLoc.AsVec2(), !playerLoc->m_backingTile->m_index);
             break;
         case EKey::TAB:

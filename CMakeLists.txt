@@ -27,10 +27,13 @@ option(TRACY_ENABLE "" ON)
 option(TRACY_ON_DEMAND "" ON)
 add_subdirectory(code/libraries/tracy)
 
+add_subdirectory(code/libraries/magic_enum)
+
 # Add source to this project's executable.
 file(GLOB_RECURSE RoguelikeFramework_SRC
      "${PROJECT_SOURCE_DIR}/code/source/*.cpp"
      "${PROJECT_SOURCE_DIR}/code/source/*.h"
+	 "${PROJECT_SOURCE_DIR}/libraries/*.hpp"
 	 "${PROJECT_SOURCE_DIR}/code/libraries/BearLibTerminal/Include/C/BearLibTerminal.h"
 )
 
@@ -42,6 +45,7 @@ target_link_libraries(RoguelikeFramework PUBLIC BearLibTerminal)
 target_link_libraries(RoguelikeFramework PUBLIC Tracy::TracyClient)
 target_link_libraries(RoguelikeFramework PUBLIC ${Vulkan_LIBRARIES})
 target_link_libraries(RoguelikeFramework PUBLIC glfw)
+target_link_libraries(RoguelikeFramework PUBLIC magic_enum)
 target_link_libraries(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/freetype2/release static/vs2015-2022/win64/freetype.lib")
 
 target_include_directories(RoguelikeFramework PUBLIC "C:/VulkanSDK/1.3.290.0/Include")
@@ -50,6 +54,7 @@ target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/stb")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/freetype2/include")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/rectpack2D")
+target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/magic_enum")
 target_include_directories(RoguelikeFramework PUBLIC "${PROJECT_SOURCE_DIR}/code/libraries/BearLibTerminal")
 
 #set_property(TARGET RoguelikeFramework PROPERTY CXX_STANDARD "20")

@@ -6,9 +6,6 @@
 PlayerData::PlayerData()
 {
 	BackingTile emptyTile;
-	emptyTile.m_renderCharacter = ' ';
-	emptyTile.m_foregroundColor = Color(0, 0, 0);
-	emptyTile.m_backgroundColor = Color(0, 0, 0);
 	m_backingTiles[THandle<BackingTile>()] = emptyTile;
 }
 
@@ -55,7 +52,7 @@ void PlayerData::UpdateViewGame(View& newView)
 
 	afterStream.AllWritesFinished();
 	std::shared_ptr<VectorBackend> backend = dynamic_pointer_cast<VectorBackend>(afterStream.GetDataBackend());
-	std::cout << backend->m_data.size() << std::endl;
+	DEBUG_PRINT("View bytes: %d", backend->m_data.size());
 
 	m_currentView = newView;
 	Game::game->CreateOutput<ViewUpdated>(afterStream);
@@ -132,6 +129,14 @@ void PlayerData::WriteTileUpdate(PackedStream& stream, int x, int y, const DataT
 	}
 
 	Serialization::Write(stream, "Temperature", newTile.m_temperature);
+
+	bool updateColor = oldTile.m_color != newTile.m_color || oldTile.m_renderChar != newTile.m_renderChar;
+	Serialization::Write(stream, "Update color", updateColor);
+	if (updateColor)
+	{
+		Serialization::Write(stream, "Char", newTile.m_renderChar);
+		Serialization::Write(stream, "Color", newTile.m_color);
+	}
 }
 
 void PlayerData::ReadTileUpdate(PackedStream& stream, int x, int y)
@@ -150,6 +155,12 @@ void PlayerData::ReadTileUpdate(PackedStream& stream, int x, int y)
 	}
 
 	Serialization::Read(stream, "Temperature", tile.m_temperature);
+
+	if (Serialization::Read<PackedStream, bool>(stream, "Update color"))
+	{
+		Serialization::Read(stream, "Char", tile.m_renderChar);
+		Serialization::Read(stream, "Color", tile.m_color);
+	}
 
 	m_memory.SetTileByLocal(x, y, tile);
 }

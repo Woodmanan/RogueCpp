@@ -14,11 +14,7 @@ class BackingTile
 {
 public:
     BackingTile() {}
-    BackingTile(char character, Color foreground, Color background, bool blocksVision, MaterialContainer floorMaterials, MaterialContainer volumeMaterials) :
-        m_renderCharacter(character),
-        m_foregroundColor(foreground),
-        m_backgroundColor(background),
-        m_blocksVision(blocksVision),
+    BackingTile(MaterialContainer floorMaterials, MaterialContainer volumeMaterials) :
         m_defaultFloorMaterials(floorMaterials),
         m_defaultVolumeMaterials(volumeMaterials)
     {
@@ -26,10 +22,6 @@ public:
         m_defaultVolumeMaterials.m_inverted = true;
     }
 
-	char m_renderCharacter;
-    Color m_foregroundColor;
-    Color m_backgroundColor;
-	bool m_blocksVision;
     MaterialContainer m_defaultFloorMaterials; //Materials that make up the floor
     MaterialContainer m_defaultVolumeMaterials; //Materials that fill the standing volume of the tile
     int m_index = -1;
@@ -75,9 +67,16 @@ public:
 
 	THandle<BackingTile> m_backingTile;
 	THandle<TileStats> m_stats;
+    bool m_wall;
     float m_heat;
+    bool m_dirty = false;
 
     bool operator==(const Tile& other);
+
+    //Flyweight pattern - check if we have had to create data and create it when needed
+    bool UsingInstanceData() const;
+    void CreateInstanceData();
+    pair<int, bool> GetVisibleMaterial() const;
 };
 
 class Map
@@ -154,10 +153,6 @@ namespace Serialization
     template<typename Stream>
     void Serialize(Stream& stream, const BackingTile& value)
     {
-        Write(stream, "Char", value.m_renderCharacter);
-        Write(stream, "FGColor", value.m_foregroundColor);
-        Write(stream, "BGColor", value.m_backgroundColor);
-        Write(stream, "Blocks Vision", value.m_blocksVision);
         Write(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
         Write(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
         Write(stream, "Index", value.m_index);
@@ -166,10 +161,6 @@ namespace Serialization
     template<typename Stream>
     void Deserialize(Stream& stream, BackingTile& value)
     {
-        Read(stream, "Char", value.m_renderCharacter);
-        Read(stream, "FGColor", value.m_foregroundColor);
-        Read(stream, "BGColor", value.m_backgroundColor);
-        Read(stream, "Blocks Vision", value.m_blocksVision);
         Read(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
         Read(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
         Read(stream, "Index", value.m_index);
@@ -250,6 +241,8 @@ namespace Serialization
         Write(stream, "Backing", value.m_backingTile);
         Write(stream, "Stats", value.m_stats);
         Write(stream, "Heat", value.m_heat);
+        Write(stream, "Wall", value.m_wall);
+        Write(stream, "Dirty", value.m_dirty);
     }
 
     template <typename Stream>
@@ -258,6 +251,8 @@ namespace Serialization
         Read(stream, "Backing", value.m_backingTile);
         Read(stream, "Stats", value.m_stats);
         Read(stream, "Heat", value.m_heat);
+        Read(stream, "Wall", value.m_wall);
+        Read(stream, "Dirty", value.m_dirty);
     }
 
     template<typename Stream>

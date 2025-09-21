@@ -9,6 +9,67 @@ bool Tile::operator==(const Tile& other)
     return (m_backingTile == other.m_backingTile) && (m_stats == other.m_stats) && (m_heat == other.m_heat);
 }
 
+bool Tile::UsingInstanceData() const
+{
+    return m_stats.IsValid();
+}
+
+void Tile::CreateInstanceData()
+{
+    ASSERT(!UsingInstanceData());
+    m_stats = GetDataManager()->Allocate<TileStats>();
+    m_stats->m_floorMaterials = MaterialContainer(m_backingTile->m_defaultFloorMaterials);
+    m_stats->m_volumeMaterials = MaterialContainer(m_backingTile->m_defaultVolumeMaterials);
+}
+
+pair<int, bool> Tile::GetVisibleMaterial() const
+{
+    if (UsingInstanceData())
+    {
+        for (int i = 0; i < m_stats->m_volumeMaterials.m_materials.size(); i--)
+        {
+            const Material& mat = m_stats->m_volumeMaterials.m_materials[i];
+            if (mat.GetMaterial().wallChar != '\0')
+            {
+                return { mat.m_materialID, true };
+            }
+        }
+
+        for (int i = m_stats->m_floorMaterials.m_materials.size() - 1; i >= 0; i--)
+        {
+            const Material& mat = m_stats->m_floorMaterials.m_materials[i];
+            if (mat.GetMaterial().floorChar != '\0')
+            {
+                return { mat.m_materialID, false };
+            }
+        }
+
+        return { -1, false };
+    }
+    else
+    {
+        for (int i = 0; i < m_backingTile->m_defaultVolumeMaterials.m_materials.size(); i--)
+        {
+            const Material& mat = m_backingTile->m_defaultVolumeMaterials.m_materials[i];
+            if (mat.GetMaterial().wallChar != '\0')
+            {
+                return { mat.m_materialID, true };
+            }
+        }
+
+        for (int i = m_backingTile->m_defaultFloorMaterials.m_materials.size() - 1; i >= 0; i--)
+        {
+            const Material& mat = m_backingTile->m_defaultFloorMaterials.m_materials[i];
+            if (mat.GetMaterial().floorChar != '\0')
+            {
+                return { mat.m_materialID, false };
+            }
+        }
+
+        return { -1, false };
+    }
+}
+
 int Map::IndexIntoMap(Vec2 location) const
 {
     return IndexIntoMap(location.x, location.y);
@@ -63,7 +124,9 @@ void Map::SetTile(Vec2 location, int index)
 
 void Map::SetTile(Vec2 location, THandle<BackingTile> tile)
 {
-	m_tiles[IndexIntoMap(location)].m_backingTile = tile;
+    Tile& mapTile = m_tiles[IndexIntoMap(location)];
+    mapTile.m_backingTile = tile;
+    mapTile.m_wall = mapTile.GetVisibleMaterial().second;
 }
 
 void Map::FillTilesInc(Vec2 from, Vec2 to, int index)
@@ -361,22 +424,39 @@ void Map::Simulate()
         for (int y = 0; y < m_size.y; y++)
         {
             float delta = heatScratch[IndexIntoMap(x, y)];
+            Tile& tile = GetTile(x, y);
             if (delta != 0.0f)
             {
-                Tile& tile = GetTile(x, y);
                 tile.m_heat += delta;
-                if (!tile.m_stats.IsValid())
+                tile.m_dirty = true;
+            }
+
+            if (tile.m_dirty)
+            {
+                tile.m_dirty = false;
+                if (!tile.UsingInstanceData())
                 {
                     if (Game::materialManager->CheckReaction(tile.m_backingTile->m_defaultFloorMaterials, tile.m_backingTile->m_defaultVolumeMaterials, tile.m_heat))
                     {
-                        numReactions++;
+                        tile.CreateInstanceData();
                     }
+                    else
+                    {
+                        continue;
+                    }
+                }
+
+                if (Game::materialManager->EvaluateReaction(tile.m_stats->m_floorMaterials, tile.m_stats->m_volumeMaterials, tile.m_heat))
+                {
+                    tile.m_wall = tile.GetVisibleMaterial().second;
+                    numReactions++;
+                    tile.m_dirty = true;
                 }
             }
         }
     }
 
-    std::cout << "Num reactions: " << numReactions << std::endl;
+    DEBUG_PRINT("Num reactions: %d", numReactions);
 }
 
 void Map::RunSimulationStep(Vec2 location, int timeStep, vector<float>& heatScratch)

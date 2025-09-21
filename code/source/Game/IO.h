@@ -10,11 +10,14 @@ enum EInputType
 {
 	InvalidInput,
 	Movement,
+	Wait,
 	BeginNewGame,
 	BeginSeededGame,
 	LoadSaveGame,
 	SaveAndExit,
-	ExitGame
+	ExitGame,
+
+	DEBUG_FIRE
 };
 
 class InputBase
@@ -207,16 +210,13 @@ namespace Serialization
 	template<typename Stream>
 	void SerializeObject(Stream& stream, const EInputType& value)
 	{
-		int asInt = value;
-		Serialize(stream, asInt);
+		stream.WriteEnum(value);
 	}
 
 	template<typename Stream>
 	void DeserializeObject(Stream& stream, EInputType& value)
 	{
-		int asInt;
-		Deserialize(asInt);
-		value = (EInputType)asInt;
+		stream.ReadEnum(value);
 	}
 
 	template<typename Stream>
