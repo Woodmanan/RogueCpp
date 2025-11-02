@@ -17,7 +17,9 @@ enum EInputType
 	SaveAndExit,
 	ExitGame,
 
-	DEBUG_FIRE
+	DEBUG_FIRE,
+	DEBUG_MAKE_STONE,
+	DEBUG_LOAD_RESOURCES
 };
 
 class InputBase

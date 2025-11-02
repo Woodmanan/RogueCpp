@@ -5,6 +5,24 @@
 #include "Debug/Profiling.h"
 #include "Game/ThreadManagers.h"
 
+Vec3 Vec3::WrapPosition(Vec3 inPosition)
+{
+    return Vec3(
+        ModulusNegative<short>(inPosition.x, LOCATION_MAX_X),
+        ModulusNegative<short>(inPosition.y, LOCATION_MAX_Y),
+        ModulusNegative<short>(inPosition.z, LOCATION_MAX_Z)
+    );
+}
+
+Vec3 Vec3::WrapChunk(Vec3 inChunk)
+{
+    return Vec3(
+        ModulusNegative<short>(inChunk.x, CHUNK_MAX_X),
+        ModulusNegative<short>(inChunk.y, CHUNK_MAX_Y),
+        ModulusNegative<short>(inChunk.z, CHUNK_MAX_Z)
+    );
+}
+
 Location::Location()
 {
 #ifdef _DEBUG
@@ -125,16 +143,60 @@ Vec2 Location::AsVec2()
     return Vec2(x(), y());
 }
 
+Vec3 Location::GetChunkPosition()
+{
+    return Vec3(x() / CHUNK_SIZE_X, y() / CHUNK_SIZE_Y, z() / CHUNK_SIZE_Z);
+}
+
+Vec3 Location::GetChunkLocalPosition()
+{
+    return Vec3(x() % CHUNK_SIZE_X, y() % CHUNK_SIZE_Y, z() % CHUNK_SIZE_Z);
+}
+
 Tile& Location::GetTile()
 {
-    ASSERT(InMap());
-    return GetDataManager()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    //ASSERT(InMap());
+    return GetDataManager()->ResolveByTypeIndex<ChunkMap>(0)->GetTile(*this);
 }
 
 Tile* Location::operator ->()
 {
-    ASSERT(InMap());
-    return &GetDataManager()->ResolveByTypeIndex<Map>(z())->GetTile(x(), y());
+    //ASSERT(InMap());
+    return &GetDataManager()->ResolveByTypeIndex<ChunkMap>(0)->GetTile(*this);
+}
+
+Location Location::GetNeighbor(Direction direction)
+{
+    Tile& tile = GetTile();
+    THandle<TileNeighbors> neighbors = tile.m_stats.IsValid() ? tile.m_stats->m_neighbors : THandle<TileNeighbors>();
+
+    if (neighbors.IsValid())
+    {
+        switch (direction)
+        {
+        case North:
+            return neighbors->N;
+        case NorthEast:
+            return neighbors->NE;
+        case East:
+            return neighbors->E;
+        case SouthEast:
+            return neighbors->SE;
+        case South:
+            return neighbors->S;
+        case SouthWest:
+            return neighbors->SW;
+        case West:
+            return neighbors->W;
+        case NorthWest:
+            return neighbors->NW;
+        }
+    }
+    else
+    {
+        Vec3 offset = VectorFromDirection(direction);
+        return Location(Vec3::WrapPosition(GetVector() + offset));
+    }
 }
 
 bool Location::InMap()
@@ -226,27 +288,7 @@ std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction directi
     Map* map = GetDataManager()->ResolveByTypeIndex<Map>(z());
     ASSERT(map != nullptr);
 
-    switch (direction)
-    {
-        case North:
-            return std::make_pair(map->WrapLocation(*this, 0, 1), North);
-        case NorthEast:
-            return std::make_pair(map->WrapLocation(*this, 1, 1), North);
-        case East:
-            return std::make_pair(map->WrapLocation(*this, 1, 0), North);
-        case SouthEast:
-            return std::make_pair(map->WrapLocation(*this, 1, -1), North);
-        case South:
-            return std::make_pair(map->WrapLocation(*this, 0, -1), North);
-        case SouthWest:
-            return std::make_pair(map->WrapLocation(*this, -1, -1), North);
-        case West:
-            return std::make_pair(map->WrapLocation(*this, -1, 0), North);
-        case NorthWest:
-            return std::make_pair(map->WrapLocation(*this, -1, 1), North);
-        default:
-            return std::make_pair(*this, North);
-    }
+    return std::make_pair(GetNeighbor(direction), North);
 }
 
 std::pair<Location, Direction> Location::_Traverse_Neighbors(Direction direction)

@@ -23,6 +23,8 @@ struct MaterialDefinition
 	string name;
 	float density;
 	float movementCost;
+	float thermalConductivity;
+	float heatCapacity;
 	char floorChar;
 	char wallChar;
 	Color color;
@@ -170,6 +172,8 @@ namespace Serialization
 		Write(stream, "Name", value.name);
 		Write(stream, "Density", value.density);
 		Write(stream, "Movement Cost", value.movementCost);
+		Write(stream, "Thermal Conductivity", value.thermalConductivity);
+		Write(stream, "Heat Capacity", value.heatCapacity);
 		Write(stream, "Floor Char", value.floorChar);
 		Write(stream, "Wall Char", value.wallChar);
 		Write(stream, "Color", value.color);
@@ -183,6 +187,8 @@ namespace Serialization
 		Read(stream, "Name", value.name);
 		Read(stream, "Density", value.density);
 		Read(stream, "Movement Cost", value.movementCost);
+		Read(stream, "Thermal Conductivity", value.thermalConductivity);
+		Read(stream, "Heat Capacity", value.heatCapacity);
 		Read(stream, "Floor Char", value.floorChar);
 		Read(stream, "Wall Char", value.wallChar);
 		Read(stream, "Color", value.color);

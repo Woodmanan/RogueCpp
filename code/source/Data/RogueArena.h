@@ -69,7 +69,7 @@ public:
 		
 		T* pointer = (T*)&buffer[header->currentOffset];
 		header->currentOffset += sizeof(T);
-		*pointer = T(std::forward<Args>(args)...);
+		new(pointer) T(std::forward<Args>(args)...);
 
 		ASSERT(header->currentOffset <= header->size);
 
@@ -142,7 +142,7 @@ template <typename T>
 class SpecializedArena : public RogueArena
 {
 public:
-	SpecializedArena(int dataSize) : RogueArena(dataSize)
+	SpecializedArena(int dataSize) : RogueArena(sizeof(T) * dataSize)
 	{
 
 	}
@@ -181,7 +181,7 @@ public:
 
 		for (int i = sizeof(ArenaHeader); i < header->currentOffset; i += sizeof(T))
 		{
-			*Get<T>(i) = T();
+			new(Get<T>(i)) T();
 			RogueSaveManager::Read("Value", *Get<T>(i));
 		}
 	}

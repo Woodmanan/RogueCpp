@@ -1,5 +1,6 @@
 #pragma once
 #include "tracy/Tracy.hpp"
+#include "tracy/TracyC.h"
 #include "Debug.h"
 
 #if (DEBUG || REL_WITH_DEBUG) && TRACY_ENABLE
@@ -13,6 +14,7 @@
 #define ROGUE_PROFILE_TAG(y, x) ZoneText(x, strlen(x))
 #define ROGUE_PROFILE_LOG(text, size) TracyMessage(text, size)
 #define ROGUE_PROFILE_VALUE(text, value) TracyPlot(text, value)
+#define ROGUE_NAME_THREAD(text) TracyCSetThreadName(text)
 #else
 #define ROGUE_PROFILE UNUSED()
 #define ROGUE_PROFILE_FRAME() UNUSED()
@@ -20,4 +22,5 @@
 #define ROGUE_PROFILE_TAG(y, x) UNUSED(x, strlen(x))
 #define ROGUE_PROFILE_LOG(text, size) UNUSED(text, size)
 #define ROGUE_PROFILE_VALUE(text, value) UNUSED(text, value)
+#define ROGUE_NAME_THREAD(text) UNUSED(text)
 #endif

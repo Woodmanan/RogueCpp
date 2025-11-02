@@ -5,6 +5,7 @@
 #include "Core/CoreDataTypes.h"
 #include "Data/RogueArena.h"
 #include "Data/RogueDataManager.h"
+#include "Data/JobSystem.h"
 #include "Data/SaveManager.h"
 #include "Data/RegisterSaveTypes.h"
 #include "Data/Resources.h"
@@ -201,7 +202,7 @@ Direction ReadDirection(Direction currentRotation)
     return Rotate(direction, currentRotation);
 }
 
-void SetupResources()
+void SetupResources(uint resourceThreads)
 {
     ResourceManager::InitResources();
 
@@ -215,7 +216,7 @@ void SetupResources()
     auto LoadFont = GetMember(FontManager::Get(), &FontManager::LoadFont);
     ResourceManager::Get()->Register("Font", PackFont, LoadFont);
 
-    ResourceManager::Get()->LaunchThreads();
+    ResourceManager::Get()->LaunchThreads(resourceThreads);
 }
 
 void TestEvents()
@@ -265,7 +266,23 @@ void TestEvents()
 
 int main(int argc, char* argv[])
 {
-    SetupResources();
+    uint maxThreads = std::thread::hardware_concurrency();
+    DEBUG_PRINT("%d concurrent threads are supported.", maxThreads);
+
+    if (maxThreads == 0)
+    {
+        DEBUG_PRINT("Fallback - assuming there are 8 threads.");
+        maxThreads == 8; //Fallback - assume 8 threads available at the minimum
+    }
+
+    uint reservedThreads = 3;  //1 thread for main, 1 for resource manager, 1 for game thread
+    maxThreads -= reservedThreads;
+
+    uint numResourceThreads = (maxThreads * 4) / 10;
+    uint numJobThreads = maxThreads - numResourceThreads;
+
+    Jobs::Initialize(numJobThreads);
+    SetupResources(numResourceThreads);
 
     //Initialize Random
     srand(1);
@@ -330,9 +347,6 @@ int main(int argc, char* argv[])
     int pos_y = 20;
     char buffer[50];
     wchar_t wbuffer[50];
-
-
-    std::cout << "Here!" << std::endl;
 
     terminal_custom_init();
     terminal_print(34, 20, "Hello World! I am here!");
@@ -541,6 +555,7 @@ int main(int argc, char* argv[])
             shouldBreak = true;
             break;
         case EKey::R:
+        {
             /*if (!terminal_get_key(EKey::LEFT_SHIFT))
             {
                 map->Reset();
@@ -548,8 +563,9 @@ int main(int argc, char* argv[])
                 memory->Wipe();
             }
             bresenhamPoint = Vec2(0, 0);*/
-            ResourceManager::Get()->LoadFromConfig("Image", "image");
+            game.CreateInput<DEBUG_LOAD_RESOURCES>();
             break;
+        }
         case EKey::C:
             if (renderFlags & color)
             {
@@ -585,7 +601,7 @@ int main(int argc, char* argv[])
             lookDirection = Rotate(lookDirection, East);
             break;
         case EKey::W:
-            memory->Wipe();
+            game.CreateInput<DEBUG_MAKE_STONE>();
             break;
         case EKey::PAGE_UP:
             //TODO: RESIZING
@@ -887,6 +903,7 @@ int main(int argc, char* argv[])
     game.CreateInput<SaveAndExit>();
     gameThread.join();
     terminal_close();
+    Jobs::Shutdown();
     ResourceManager::ShutdownResources();
 
     return EXIT_SUCCESS;

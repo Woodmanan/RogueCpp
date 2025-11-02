@@ -88,4 +88,6 @@ private:
 	Direction lookDirection = Direction::North;
 	View los;
 	PlayerData m_playerData;
+
+	THandle<ChunkMap> testMap;
 };

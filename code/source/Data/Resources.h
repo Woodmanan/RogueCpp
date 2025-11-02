@@ -19,6 +19,9 @@
 
 //Pack functions are passed in to the system on INIT. On request, a resource is loaded. If found, packed version is returned 
 
+using uint = uint32_t;
+static const uint MaxWorkerThreads = 16;
+
 class HashID
 {
 public:
@@ -139,11 +142,11 @@ public:
 	~ResourceManager();
 
 	//Const values
-	static const int numDedicatedWorkerThreads = 4;
+	uint numDedicatedWorkerThreads = 1;
 
 	static void InitResources();
 	void Register(const HashID& type, std::function<void(PackContext&)> pack, std::function<std::shared_ptr<void>(LoadContext&)> load);
-	void LaunchThreads();
+	void LaunchThreads(uint numThreads);
 	static void ShutdownResources();
 	static ResourceManager* Get();
 
@@ -211,7 +214,7 @@ private:
 	std::map<HashID, std::function<void(PackContext&)>> packFunctions;
 	std::map<HashID, std::function<std::shared_ptr<void>(LoadContext&)>> loadFunctions;
 
-	std::array<WorkerData, numDedicatedWorkerThreads> workerData;
+	std::array<WorkerData, MaxWorkerThreads> workerData;
 };
 
 namespace Serialization

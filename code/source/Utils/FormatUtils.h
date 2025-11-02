@@ -5,6 +5,7 @@
 #include <string>
 #include <stdexcept>
 #include <vector>
+#include <iostream>
 
 //Licensesd under CC0 1.0
 template<typename ... Args>

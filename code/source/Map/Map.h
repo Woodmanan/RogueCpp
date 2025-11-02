@@ -3,12 +3,36 @@
 #include "Core/CoreDataTypes.h"
 #include "Core/Materials/Materials.h"
 #include <type_traits>
+#include <unordered_map>
+#include <set>
 
 class BackingTile;
 class TileStats;
 class TileNeighbors;
 class Tile;
 class Location;
+class Chunk;
+class ChunkMap;
+
+namespace Serialization
+{
+    template<typename Stream>
+    void Serialize(Stream& stream, const Chunk& value);
+    template<typename Stream>
+    void Deserialize(Stream& stream, Chunk& value);
+
+    template<typename Stream>
+    void Serialize(Stream& stream, const ChunkMap& value);
+    template<typename Stream>
+    void Deserialize(Stream& stream, ChunkMap& value);
+}
+
+//Static map data!
+//Chunk size defined in CoreDataTypes, since other systems might depend upon it
+static constexpr int ACTIVE_CHUNK_RADIUS = 8;
+static constexpr int LOAD_CHUNK_RADIUS = 16;
+
+//TODO: Unload radius!
 
 class BackingTile
 {
@@ -79,6 +103,84 @@ public:
     pair<int, bool> GetVisibleMaterial() const;
 };
 
+class Chunk
+{
+public:
+    Chunk() {}
+    Chunk(Vec3 chunkLocation);
+    Tile& GetTile(Vec3 location);
+    void SetTile(Vec3 location, THandle<BackingTile> tile);
+    void SetTile(Vec3 location, const Tile& tile);
+
+    Vec3 GetChunkCorner() const;
+
+    void GenerateHeatDeltas(int timeStep, vector<float>& scratch);
+    bool ApplyHeatDeltas(vector<float>& scratch);
+
+    void SetDefaultHeat(float heat) { m_defaultHeat = heat; }
+    bool GetDirty() { return m_dirty; }
+    void MarkDirty();
+    void ClearDirty() { m_dirty = false; }
+
+
+private:
+    int GetIndex(const Vec3& location);
+
+    template<typename Stream>
+    friend void Serialization::Serialize(Stream& stream, const Chunk& value);
+    template<typename Stream>
+    friend void Serialization::Deserialize(Stream& stream, Chunk& value);
+
+    Vec3 m_chunkLocation;
+    vector<Tile> m_tiles;
+    float m_defaultHeat = 0;
+    bool m_dirty = false;
+};
+
+class ChunkMap
+{
+public:
+    void TriggerStreamingAroundLocation(Location loc, Vec3 radius = Vec3(LOAD_CHUNK_RADIUS, LOAD_CHUNK_RADIUS, 0));
+    void WaitForStreaming();
+    Tile& GetTile(Location location);
+    void AsyncAddChunk(Vec3 chunkLoc, Chunk* chunk);
+
+    int LinkBackingTile(THandle<BackingTile> tile);
+    template<typename T, class... Args>
+    int LinkBackingTile(Args&&... args)
+    {
+        static_assert(std::is_convertible<T*, BackingTile*>::value, "T must inherit from BackingTile");
+        THandle<BackingTile> tile = GetDataManager()->Allocate<T>(std::forward<Args>(args)...);
+        return LinkBackingTile(tile);
+    }
+
+    void SetTile(Location location, int index);
+    void SetTile(Location location, THandle<BackingTile> tile);
+
+    void Simulate(Location location, Vec3 radius = Vec3(ACTIVE_CHUNK_RADIUS, ACTIVE_CHUNK_RADIUS, 0));
+
+    void AddHeat(Location location, float heat);
+
+private:
+    Chunk* GetChunk(Vec3 chunkId);
+    void StreamChunk(Vec3 chunkId, Vec3 radius);
+    void MainThread_InsertReadyChunks();
+
+    void LoadChunk(Vec3 chunk);
+
+    template<typename Stream>
+    friend void Serialization::Serialize(Stream& stream, const ChunkMap& value);
+    template<typename Stream>
+    friend void Serialization::Deserialize(Stream& stream, ChunkMap& value);
+
+    std::mutex m_mapMutex;
+    unordered_map<Vec3, Chunk*> m_chunks;
+    unordered_map<Vec3, Chunk*> m_readyChunks;
+    set<Vec3> m_loadingChunks;
+    vector<THandle<BackingTile>> m_backingTiles;
+    vector<vector<float>> m_heatScratch;
+};
+
 class Map
 {
 public:
@@ -143,7 +245,7 @@ public:
     int LinkBackingTile(Args&&... args)
     {
         static_assert(std::is_convertible<T*, BackingTile*>::value, "T must inherit from BackingTile");
-        THandle<BackingTile> tile = Game::dataManager->Allocate<T>(std::forward<Args>(args)...);
+        THandle<BackingTile> tile = GetDataManager()->Allocate<T>(std::forward<Args>(args)...);
         return LinkBackingTile(tile);
     }
 };
@@ -233,6 +335,58 @@ namespace Serialization
         {
             Read(stream, "Tiles", value.m_tiles);
         }
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, const Chunk& value)
+    {
+        Write(stream, "Chunk Location", value.m_chunkLocation);
+        Write(stream, "Tiles", value.m_tiles);
+        Write(stream, "Default Heat", value.m_defaultHeat);
+        Write(stream, "Dirty", value.m_dirty);
+    }
+
+    template <typename Stream>
+    void Deserialize(Stream& stream, Chunk& value)
+    {
+        Read(stream, "Chunk Location", value.m_chunkLocation);
+        Read(stream, "Tiles", value.m_tiles);
+        Read(stream, "Default Heat", value.m_defaultHeat);
+        Read(stream, "Dirty", value.m_dirty);
+    }
+
+    template<typename Stream>
+    void Serialize(Stream& stream, const ChunkMap& value)
+    {
+        uint32_t chunkCount = value.m_chunks.size();
+        Write(stream, "Chunk Count", chunkCount);
+
+        for (auto it : value.m_chunks)
+        {
+            Write(stream, "Location", it.first);
+            Write(stream, "Chunk", *it.second);
+        }
+
+        Write(stream, "Backing Tiles", value.m_backingTiles);
+    }
+
+    template <typename Stream>
+    void Deserialize(Stream& stream, ChunkMap& value)
+    {
+        uint chunkCount;
+        Read(stream, "Chunk Count", chunkCount);
+
+        for (uint count = 0; count < chunkCount; count++)
+        {
+            Vec3 location;
+            Chunk* chunk = new Chunk();
+            Read(stream, "Location", location);
+            Read(stream, "Chunk", *chunk);
+
+            value.m_chunks[location] = chunk;
+        }
+
+        Read(stream, "Backing Tiles", value.m_backingTiles);
     }
 
     template<typename Stream>

@@ -75,9 +75,10 @@ void ResourceManager::Register(const HashID& type, std::function<void(PackContex
 	loadFunctions[type] = load;
 }
 
-void ResourceManager::LaunchThreads()
+void ResourceManager::LaunchThreads(uint numThreads)
 {
 	ASSERT(m_active == false);
+	numDedicatedWorkerThreads = std::min(numThreads, MaxWorkerThreads);
 	m_active = true;
 	_mm_mfence();
 	m_resourceThread = std::thread(&ResourceManager::ThreadMainLoop, this);
@@ -96,6 +97,7 @@ ResourceManager* ResourceManager::Get()
 
 void ResourceManager::ThreadMainLoop()
 {
+	ROGUE_NAME_THREAD("Resource Manager");
 	ROGUE_PROFILE;
 	CacheFileNames();
 	LaunchDedicatedWorkers();
@@ -265,6 +267,8 @@ void ResourceManager::LaunchDedicatedWorkers()
 
 void ResourceManager::WorkerThread(int threadNum)
 {
+	std::string name = string_format("Resource Thread %d", threadNum);
+	ROGUE_NAME_THREAD(name.c_str());
 	while (workerData[threadNum].alive)
 	{
 		workerData[threadNum].working.wait(false);

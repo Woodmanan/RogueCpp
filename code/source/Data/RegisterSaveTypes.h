@@ -9,3 +9,4 @@ REGISTER_SAVE_TYPE(4, TileNeighbors);
 REGISTER_SAVE_TYPE(5, TileMemory);
 REGISTER_SAVE_TYPE(6, MaterialContainer);
 REGISTER_SAVE_TYPE(7, StatContainer);
+REGISTER_SAVE_TYPE(8, ChunkMap);

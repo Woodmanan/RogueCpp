@@ -17,9 +17,28 @@ typedef unsigned short ushort;
 typedef unsigned int uint;
 typedef uint16_t uint16;
 
+static constexpr int CHUNK_SIZE_X = 8;
+static constexpr int CHUNK_SIZE_Y = 8;
+static constexpr int CHUNK_SIZE_Z = 1;
+
+static constexpr uint LOCATION_MAX_X = 1 << 12;
+static constexpr uint LOCATION_MAX_Y = 1 << 12;
+static constexpr uint LOCATION_MAX_Z = 1 << 7;
+
+static constexpr uint CHUNK_MAX_X = LOCATION_MAX_X / CHUNK_SIZE_X;
+static constexpr uint CHUNK_MAX_Y = LOCATION_MAX_Y / CHUNK_SIZE_Y;
+static constexpr uint CHUNK_MAX_Z = LOCATION_MAX_Z / CHUNK_SIZE_Z;
+
 #ifdef _DEBUG
 #define LINK_TILE
 #endif
+
+template<typename T>
+T ModulusNegative(T value, T modulus)
+{
+    ASSERT(modulus > 0);
+    return ((value % modulus) + modulus) % modulus;
+}
 
 struct Vec2
 {
@@ -49,10 +68,76 @@ struct Vec3
     Vec3(short inX, short inY, short inZ) : x(inX), y(inY), z(inZ) {}
     Vec3(int inX, int inY, int inZ) : x((short)inX), y((short)inY), z((short)inZ) {}
 
+    static Vec3 WrapPosition(Vec3 inPosition);
+    static Vec3 WrapChunk(Vec3 inChunk);
+
+    Vec3& operator+= (const Vec3& rhs) // compound assignment (does not need to be a member,
+    {
+        x += rhs.x;
+        y += rhs.y;
+        z += rhs.z;
+        return *this; // return the result by reference
+    }
+
+    // friends defined inside class body are inline and are hidden from non-ADL lookup
+    friend Vec3 operator+(Vec3 lhs, const Vec3 & rhs)
+    {
+        lhs += rhs; // reuse compound assignment
+        return lhs; // return the result by value (uses move constructor)
+    }
+
+    Vec3& operator*= (const Vec3& rhs) // compound assignment (does not need to be a member,
+    {
+        x *= rhs.x;
+        y *= rhs.y;
+        z *= rhs.z;
+        return *this; // return the result by reference
+    }
+
+    // friends defined inside class body are inline and are hidden from non-ADL lookup
+    friend Vec3 operator*(Vec3 lhs, const Vec3& rhs)
+    {
+        lhs *= rhs; // reuse compound assignment
+        return lhs; // return the result by value (uses move constructor)
+    }
+
+    friend bool operator==(const Vec3& lhs, const Vec3& rhs)
+    {
+        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+    }
+
+    friend bool operator<(const Vec3& lhs, const Vec3& rhs)
+    {
+        return std::tie(lhs.x, lhs.y, lhs.z) < std::tie(rhs.x, rhs.y, rhs.z);
+    }
+
     short x;
     short y;
     short z;
 };
+
+namespace std {
+
+    inline size_t HashPtr(const char* ptr, size_t size)
+    {
+        size_t value = 0;
+        for (const char* it = ptr; it < (ptr + size); it++)
+        {
+            value = (hash<char>()(*it)) ^ (value << 1);
+        }
+
+        return value;
+    }
+
+    template <> struct hash<Vec3>
+    {
+        size_t operator()(const Vec3& value) const
+        {
+            const char* asChar = (char*)(&value);
+            return HashPtr(asChar, sizeof(Vec3));
+        }
+    };
+}
 
 enum Direction : char
 {
@@ -154,7 +239,7 @@ inline static Direction TurnClockwise(Direction direction)
     }
 }
 
-inline static Vec2 VectorFromDirection(const Direction direction)
+inline static Vec2 Vector2FromDirection(const Direction direction)
 {
     switch (direction)
     {
@@ -174,6 +259,29 @@ inline static Vec2 VectorFromDirection(const Direction direction)
         return Vec2(-1,  0);
     case NorthWest:
         return Vec2(-1,  1);
+    }
+}
+
+inline static Vec3 VectorFromDirection(const Direction direction)
+{
+    switch (direction)
+    {
+    case North:
+        return Vec3(0, 1, 0);
+    case NorthEast:
+        return Vec3(1, 1, 0);
+    case East:
+        return Vec3(1, 0, 0);
+    case SouthEast:
+        return Vec3(1, -1, 0);
+    case South:
+        return Vec3(0, -1, 0);
+    case SouthWest:
+        return Vec3(-1, -1, 0);
+    case West:
+        return Vec3(-1, 0, 0);
+    case NorthWest:
+        return Vec3(-1, 1, 0);
     }
 }
 
@@ -209,9 +317,14 @@ public:
     void SetVector(Vec3 vector);
 
     Vec2 AsVec2();
+    Vec3 GetChunkPosition();
+    Vec3 GetChunkLocalPosition();
+
 
     Tile& GetTile();
     Tile* operator ->();
+
+    Location GetNeighbor(Direction direction);
 
     friend bool operator<(const Location& l, const Location& r)
     {

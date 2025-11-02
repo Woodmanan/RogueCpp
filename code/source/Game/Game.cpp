@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "Debug/Profiling.h"
+#include "Data/JobSystem.h"
 #include "Data/RogueDataManager.h"
 #include "Data/RegisterSaveTypes.h"
 #include "Core/Materials/Materials.h"
@@ -92,12 +93,15 @@ void Game::InitNewGame()
 	Game::dataManager->RegisterArena<TileMemory>(20);
 	Game::dataManager->RegisterArena<MaterialContainer>(20);
 	Game::dataManager->RegisterArena<StatContainer>(200);
+	Game::dataManager->RegisterArena<ChunkMap>(1);
 
 	Game::statManager = new StatManager();
 	statManager->Init();
 
 	Game::materialManager = new MaterialManager();
 	materialManager->Init();
+
+	testMap = dataManager->Allocate<ChunkMap>();
 
 	Vec2 mapSize = Vec2(128, 128);
 	THandle<Map> map;
@@ -124,6 +128,11 @@ void Game::InitNewGame()
 		map->LinkBackingTile<BackingTile>(mudMat, airMat);
 		map->LinkBackingTile<BackingTile>(groundMat, airMat);
 		map->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
+
+		testMap->LinkBackingTile<BackingTile>(groundMat, woodWallMat);
+		testMap->LinkBackingTile<BackingTile>(mudMat, airMat);
+		testMap->LinkBackingTile<BackingTile>(groundMat, airMat);
+		testMap->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
 
 		map->FillTilesExc(Vec2(0, 0), mapSize, 0);
 		map->FillTilesExc(Vec2(1, 1), Vec2(mapSize.x - 1, mapSize.y - 1), 1);
@@ -178,6 +187,7 @@ void Game::Cleanup()
 {
 	delete Game::dataManager;
 	delete Game::materialManager;
+	delete Game::statManager;
 }
 
 void Game::HandleInput(const Input& input)
@@ -193,23 +203,27 @@ void Game::HandleInput(const Input& input)
 			auto move = playerLoc.Traverse(data->m_direction, lookDirection);
 			playerLoc = move.first;
 			lookDirection = Rotate(lookDirection, move.second);
-			m_playerData.GetCurrentMemory().Move(VectorFromDirection(data->m_direction));
+			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
 
-			m_currentMap->Simulate();
+			//m_currentMap->Simulate();
 
 			//auto data = input.Get<EInputType::Movement>();
 			los.SetRadius(30);
 			LOS::Calculate(los, playerLoc, lookDirection);
 			m_playerData.UpdateViewGame(los);
+
+			testMap->Simulate(playerLoc);
+			testMap->TriggerStreamingAroundLocation(playerLoc);
 		}
 		break;
 	case EInputType::DEBUG_FIRE:
 	{
-		playerLoc->m_heat += 1000;
+		testMap->AddHeat(playerLoc, 1000);
 	}
 	case EInputType::Wait:
 		{
-			m_currentMap->Simulate();
+			//m_currentMap->Simulate();
+			testMap->Simulate(playerLoc);
 
 			//auto data = input.Get<EInputType::Movement>();
 			los.SetRadius(30);
@@ -217,8 +231,16 @@ void Game::HandleInput(const Input& input)
 			m_playerData.UpdateViewGame(los);
 		}
 		break;
+	case EInputType::DEBUG_MAKE_STONE:
+		testMap->SetTile(playerLoc, 3);
+		break;
 	case EInputType::BeginNewGame:
 		InitNewGame();
+
+		testMap->TriggerStreamingAroundLocation(playerLoc);
+		//Assumably, we just enqueued a ton of jobs to get the game spun up - let that queue clear out before we start
+		testMap->WaitForStreaming();
+
 		//Game ready! Temp - boot up first view
 		los.SetRadius(30);
 		LOS::Calculate(los, playerLoc, lookDirection);

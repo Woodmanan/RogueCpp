@@ -523,7 +523,7 @@ namespace RogueResources
 
 			std::vector<std::string> tokens = string_split(line, ",");
 
-			ASSERT(tokens.size() == 7);
+			ASSERT(tokens.size() == 9);
 
 			if (tokens[0].empty()) { continue; }
 
@@ -534,10 +534,12 @@ namespace RogueResources
 			definition.name = tokens[0];
 			definition.density = string_to_float(tokens[1]);
 			definition.movementCost = string_to_float(tokens[2]);
-			definition.floorChar = tokens[3].empty() ? '\0' : tokens[3][0];
-			definition.wallChar = tokens[4].empty() ? '\0' : tokens[4][0];
-			definition.color = string_to_color(tokens[5]);
-			definition.phase = magic_enum::enum_cast<Phase>(tokens[6]).value();
+			definition.thermalConductivity = string_to_float(tokens[3]);
+			definition.heatCapacity = string_to_float(tokens[4]);
+			definition.floorChar = tokens[3].empty() ? '\0' : tokens[5][0];
+			definition.wallChar = tokens[4].empty() ? '\0' : tokens[6][0];
+			definition.color = string_to_color(tokens[7]);
+			definition.phase = magic_enum::enum_cast<Phase>(tokens[8]).value();
 
 			materials.push_back(definition);
 		}
