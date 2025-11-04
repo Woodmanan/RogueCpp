@@ -61,7 +61,6 @@ void Game::Save(std::string filename)
 	RogueSaveManager::Write("LookDir", lookDirection);
 	RogueSaveManager::Write("LOS", los);
 	RogueSaveManager::Write("PlayerData", m_playerData);
-	RogueSaveManager::Write("Map", m_currentMap);
 	RogueSaveManager::CloseWriteSaveFile();
 }
 
@@ -76,7 +75,6 @@ void Game::Load(std::string filename)
 		RogueSaveManager::Read("LookDir", lookDirection);
 		RogueSaveManager::Read("LOS", los);
 		RogueSaveManager::Read("PlayerData", m_playerData);
-		RogueSaveManager::Read("Map", m_currentMap);
 		RogueSaveManager::CloseReadSaveFile();
 	}
 }
@@ -87,13 +85,12 @@ void Game::InitNewGame()
 	Game::game = this;
 	Game::dataManager = new RogueDataManager();
 	Game::dataManager->RegisterArena<BackingTile>(20);
-	Game::dataManager->RegisterArena<TileStats>(20);
-	Game::dataManager->RegisterArena<Map>(20);
-	Game::dataManager->RegisterArena<TileNeighbors>(20);
-	Game::dataManager->RegisterArena<TileMemory>(20);
-	Game::dataManager->RegisterArena<MaterialContainer>(20);
-	Game::dataManager->RegisterArena<StatContainer>(200);
+	Game::dataManager->RegisterArena<TileStats>(200);
 	Game::dataManager->RegisterArena<ChunkMap>(1);
+	Game::dataManager->RegisterArena<TileNeighbors>(200);
+	Game::dataManager->RegisterArena<TileMemory>(1);
+	Game::dataManager->RegisterArena<MaterialContainer>(20);
+	Game::dataManager->RegisterArena<StatContainer>(20);
 
 	Game::statManager = new StatManager();
 	statManager->Init();
@@ -103,11 +100,7 @@ void Game::InitNewGame()
 
 	testMap = dataManager->Allocate<ChunkMap>();
 
-	Vec2 mapSize = Vec2(128, 128);
-	THandle<Map> map;
-
-	for (int i = 0; i < 1; i++)
-	{
+	{ // Backing tile linkage - TODO: Make this automatic!!
 		MaterialContainer groundMat;
 		groundMat.AddMaterial("Stone", 1000);
 
@@ -123,47 +116,21 @@ void Game::InitNewGame()
 		MaterialContainer stoneWallMat(true);
 		stoneWallMat.AddMaterial("Stone", 1000, true);
 
-		map = dataManager->Allocate<Map>(mapSize, i, -20.0f, 2);
-		map->LinkBackingTile<BackingTile>(groundMat, woodWallMat);
-		map->LinkBackingTile<BackingTile>(mudMat, airMat);
-		map->LinkBackingTile<BackingTile>(groundMat, airMat);
-		map->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
-
 		testMap->LinkBackingTile<BackingTile>(groundMat, woodWallMat);
 		testMap->LinkBackingTile<BackingTile>(mudMat, airMat);
 		testMap->LinkBackingTile<BackingTile>(groundMat, airMat);
 		testMap->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
-
-		map->FillTilesExc(Vec2(0, 0), mapSize, 0);
-		map->FillTilesExc(Vec2(1, 1), Vec2(mapSize.x - 1, mapSize.y - 1), 1);
-
-		std::srand(std::time({}));
-		for (int i = 0; i < 100; i++)
-		{
-			int r = (std::rand() % 5) + 1;
-			int x = std::rand() % (mapSize.x - r);
-			int y = std::rand() % (mapSize.y - r);
-
-			map->FillTilesExc(Vec2(x, y), Vec2(x + r, y + r), 0);
-		}
-
-		for (int i = 0; i < 100; i++)
-		{
-			int r = (std::rand() % 5) + 1;
-			int x = std::rand() % (mapSize.x - r);
-			int y = std::rand() % (mapSize.y - r);
-
-			map->FillTilesExc(Vec2(x, y), Vec2(x + r, y + r), 3);
-		}
 	}
 
-	m_currentMap = map;
-	m_playerData.GetCurrentMemory() = TileMemory(map);
+	m_playerData.GetCurrentMemory() = TileMemory();
 	m_playerData.GetCurrentMemory().Move(Vec2(1, 1));
 }
 
 void Game::MainLoop()
 {
+	std::string name = string_format("Game thread");
+	ROGUE_NAME_THREAD(name.c_str());
+
 	ROGUE_PROFILE;
 	while (active)
 	{
@@ -205,9 +172,6 @@ void Game::HandleInput(const Input& input)
 			lookDirection = Rotate(lookDirection, move.second);
 			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
 
-			//m_currentMap->Simulate();
-
-			//auto data = input.Get<EInputType::Movement>();
 			los.SetRadius(30);
 			LOS::Calculate(los, playerLoc, lookDirection);
 			m_playerData.UpdateViewGame(los);

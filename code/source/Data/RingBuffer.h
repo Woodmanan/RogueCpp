@@ -51,7 +51,7 @@ public:
 	}
 
 private:
-	std::mutex m_lock;
+	ROGUE_LOCK(std::mutex, m_lock);
 	std::array<T, N> m_data;
 	size_t m_head = 0;
 	size_t m_count = 0;

@@ -199,14 +199,6 @@ Location Location::GetNeighbor(Direction direction)
     }
 }
 
-bool Location::InMap()
-{
-    if (!GetValid()) { return false; }
-
-    Map* map = GetDataManager()->ResolveByTypeIndex<Map>(z());
-    return x() >= 0 && y() >= 0 && x() < map->m_size.x && y() < map->m_size.y;
-}
-
 std::pair<Location, Direction> Location::Traverse(Vec2 offset, Direction rotation)
 {
     return Traverse(offset.x, offset.y, rotation);
@@ -285,9 +277,6 @@ std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction directi
 {
     ROGUE_PROFILE_SECTION("LOS::_Traverse_No_Neighbor");
     ASSERT((!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid()));
-    Map* map = GetDataManager()->ResolveByTypeIndex<Map>(z());
-    ASSERT(map != nullptr);
-
     return std::make_pair(GetNeighbor(direction), North);
 }
 

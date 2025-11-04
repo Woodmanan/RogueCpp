@@ -70,12 +70,9 @@ bool DataTile::operator==(const Tile& other)
 	return (m_backingTile == other.m_backingTile) && (m_temperature == TemperatureFromHeat(other.m_heat) && (m_renderChar == renderChar) && (m_color == color));
 }
 
-TileMemory::TileMemory(THandle<Map> map)
+TileMemory::TileMemory()
 {
-	ASSERT(map.IsValid());
-	m_z = map->z;
-	m_size = map->m_size;
-	m_tiles.resize(m_size.x * m_size.y, DataTile());
+	m_tiles.resize(MEMORY_BUFFER_SIZE, DataTile());
 }
 
 void TileMemory::Update(View& los)
@@ -97,6 +94,18 @@ void TileMemory::Wipe()
 	std::fill(m_tiles.begin(), m_tiles.end(), DataTile());
 }
 
+void TileMemory::Move(Vec2 offset)
+{
+	ROGUE_PROFILE_SECTION("TileMemory::Move");
+	//Pre move - need to wipe out the edges of this map!
+	WipeLocalRect(Vec2(0, -MEMORY_RADIUS), Vec2(MEMORY_SIZE, 1));
+	WipeLocalRect(Vec2(0, MEMORY_RADIUS), Vec2(MEMORY_SIZE, 1));
+	WipeLocalRect(Vec2(-MEMORY_RADIUS, 0), Vec2(1, MEMORY_SIZE));
+	WipeLocalRect(Vec2(MEMORY_RADIUS, 0), Vec2(1, MEMORY_SIZE));
+
+	m_localPosition += offset;
+}
+
 void TileMemory::SetLocalPosition(Location location)
 {
 	m_localPosition = Vec2(location.x(), location.y());
@@ -105,77 +114,77 @@ void TileMemory::SetLocalPosition(Location location)
 void TileMemory::SetTileByLocal(int x, int y, Location location)
 {
 	ASSERT(location.GetValid());
-	if (m_wrap)
-	{
-		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
-		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
-	}
-
-	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
+	x = ModulusNegative<int>(x + m_localPosition.x, MEMORY_SIZE);
+	y = ModulusNegative<int>(y + m_localPosition.y, MEMORY_SIZE);
 
 	m_tiles[IndexIntoTilemap(x, y)] = DataTile::FromTile(location.GetTile());
 }
 
 void TileMemory::SetTileByLocal(int x, int y, const Tile& tile)
 {
-	if (m_wrap)
-	{
-		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
-		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
-	}
-
-	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
+	x = ModulusNegative<int>(x + m_localPosition.x, MEMORY_SIZE);
+	y = ModulusNegative<int>(y + m_localPosition.y, MEMORY_SIZE);
 
 	m_tiles[IndexIntoTilemap(x, y)] = DataTile::FromTile(tile);
 }
 
 void TileMemory::SetTileByLocal(int x, int y, const DataTile& tile)
 {
-	if (m_wrap)
-	{
-		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
-		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
-	}
-
-	if (x < 0 || x >= m_size.x || y < 0 || y >= m_size.y) { return; }
+	x = ModulusNegative<int>(x + m_localPosition.x, MEMORY_SIZE);
+	y = ModulusNegative<int>(y + m_localPosition.y, MEMORY_SIZE);
 
 	m_tiles[IndexIntoTilemap(x, y)] = tile;
 }
 
 bool TileMemory::ValidTile(int x, int y)
 {
-	if (m_wrap)
-	{
-		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
-		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
-	}
+	x = ModulusNegative<int>(x + m_localPosition.x, MEMORY_SIZE);
+	y = ModulusNegative<int>(y + m_localPosition.y, MEMORY_SIZE);
 
-	return (x >= 0 && x < m_size.x && y >= 0 && y < m_size.y);
+	return (x >= 0 && x < MEMORY_SIZE && y >= 0 && y < MEMORY_SIZE);
 }
 
 DataTile& TileMemory::GetTileByLocal(int x, int y)
 {
 	ASSERT(ValidTile(x, y));
-	if (m_wrap)
-	{
-		x = ((x + m_size.x) + m_localPosition.x) % m_size.x;
-		y = ((y + m_size.y) + m_localPosition.y) % m_size.y;
-	}
+	x = ModulusNegative<int>(x + m_localPosition.x, MEMORY_SIZE);
+	y = ModulusNegative<int>(y + m_localPosition.y, MEMORY_SIZE);
 
 	return m_tiles[IndexIntoTilemap(x, y)];
 }
 
 int TileMemory::IndexIntoTilemap(short x, short y)
 {
-#ifdef INTERLEAVE_TILES
-	int bigX = x >> interleaveBits;
-	int bigY = y >> interleaveBits;
-	int bigBlockIndex = (bigX + (m_size.x >> (interleaveBits)) * bigY) << (interleaveBits * 2);
+//#ifdef INTERLEAVE_TILES
+//	int bigX = x >> interleaveBits;
+//	int bigY = y >> interleaveBits;
+//	int bigBlockIndex = (bigX + (MEMORY_SIZE >> (interleaveBits)) * bigY) << (interleaveBits * 2);
+//
+//	int lilX = x & masks[interleaveBits];
+//	int lilY = y & masks[interleaveBits];
+//	return bigBlockIndex + lilX + (1 << interleaveBits) * lilY;
+//#else // INTERLEAVE
+	return (x + (MEMORY_SIZE * y));
+}
 
-	int lilX = x & masks[interleaveBits];
-	int lilY = y & masks[interleaveBits];
-	return bigBlockIndex + lilX + (1 << interleaveBits) * lilY;
-#else // INTERLEAVE
-	return (location.x + (m_size.x * location.y));
-#endif
+void TileMemory::WipeLocalRect(Vec2 position, Vec2 size)
+{
+	for (int xOff = 0; xOff < size.x; xOff++)
+	{
+		for (int yOff = 0; yOff < size.y; yOff++)
+		{
+			int x = ModulusNegative<int>(position.x + xOff + m_localPosition.x, MEMORY_SIZE);
+			int y = ModulusNegative<int>(position.y + yOff + m_localPosition.y, MEMORY_SIZE);
+
+			m_tiles[IndexIntoTilemap(x, y)] = DataTile();
+		}
+	}
+}
+
+Vec2 TileMemory::WrapVector(Vec2 vector)
+{
+	Vec2 outVector;
+	vector.x = ModulusNegative<short>(vector.x, MEMORY_SIZE);
+	vector.y = ModulusNegative<short>(vector.y, MEMORY_SIZE);
+	return outVector;
 }

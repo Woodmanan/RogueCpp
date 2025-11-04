@@ -38,23 +38,18 @@ struct DataTile
 	bool operator==(const Tile& other);
 };
 
+static constexpr uint MEMORY_RADIUS = 128;
+static constexpr uint MEMORY_SIZE = (2 * MEMORY_RADIUS) + 1;
+static constexpr uint MEMORY_BUFFER_SIZE = MEMORY_SIZE * MEMORY_SIZE;
+
 class TileMemory
 {
 public:
-	TileMemory() {}
-	TileMemory(THandle<Map> map);
+	TileMemory();
 
 	void Update(View& los);
 	void Wipe();
-	void Move(Vec2 offset)
-	{
-		m_localPosition += offset; 
-		if (m_wrap)
-		{
-			m_localPosition.x = (m_localPosition.x + m_size.x) % m_size.x;
-			m_localPosition.y = (m_localPosition.y + m_size.y) % m_size.y;
-		}
-	}
+	void Move(Vec2 offset);
 
 	void SetLocalPosition(Location location);
 	void SetTileByLocal(int x, int y, Location location);
@@ -65,11 +60,12 @@ public:
 	int IndexIntoTilemap(short x, short y);
 
 	vector<DataTile> m_tiles;
-
-	Vec2 m_size;
 	Vec2 m_localPosition;
-	int m_z = -1;
-	bool m_wrap = true;
+
+private:
+	void WipeLocalRect(Vec2 position, Vec2 size);
+
+	static Vec2 WrapVector(Vec2 vector);
 };
 
 namespace Serialization
@@ -107,20 +103,14 @@ namespace Serialization
 	template<typename Stream>
 	void Serialize(Stream& stream, const TileMemory& value)
 	{
-		Write(stream, "Size", value.m_size);
 		Write(stream, "Local Position", value.m_localPosition);
-		Write(stream, "Z Level", value.m_z);
-		Write(stream, "Wraps", value.m_wrap);
 		Write(stream, "Tile Memory", value.m_tiles);
 	}
 
 	template<typename Stream>
 	void Deserialize(Stream& stream, TileMemory& value)
 	{
-		Read(stream, "Size", value.m_size);
 		Read(stream, "Local Position", value.m_localPosition);
-		Read(stream, "Z Level", value.m_z);
-		Read(stream, "Wraps", value.m_wrap);
 		Read(stream, "Tile Memory", value.m_tiles);
 	}
 }

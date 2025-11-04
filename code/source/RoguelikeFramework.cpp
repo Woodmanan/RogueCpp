@@ -499,57 +499,6 @@ int main(int argc, char* argv[])
                 view.SetRadius(radius);
             }
             break;
-        case EKey::ENTER:
-            if (terminal_get_key(EKey::LEFT_SHIFT))
-            {
-                terminal_fullscreen();
-                break;
-            }
-
-            if (!warpPosition.GetValid())
-            {
-                warpPosition = playerLoc;
-            }
-            else
-            {
-                //Establish the warp!
-                currentIndex = std::min(currentIndex + 1, 5);
-                map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
-                map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
-
-                if (terminal_get_key(EKey::LEFT_SHIFT))
-                {
-                    Direction direction = ReadDirection(lookDirection);
-                    map->CreateDirectionalPortal(warpPosition.AsVec2(), playerLoc.AsVec2(), direction);
-                }
-                else
-                {
-                    map->CreatePortal(warpPosition.AsVec2(), playerLoc.AsVec2());
-                }
-                warpPosition = Location();
-            }
-            break;
-        case EKey::D:
-            if (!warpPosition.GetValid())
-            {
-                warpPosition = playerLoc;
-                warpDirection = ReadDirection(lookDirection);
-            }
-            else
-            {
-                //Establish the warp!
-                currentIndex = std::min(currentIndex + 1, 5);
-                map->SetTile(playerLoc.AsVec2(), currentIndex + 3);
-                map->SetTile(warpPosition.AsVec2(), currentIndex + 3);
-
-                Direction exitDirection = ReadDirection(lookDirection);
-
-                map->CreateBidirectionalPortal(warpPosition.AsVec2(), warpDirection, playerLoc.AsVec2(), exitDirection);
-
-                //Reset
-                warpPosition = Location();
-            }
-            break;
         case EKey::S:
             game.CreateInput<SaveAndExit>();
             shouldBreak = true;
@@ -887,8 +836,11 @@ int main(int argc, char* argv[])
 
         char fpsString[20];
         std::snprintf(fpsString, 20, "%f", 1.0f / frameTime.count());
-
         terminal_print(0, 0, fpsString);
+
+        char locString[20];
+        std::snprintf(locString, 20, "%d, %d", playerData.m_memory.m_localPosition.x, playerData.m_memory.m_localPosition.y);
+        terminal_print(1, 1, locString);
 
         {
             ROGUE_PROFILE_SECTION("Render");

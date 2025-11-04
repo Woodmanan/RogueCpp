@@ -52,8 +52,6 @@ void PlayerData::UpdateViewGame(View& newView)
 
 	afterStream.AllWritesFinished();
 	std::shared_ptr<VectorBackend> backend = dynamic_pointer_cast<VectorBackend>(afterStream.GetDataBackend());
-	DEBUG_PRINT("View bytes: %d", backend->m_data.size());
-
 	m_currentView = newView;
 	Game::game->CreateOutput<ViewUpdated>(afterStream);
 }
@@ -76,7 +74,11 @@ void PlayerData::UpdateViewPlayer(std::shared_ptr<TOutput<ViewUpdated>> updated)
 
 	int newRadius;
 	Serialization::Read(stream, "MaxRadius", newRadius);
-	Serialization::Read(stream, "Position", m_memory.m_localPosition);
+
+	Vec2 newPosition;
+	Serialization::Read(stream, "Position", newPosition);
+
+	m_memory.Move(newPosition - m_memory.m_localPosition);
 
 	m_currentView.SetRadius(newRadius);
 	for (int i = -newRadius; i <= newRadius; i++)

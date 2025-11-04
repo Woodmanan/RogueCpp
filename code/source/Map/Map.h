@@ -1,7 +1,8 @@
 #pragma once
-#include "Data/RogueDataManager.h"
 #include "Core/CoreDataTypes.h"
 #include "Core/Materials/Materials.h"
+#include "Data/RogueDataManager.h"
+#include "Debug/Profiling.h"
 #include <type_traits>
 #include <unordered_map>
 #include <set>
@@ -29,7 +30,7 @@ namespace Serialization
 
 //Static map data!
 //Chunk size defined in CoreDataTypes, since other systems might depend upon it
-static constexpr int ACTIVE_CHUNK_RADIUS = 8;
+static constexpr int ACTIVE_CHUNK_RADIUS = 12;
 static constexpr int LOAD_CHUNK_RADIUS = 16;
 
 //TODO: Unload radius!
@@ -172,82 +173,13 @@ private:
     friend void Serialization::Serialize(Stream& stream, const ChunkMap& value);
     template<typename Stream>
     friend void Serialization::Deserialize(Stream& stream, ChunkMap& value);
-
-    std::mutex m_mapMutex;
+    
+    ROGUE_LOCK(std::mutex, m_mapMutex);
     unordered_map<Vec3, Chunk*> m_chunks;
     unordered_map<Vec3, Chunk*> m_readyChunks;
     set<Vec3> m_loadingChunks;
     vector<THandle<BackingTile>> m_backingTiles;
     vector<vector<float>> m_heatScratch;
-};
-
-class Map
-{
-public:
-    Map() {}
-    Map(Vec2 size, int mapZ, float defaultHeat, int interleave = 2) : m_size(size), m_interleaveBits(interleave), m_defaultHeat(defaultHeat)
-    {
-        ASSERT(size.x % (1 << (interleave)) == 0);
-        ASSERT(size.y % (1 << (interleave)) == 0);
-
-        m_tiles.resize(size.x * size.y, Tile(defaultHeat));
-        z = mapZ;
-    }
-
-    Vec2 m_size;
-    int m_interleaveBits;
-    int z;
-    float m_defaultHeat;
-
-    vector<THandle<BackingTile>> m_backingTiles;
-    vector<Tile> m_tiles;
-
-    int IndexIntoMap(Vec2 location) const;
-    int IndexIntoMap(short x, short y) const;
-
-    Tile& GetTile(Vec2 location);
-    Tile& GetTile(ushort x, ushort y);
-    const Tile& GetTile(Vec2 location) const;
-    const Tile& GetTile(ushort x, ushort y) const;
-
-    void SetTile(Vec2 location, int index);
-    void SetTile(Vec2 location, THandle<BackingTile> tile);
-
-    void FillTilesInc(Vec2 from, Vec2 to, int index);
-    void FillTilesExc(Vec2 from, Vec2 to, int index);
-
-    void Reset();
-
-    THandle<TileStats> GetOrAddStats(Tile& tile);
-    THandle<TileNeighbors> GetOrAddNeighbors(Tile& tile);
-    void SetNeighbors(Tile& tile, TileNeighbors neighbors);
-
-    void WrapMapEdges();
-    void WrapTile(Vec2 location);
-    Location WrapVector(Vec2 location, int xOffset, int yOffset);
-    Location WrapLocation(Location location, int xOffset, int yOffset);
-    void SetNeighbor(Vec2 location, Direction direction, Location neighbor, Direction rotation = North);
-    Location GetNeighbor(Vec2 location, Direction direction);
-
-    void CreatePortal(Vec2 open, Vec2 exit);
-    void CreateDirectionalPortal(Vec2 open, Vec2 exit, Direction direction);
-    void CreateBidirectionalPortal(Vec2 open, Direction openDir, Vec2 exit, Direction exitDir);
-    
-    //Simulation controls
-public:
-    void Simulate();
-private:
-    void RunSimulationStep(Vec2 location, int timeStep, vector<float>& heatScratch);
-
-public:
-    int LinkBackingTile(THandle<BackingTile> tile);
-    template<typename T, class... Args>
-    int LinkBackingTile(Args&&... args)
-    {
-        static_assert(std::is_convertible<T*, BackingTile*>::value, "T must inherit from BackingTile");
-        THandle<BackingTile> tile = GetDataManager()->Allocate<T>(std::forward<Args>(args)...);
-        return LinkBackingTile(tile);
-    }
 };
 
 namespace Serialization
@@ -282,59 +214,6 @@ namespace Serialization
         Read(stream, "Neighbors", value.m_neighbors);
         Read(stream, "Floor", value.m_floorMaterials);
         Read(stream, "Volume", value.m_volumeMaterials);
-    }
-
-    template<typename Stream>
-    void Serialize(Stream& stream, const Map& value)
-    {
-        Write(stream, "Z", value.z);
-        Write(stream, "Size", value.m_size);
-        Write(stream, "Interleave", value.m_interleaveBits);
-        Write(stream, "Default Heat", value.m_defaultHeat);
-        Write(stream, "Backing Tiles", value.m_backingTiles);
-        if constexpr (std::is_same<Stream, JSONStream>::value)
-        {
-            for (int j = 0; j < value.m_size.y; j++)
-            {
-                for (int i = 0; i < value.m_size.x; i++)
-                {
-                    Vec2 location(i, j);
-                    Write(stream, "Location", location);
-                    Write(stream, "Tile", value.GetTile(location));
-                }
-            }
-        }
-        else
-        {
-            Write(stream, "Tiles", value.m_tiles);
-        }
-    }
-
-    template <typename Stream>
-    void Deserialize(Stream& stream, Map& value)
-    {
-        Read(stream, "Z", value.z);
-        Read(stream, "Size", value.m_size);
-        Read(stream, "Interleave", value.m_interleaveBits);
-        Read(stream, "Default Heat", value.m_defaultHeat);
-        Read(stream, "Backing Tiles", value.m_backingTiles);
-        value.m_tiles = std::vector<Tile>(value.m_size.x * value.m_size.y, Tile());
-        if constexpr (std::is_same<Stream, JSONStream>::value)
-        {
-            for (int j = 0; j < value.m_size.y; j++)
-            {
-                for (int i = 0; i < value.m_size.x; i++)
-                {
-                    Vec2 location(i, j);
-                    Read<Stream, Vec2>(stream, "Location");
-                    Read(stream, "Tile", value.GetTile(location));
-                }
-            }
-        }
-        else
-        {
-            Read(stream, "Tiles", value.m_tiles);
-        }
     }
 
     template<typename Stream>

@@ -341,8 +341,6 @@ public:
     void SetData(int newData) { m_data = newData; }
 #endif // _DEBUG
 
-    bool InMap();
-
     std::pair<Location, Direction> Traverse(Vec2 offset, Direction rotation = North);
     std::pair<Location, Direction> Traverse(short xOffset, short yOffset, Direction rotation = North);
     std::pair<Location, Direction> Traverse(Direction direction, Direction rotation = North);

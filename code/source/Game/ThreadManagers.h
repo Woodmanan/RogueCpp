@@ -7,7 +7,6 @@
 class Game;
 class RogueDataManager;
 class MaterialManager;
-class Map;
 class TileMemory;
 
 Game* GetGame();

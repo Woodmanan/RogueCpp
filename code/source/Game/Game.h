@@ -2,6 +2,7 @@
 #include "GameHeaders.h"
 #include "IO.h"
 #include "PlayerData.h"
+#include "Debug/Profiling.h"
 
 /*
  * Big game state! This represents a thread-specific black-box which is runnign
@@ -83,7 +84,6 @@ private:
 	std::mutex outputMutex;
 	std::vector<Output> m_outputs;
 
-	THandle<Map> m_currentMap;
 	Location playerLoc = Location(0,0,0);
 	Direction lookDirection = Direction::North;
 	View los;
