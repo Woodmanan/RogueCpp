@@ -116,6 +116,12 @@ struct Vec3
     short z;
 };
 
+struct Rect3
+{
+    Vec3 m_lower;
+    Vec3 m_upper;
+};
+
 namespace std {
 
     inline size_t HashPtr(const char* ptr, size_t size)

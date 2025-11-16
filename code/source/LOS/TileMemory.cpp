@@ -9,10 +9,6 @@
 #include <algorithm>
 #include <tuple>
 
-#define INTERLEAVE_TILES
-static const unsigned int masks[] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
-static const unsigned int interleaveBits = 4;
-
 ETemperature TemperatureFromHeat(float heat)
 {
 	if (heat <= 0.0f)
@@ -73,6 +69,10 @@ bool DataTile::operator==(const Tile& other)
 TileMemory::TileMemory()
 {
 	m_tiles.resize(MEMORY_BUFFER_SIZE, DataTile());
+
+#ifdef DEBUG
+	Debug_CheckIndexingDuplicates();
+#endif
 }
 
 void TileMemory::Update(View& los)
@@ -155,16 +155,38 @@ DataTile& TileMemory::GetTileByLocal(int x, int y)
 
 int TileMemory::IndexIntoTilemap(short x, short y)
 {
-//#ifdef INTERLEAVE_TILES
-//	int bigX = x >> interleaveBits;
-//	int bigY = y >> interleaveBits;
-//	int bigBlockIndex = (bigX + (MEMORY_SIZE >> (interleaveBits)) * bigY) << (interleaveBits * 2);
-//
-//	int lilX = x & masks[interleaveBits];
-//	int lilY = y & masks[interleaveBits];
-//	return bigBlockIndex + lilX + (1 << interleaveBits) * lilY;
-//#else // INTERLEAVE
-	return (x + (MEMORY_SIZE * y));
+	int bigX = x / INTERLEAVE_VALUE;
+	int lilX = x % INTERLEAVE_VALUE;
+	int bigY = y / INTERLEAVE_VALUE;
+	int lilY = y % INTERLEAVE_VALUE;
+
+	int bigValue = (bigX + bigY * (MEMORY_SIZE / (INTERLEAVE_VALUE))) * (INTERLEAVE_VALUE * INTERLEAVE_VALUE);
+	int lilValue = lilX + (lilY * INTERLEAVE_VALUE);
+
+	return bigValue + lilValue;
+	//return (x + (MEMORY_SIZE * y));
+}
+
+void TileMemory::Debug_CheckIndexingDuplicates()
+{
+	std::unordered_map<int, Vec2> indicesMap;
+	for (int j = 0; j < MEMORY_SIZE; j++)
+	{
+		for (int i = 0; i < MEMORY_SIZE; i++)
+		{
+			int index = IndexIntoTilemap(i, j);
+
+			if (indicesMap.contains(index))
+			{
+				Vec2 match = indicesMap[index];
+				DEBUG_PRINT("Duplicate indices!! [%d, %d] and [%d, %d]", match.x, match.y, i, j);
+			}
+			else
+			{
+				indicesMap[index] = Vec2(i, j);
+			}
+		}
+	}
 }
 
 void TileMemory::WipeLocalRect(Vec2 position, Vec2 size)

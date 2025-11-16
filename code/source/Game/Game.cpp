@@ -5,12 +5,14 @@
 #include "Data/RegisterSaveTypes.h"
 #include "Core/Materials/Materials.h"
 #include "Map/Map.h"
+#include "Map/WorldManager.h"
 #include "LOS/TileMemory.h"
 
 thread_local Game* Game::game = nullptr;
 thread_local RogueDataManager* Game::dataManager = nullptr;
 thread_local MaterialManager* Game::materialManager = nullptr;
 thread_local StatManager* Game::statManager = nullptr;
+thread_local WorldManager* Game::worldManager = nullptr;
 
 Game::Game()
 {
@@ -56,6 +58,7 @@ void Game::Save(std::string filename)
 {
 	ROGUE_PROFILE_SECTION("Save File");
 	RogueSaveManager::OpenWriteSaveFile(filename);
+	RogueSaveManager::Write("Seed", m_seed);
 	dataManager->SaveAll();
 	RogueSaveManager::Write("PlayerLoc", playerLoc);
 	RogueSaveManager::Write("LookDir", lookDirection);
@@ -69,6 +72,7 @@ void Game::Load(std::string filename)
 	ROGUE_PROFILE_SECTION("Load File");
 	if (RogueSaveManager::OpenReadSaveFile(filename))
 	{
+		RogueSaveManager::Read("Seed", m_seed);
 		//RogueSaveManager::Write("View", m_view);
 		dataManager->LoadAll();
 		RogueSaveManager::Read("PlayerLoc", playerLoc);
@@ -80,8 +84,18 @@ void Game::Load(std::string filename)
 }
 
 //Setup a fresh game
-void Game::InitNewGame()
+void Game::InitNewGame(uint seed)
 {
+	if (seed == 0)
+	{
+		srand(time(nullptr));
+		m_seed = rand();
+	}
+	else
+	{
+		m_seed = seed;
+	}
+
 	Game::game = this;
 	Game::dataManager = new RogueDataManager();
 	Game::dataManager->RegisterArena<BackingTile>(20);
@@ -97,6 +111,9 @@ void Game::InitNewGame()
 
 	Game::materialManager = new MaterialManager();
 	materialManager->Init();
+
+	Game::worldManager = new WorldManager();
+	worldManager->Init();
 
 	testMap = dataManager->Allocate<ChunkMap>();
 
@@ -213,7 +230,21 @@ void Game::HandleInput(const Input& input)
 		CreateOutput<GameReady>();
 		break;
 	case EInputType::BeginSeededGame:
-		break;
+	{
+		auto data = input.Get<BeginSeededGame>();
+		InitNewGame(data->seed);
+		testMap->TriggerStreamingAroundLocation(playerLoc);
+		//Assumably, we just enqueued a ton of jobs to get the game spun up - let that queue clear out before we start
+		testMap->WaitForStreaming();
+
+		//Game ready! Temp - boot up first view
+		los.SetRadius(30);
+		LOS::Calculate(los, playerLoc, lookDirection);
+		m_playerData.UpdateViewGame(los);
+
+		CreateOutput<GameReady>();
+	}
+	break;
 	case EInputType::LoadSaveGame:
 		{
 			InitNewGame();

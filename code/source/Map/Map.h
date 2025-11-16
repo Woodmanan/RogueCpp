@@ -167,8 +167,6 @@ private:
     void StreamChunk(Vec3 chunkId, Vec3 radius);
     void MainThread_InsertReadyChunks();
 
-    void LoadChunk(Vec3 chunk);
-
     template<typename Stream>
     friend void Serialization::Serialize(Stream& stream, const ChunkMap& value);
     template<typename Stream>

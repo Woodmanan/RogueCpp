@@ -5,7 +5,7 @@
 #include "Debug/Profiling.h"
 
 /*
- * Big game state! This represents a thread-specific black-box which is runnign
+ * Big game state! This represents a thread-specific black-box which is running the game sim
  */
 
 class Game
@@ -18,6 +18,7 @@ public:
 	static thread_local RogueDataManager* dataManager;
 	static thread_local MaterialManager* materialManager;
 	static thread_local StatManager* statManager;
+	static thread_local WorldManager* worldManager;
 
 	bool active = true;
 
@@ -67,7 +68,7 @@ public:
 	void Load(std::string filename);
 
 private:
-	void InitNewGame();
+	void InitNewGame(uint seed = 0);
 	void MainLoop();
 	void Cleanup();
 
@@ -90,4 +91,6 @@ private:
 	PlayerData m_playerData;
 
 	THandle<ChunkMap> testMap;
+
+	uint m_seed;
 };

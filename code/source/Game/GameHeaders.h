@@ -5,6 +5,7 @@
 #include "Data/SaveManager.h"
 #include "Data/Resources.h"
 #include "Map/Map.h"
+#include "Map/WorldManager.h"
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
 #include "Core/Stats/StatManager.h"

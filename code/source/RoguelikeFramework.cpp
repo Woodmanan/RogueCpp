@@ -298,9 +298,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        Input startInput;
-        startInput.Set<BeginNewGame>();
-        game.AddInput(startInput);
+        game.CreateInput<BeginSeededGame>(420);
     }
 
     PlayerData playerData;

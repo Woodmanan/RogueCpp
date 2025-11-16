@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/CoreDataTypes.h"
+#include "Core/Math/Math.h"
 #include "Map/Map.h"
 #include "Core/Materials/Materials.h"
 #include "Data/Serialization/BitStream.h"
@@ -38,8 +39,10 @@ struct DataTile
 	bool operator==(const Tile& other);
 };
 
-static constexpr uint MEMORY_RADIUS = 128;
-static constexpr uint MEMORY_SIZE = (2 * MEMORY_RADIUS) + 1;
+#define INTERLEAVE_TILES
+static constexpr uint INTERLEAVE_VALUE = 8;
+static constexpr uint MEMORY_RADIUS = 127;
+static constexpr uint MEMORY_SIZE = RoundUpNearestMultiple((2 * MEMORY_RADIUS) + 1, INTERLEAVE_VALUE);
 static constexpr uint MEMORY_BUFFER_SIZE = MEMORY_SIZE * MEMORY_SIZE;
 
 class TileMemory
@@ -63,6 +66,7 @@ public:
 	Vec2 m_localPosition;
 
 private:
+	void Debug_CheckIndexingDuplicates();
 	void WipeLocalRect(Vec2 position, Vec2 size);
 
 	static Vec2 WrapVector(Vec2 vector);

@@ -2,9 +2,6 @@
 #include "Game/Game.h"
 #include "Data/JobSystem.h"
 
-#define INTERLEAVE
-static const unsigned int masks[] = { 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F, 0x3F, 0x7F, 0xFF };
-
 bool Tile::operator==(const Tile& other)
 {
     return (m_backingTile == other.m_backingTile) && (m_stats == other.m_stats) && (m_heat == other.m_heat);
@@ -412,23 +409,28 @@ void ChunkMap::StreamChunk(Vec3 chunkId, Vec3 radius)
         {
             for (int z = -radius.z; z <= radius.z; z++)
             {
-                Vec3 chunk = chunkId + Vec3(x, y, z);
+                Vec3 chunkPos = chunkId + Vec3(x, y, z);
 
-                if (m_chunks.contains(chunk) || m_loadingChunks.contains(chunk))
+                if (m_chunks.contains(chunkPos) || m_loadingChunks.contains(chunkPos))
                 {
                     continue;
                 }
 
-                //DEBUG_PRINT("Begin: [%d, %d, %d]", chunk.x, chunk.y, chunk.z);
-                m_loadingChunks.insert(chunk);
+                m_loadingChunks.insert(chunkPos);
 
                 RogueDataManager* dataManager = Game::dataManager;
                 MaterialManager* materialManager = Game::materialManager;
-                Jobs::QueueJob([this, chunk, dataManager, materialManager]()
+                WorldManager* worldManager = Game::worldManager;
+                Jobs::QueueJob([this, chunkPos, dataManager, materialManager, worldManager]()
                     {
                         Game::dataManager = dataManager;
                         Game::materialManager = materialManager;
-                        LoadChunk(chunk);
+                        Game::worldManager = worldManager;
+                        ASSERT(Game::dataManager != nullptr);
+                        ASSERT(Game::materialManager != nullptr);
+                        ASSERT(Game::worldManager != nullptr);
+                        Chunk* chunk = worldManager->LoadChunk(chunkPos);
+                        AsyncAddChunk(chunkPos, chunk);
                     });
             }
         }
@@ -448,76 +450,5 @@ void ChunkMap::MainThread_InsertReadyChunks()
     }
 
     m_readyChunks.clear();
-
     m_mapMutex.unlock();
-}
-
-void ChunkMap::LoadChunk(Vec3 chunk)
-{
-    ROGUE_PROFILE_SECTION("ChunkMap::LoadChunk");
-    ASSERT(Game::dataManager != nullptr);
-    Chunk* newChunk = new Chunk(chunk);
-
-    if ((chunk.y / 4) % 2 == 1)
-    {
-        for (int x = 0; x < CHUNK_SIZE_X; x++)
-        {
-            for (int y = 0; y < CHUNK_SIZE_Y; y++)
-            {
-                for (int z = 0; z < CHUNK_SIZE_Z; z++)
-                {
-                    newChunk->SetTile(Vec3(x, y, z), m_backingTiles[0]);
-                }
-            }
-        }
-    }
-    else //if ((chunk.x + chunk.y) % 4 == 1)
-    {
-        for (int x = 0; x < CHUNK_SIZE_X; x++)
-        {
-            for (int y = 0; y < CHUNK_SIZE_Y; y++)
-            {
-                for (int z = 0; z < CHUNK_SIZE_Z; z++)
-                {
-                    if (x <= 1 || x > 6 || y <= 1 || y > 6)
-                    {
-                        newChunk->SetTile(Vec3(x, y, z), m_backingTiles[1]);
-                    }
-                    else
-                    {
-                        newChunk->SetTile(Vec3(x, y, z), m_backingTiles[0]);
-                    }
-                }
-            }
-        }
-    }
-    /*else
-    {
-        for (int x = 0; x < CHUNK_SIZE_X; x++)
-        {
-            for (int y = 0; y < CHUNK_SIZE_Y; y++)
-            {
-                for (int z = 0; z < CHUNK_SIZE_Z; z++)
-                {
-                    newChunk->SetTile(Vec3(x, y, z), m_backingTiles[1]);
-                }
-            }
-        }
-    }*/
-
-    //Set default heat values
-    float defaultHeat = -4.f;
-    newChunk->SetDefaultHeat(defaultHeat);
-    for (int x = 0; x < CHUNK_SIZE_X; x++)
-    {
-        for (int y = 0; y < CHUNK_SIZE_Y; y++)
-        {
-            for (int z = 0; z < CHUNK_SIZE_Z; z++)
-            {
-                newChunk->GetTile(Vec3(x, y, z)).m_heat = defaultHeat;
-            }
-        }
-    }
-
-    AsyncAddChunk(chunk, newChunk);
 }

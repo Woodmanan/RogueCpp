@@ -59,10 +59,13 @@ template<>
 class TInput<BeginSeededGame> : public TInputBase<BeginSeededGame>
 {
 public:
+	TInput() { seed = 0; }
+	TInput(uint seedValue) { seed = seedValue; }
+
 	void Serialize(DefaultStream& stream);
 	void Deserialize(DefaultStream& stream);
 
-	int seed;
+	uint seed;
 };
 
 template<>
