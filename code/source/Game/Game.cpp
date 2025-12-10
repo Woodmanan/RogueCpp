@@ -105,6 +105,7 @@ void Game::InitNewGame(uint seed)
 	Game::dataManager->RegisterArena<TileMemory>(1);
 	Game::dataManager->RegisterArena<MaterialContainer>(20);
 	Game::dataManager->RegisterArena<StatContainer>(20);
+	Game::dataManager->RegisterArena<Monster>(200);
 
 	Game::statManager = new StatManager();
 	statManager->Init();

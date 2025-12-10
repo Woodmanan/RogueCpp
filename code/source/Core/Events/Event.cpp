@@ -7,8 +7,7 @@ void FireEvent(EventData& data)
 {
 	ROGUE_PROFILE;
 	EEventType type = data.type;
-	int n = 0;
-	STACKARRAY(EventHandler*, handlers, 100);
+	STACKARRAY(EventHandler*, handlers, 200);
 
 	for (int i = 0; i < data.targets.size(); i++)
 	{
@@ -18,20 +17,20 @@ void FireEvent(EventData& data)
 		for (int j = 0; j < container->eventHandlers.size(); j++)
 		{
 			EventHandler* handler = container->eventHandlers[j];
+			ASSERT(handler != nullptr);
 			if (handler->GetPriority(type) >= 0)
 			{
-				handlers[n] = handler;
-				n++;
+				handlers.push_back(handler);
 			}
 		}
 	}
 
-	std::sort(handlers, handlers + n, [type](const EventHandler* lhs, const EventHandler* rhs)
+	std::sort(handlers.begin(), handlers.end(), [type](const EventHandler* lhs, const EventHandler* rhs)
 	{
 		return lhs->GetPriority(type) < rhs->GetPriority(type);
 	});
 
-	for (int i = 0; i < n; i++)
+	for (uint i = 0; i < handlers.size(); i++)
 	{
 		ASSERT(handlers[i] != nullptr);
 		bool finish = handlers[i]->HandleEvent(type, data);

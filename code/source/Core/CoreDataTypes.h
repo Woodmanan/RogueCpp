@@ -1,33 +1,11 @@
 #pragma once
+#include "CoreDataTypes.Forward.h"
 #define GLM_FORCE_DEFAULT_ALIGNED_GENTYPES
 #include "glm/glm.hpp"
 #include "Debug/Debug.h"
 #include <type_traits>
 #include <tuple>
 #include "Data/Serialization/Serialization.h"
-
-class Tile;
-class TileNeighbors;
-
-template<typename T>
-class THandle;
-
-typedef unsigned char uchar;
-typedef unsigned short ushort;
-typedef unsigned int uint;
-typedef uint16_t uint16;
-
-static constexpr int CHUNK_SIZE_X = 8;
-static constexpr int CHUNK_SIZE_Y = 8;
-static constexpr int CHUNK_SIZE_Z = 1;
-
-static constexpr uint LOCATION_MAX_X = 1 << 12;
-static constexpr uint LOCATION_MAX_Y = 1 << 12;
-static constexpr uint LOCATION_MAX_Z = 1 << 7;
-
-static constexpr uint CHUNK_MAX_X = LOCATION_MAX_X / CHUNK_SIZE_X;
-static constexpr uint CHUNK_MAX_Y = LOCATION_MAX_Y / CHUNK_SIZE_Y;
-static constexpr uint CHUNK_MAX_Z = LOCATION_MAX_Z / CHUNK_SIZE_Z;
 
 #ifdef _DEBUG
 #define LINK_TILE

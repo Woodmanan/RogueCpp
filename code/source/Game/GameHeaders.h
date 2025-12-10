@@ -11,6 +11,7 @@
 #include "Core/Stats/StatManager.h"
 #include "Core/Materials/Materials.h"
 #include "Core/Events/Event.h"
+#include "Core/Monster/Monster.h"
 #include "Data/RegisterSaveTypes.h"
 
 #include <filesystem>

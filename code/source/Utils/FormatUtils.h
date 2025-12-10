@@ -25,4 +25,10 @@ void string_format_print(const std::string& format, Args ... args)
     std::cout << string_format(format, args ...) << std::endl;
 }
 
+template<typename ... Args>
+void string_format_print_error(const std::string& format, Args ... args)
+{
+    std::cerr << string_format(format, args ...) << std::endl;
+}
+
 std::vector<std::string> string_split(const std::string& string, const std::string& splitOn);

@@ -805,7 +805,7 @@ void VulkanTerminal::CreateVertices()
 	{
 		for (uint x = 0; x < TERMINAL_WIDTH; x++)
 		{
-			uint16 vertexIndex = vertices.size();
+			ushort vertexIndex = vertices.size();
 			float minX = (((float)x) / TERMINAL_WIDTH) * 2 - 1;
 			float maxX = (((float)x + 1) / TERMINAL_WIDTH) * 2 - 1;
 			float minY = (((float)y) / TERMINAL_HEIGHT) * 2 - 1;

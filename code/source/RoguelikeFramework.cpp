@@ -22,6 +22,7 @@
 #include "Render/UI/UIManager.h"
 #include "Core/Materials/Materials.h"
 #include "Core/Events/Event.h"
+#include "Core/Collections/StackArray.h"
 #include "Debug/Profiling.h"
 #include "Render/Fonts/FontManager.h"
 #include "Render/Terminal.h"
@@ -219,6 +220,22 @@ void SetupResources(uint resourceThreads)
     ResourceManager::Get()->LaunchThreads(resourceThreads);
 }
 
+void TestStackArray()
+{
+    STACKARRAY(uint, values, 100);
+    for (uint i = 0; i < 100; i++)
+    {
+        ASSERT(values.size() == i);
+        values.push_back(i);
+        ASSERT(values.size() == i + 1);
+
+        for (uint j = 0; j <= i; j++)
+        {
+            ASSERT(values[j] == j);
+        }
+    }
+}
+
 void TestEvents()
 {
     ROGUE_PROFILE_SECTION("Test Events");
@@ -350,6 +367,7 @@ int main(int argc, char* argv[])
     terminal_print(34, 20, "Hello World! I am here!");
     terminal_refresh();
 
+    TestStackArray();
     TestEvents();
 
     View view;

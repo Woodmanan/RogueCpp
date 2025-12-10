@@ -466,7 +466,8 @@ std::filesystem::path ResourceManager::GetSource(const HashID& name)
 	{
 		return fileNames[name];
 	}
-		
+	
+	PRINT_ERR("No filename associated with HashID %zu: is it in the resources directory?", name);
 	return std::filesystem::path();
 }
 

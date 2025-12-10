@@ -17,7 +17,7 @@ Tile ValueToTileConverter::GetTile(Vec3 tilePosition)
     Tile tile;
     float value = m_provider->GetValue(tilePosition);
 
-    if (value < .5f)
+    if (value < .4f)
     {
         tile.m_backingTile = m_backingTiles[0];
     }
