@@ -21,6 +21,7 @@
 #include "Render/UI/Label.h"
 #include "Render/UI/UIManager.h"
 #include "Core/Materials/Materials.h"
+#include "Core/Monster/BaseDrivers.h"
 #include "Core/Events/Event.h"
 #include "Core/Collections/StackArray.h"
 #include "Debug/Profiling.h"
@@ -207,6 +208,8 @@ void SetupResources(uint resourceThreads)
 {
     ResourceManager::InitResources();
 
+    AddCodeDefinedResources();
+
     //TODO: Add new pieces!
     ResourceManager::Get()->Register("Mat", &RogueResources::PackMaterial, &RogueResources::LoadMaterial);
     ResourceManager::Get()->Register("Reaction", &RogueResources::PackReaction, &RogueResources::LoadReaction);
@@ -218,6 +221,11 @@ void SetupResources(uint resourceThreads)
     ResourceManager::Get()->Register("Font", PackFont, LoadFont);
 
     ResourceManager::Get()->LaunchThreads(resourceThreads);
+}
+
+void AddCodeDefinedResources()
+{
+    ResourceManager::Get()->SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(nullptr, new CrushingDriver()));
 }
 
 void TestStackArray()

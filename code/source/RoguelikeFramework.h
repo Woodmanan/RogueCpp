@@ -19,4 +19,5 @@ void CycleDrawState(EDrawState& state)
 }
 
 void SetupResources();
+void AddCodeDefinedResources();
 // TODO: Reference additional headers your program requires here.

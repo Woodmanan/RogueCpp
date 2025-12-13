@@ -68,6 +68,35 @@ pair<int, bool> Tile::GetVisibleMaterial() const
     }
 }
 
+void Tile::BreakWall()
+{
+    ASSERT(m_wall);
+
+    if (!UsingInstanceData())
+    {
+        CreateInstanceData();
+    }
+
+    STACKARRAY(Material, materialsToMove, 20);
+    for (const Material& material : m_stats->m_volumeMaterials.m_materials)
+    {
+        MaterialDefinition definition = GetMaterialManager()->GetMaterialDefinition(material);
+        if (definition.phase == Phase::Solid)
+        {
+            materialsToMove.push_back(material);
+        }
+    }
+
+    for (const Material& material : materialsToMove)
+    {
+        m_stats->m_volumeMaterials.RemoveMaterial(material);
+        m_stats->m_floorMaterials.AddMaterial(material);
+    }
+
+    m_wall = false;
+    m_dirty = true;
+}
+
 Chunk::Chunk(Vec3 chunkLocation)
 {
     m_chunkLocation = chunkLocation;

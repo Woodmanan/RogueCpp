@@ -75,7 +75,7 @@ void MaterialContainer::AddMaterial(const Material& material, int index)
 	SortLayers();
 }
 
-void MaterialContainer::RemoveMaterial(const MaterialDefinition& material, float mass)
+void MaterialContainer::RemoveMaterial(int materialID, float mass)
 {
 	if (mass == 0) { return; }
 
@@ -84,8 +84,8 @@ void MaterialContainer::RemoveMaterial(const MaterialDefinition& material, float
 
 	for (int i = layerMin; i < layerMax; i++)
 	{
-		if (m_materials[i].m_materialID != material.ID) { continue; }
-		
+		if (m_materials[i].m_materialID != materialID) { continue; }
+
 		if ((m_materials[i].m_mass - mass) > 0.01f)
 		{
 			m_materials[i].m_mass -= mass;
@@ -101,6 +101,16 @@ void MaterialContainer::RemoveMaterial(const MaterialDefinition& material, float
 
 	//Removed material wasn't in the last layer!
 	HALT();
+}
+
+void MaterialContainer::RemoveMaterial(const MaterialDefinition& material, float mass)
+{
+	RemoveMaterial(material.ID, mass);
+}
+
+void MaterialContainer::RemoveMaterial(const Material& material)
+{
+	RemoveMaterial(material.m_materialID, material.m_mass);
 }
 
 void MaterialContainer::SortLayers()
@@ -361,7 +371,7 @@ bool MaterialManager::CheckReaction(MaterialContainer& one, MaterialContainer& t
 bool MaterialManager::EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat)
 {
 	//Having an empty container invalidates a reaction - self reaction will catch it!
-	if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return false; }
+	//if (one.m_materials.size() == 0 || two.m_materials.size() == 0) { return false; }
 
 	MixtureContainer mixture;
 	mixture.LoadMixture(one, two);
@@ -419,6 +429,11 @@ void MaterialManager::ExecuteReaction(Reaction& reaction, MixtureContainer& mixt
 	}
 
 	heat += (reaction.m_deltaHeat * reactionMultiple);
+}
+
+const MaterialDefinition& MaterialManager::GetMaterialDefinition(const Material& material)
+{
+	return GetMaterialByID(material.m_materialID);
 }
 
 const MaterialDefinition& MaterialManager::GetMaterialByID(int index)

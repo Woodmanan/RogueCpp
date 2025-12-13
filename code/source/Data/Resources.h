@@ -174,6 +174,8 @@ public:
 	bool IsResourceLoaded(const HashID& id);
 	std::shared_ptr<void> GetResource(const HashID& id);
 	void InsertLoadedResource(const HashID& id, const HashID& name, std::shared_ptr<void> ptr);
+	void SetResource(const HashID& type, const HashID& name, std::shared_ptr<void> ptr);
+	void SetResource(const HashID& id, std::shared_ptr<void> ptr);
 
 private:
 	std::filesystem::path GetSource(const HashID& name);

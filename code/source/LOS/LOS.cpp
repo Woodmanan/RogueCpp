@@ -1,6 +1,7 @@
 #include "LOS.h"
 #include "Map/Map.h"
 #include "Debug/Profiling.h"
+#include "Core/Monster/Monster.h"
 #include <algorithm>
 
 void View::SetRadius(int radius)
@@ -167,6 +168,12 @@ float View::Debug_GetHeatPercentageLocal(int x, int y)
 
 namespace LOS
 {
+	void Calculate(THandle<Monster> monster, uchar maxPass)
+	{
+		ASSERT(monster.IsValid());
+		Calculate(monster->GetView(), monster->GetLocation(), monster->GetRotation(), maxPass);
+	}
+
 	void Calculate(View& view, Location location, Direction rotation, uchar maxPass)
 	{
 		ROGUE_PROFILE_SECTION("LOS::Calculate");

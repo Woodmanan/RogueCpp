@@ -17,3 +17,16 @@ void WalkingDriver::GetConnectedPositions(Location location, StackArray<Location
 	locations.push_back(location.GetNeighbor(Direction::West));
 	locations.push_back(location.GetNeighbor(Direction::NorthWest));
 }
+
+bool CrushingDriver::CanStandOn(Location location)
+{
+	return location.GetValid();
+}
+
+void CrushingDriver::OnMovedOnTile(Location location, Monster& monster, float& cost)
+{
+	if (location->m_wall)
+	{
+		location->BreakWall();
+	}
+}

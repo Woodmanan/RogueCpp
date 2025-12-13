@@ -97,6 +97,19 @@ public:
 		return m_size;
 	}
 
+	bool contains(const T& value)
+	{
+		for (const T& containedValue : *this)
+		{
+			if (value == containedValue)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 private:
 	T* m_buffer;
 	uint m_size = 0;

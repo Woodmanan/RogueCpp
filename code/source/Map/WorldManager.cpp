@@ -56,8 +56,8 @@ void WorldManager::Init()
     MaterialContainer dirtMat;
     dirtMat.AddMaterial("Dirt", 1000, true);
 
-    THandle<BackingTile> wall = Game::dataManager->Allocate<BackingTile>(groundMat, stoneWallMat);
-    THandle<BackingTile> floor = Game::dataManager->Allocate<BackingTile>(dirtMat, airMat);
+    THandle<BackingTile> wall = Game::dataManager->Allocate<BackingTile>(groundMat, woodWallMat);
+    THandle<BackingTile> floor = Game::dataManager->Allocate<BackingTile>(mudMat, airMat);
 
     std::vector<THandle<BackingTile>> tiles;
     tiles.push_back(wall);

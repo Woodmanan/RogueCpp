@@ -320,6 +320,18 @@ public:
 #endif
     }
 
+    friend bool operator==(const Location& l, const Location& r)
+    {
+#ifndef _DEBUG
+        return l.m_data == r.m_data;
+#else
+        return (l.m_valid == r.m_valid) &&
+               (l.m_x == r.m_x) &&
+               (l.m_y == r.m_y) &&
+               (l.m_z == r.m_z);
+#endif
+    }
+
 #ifndef _DEBUG
     const int& GetData() const { return m_data; }
     void SetData(int newData) { m_data = newData; }

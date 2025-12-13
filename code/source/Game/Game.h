@@ -85,12 +85,11 @@ private:
 	std::mutex outputMutex;
 	std::vector<Output> m_outputs;
 
-	Location playerLoc = Location(0,0,0);
-	Direction lookDirection = Direction::North;
-	View los;
-	PlayerData m_playerData;
+	THandle<ChunkMap> map;
 
-	THandle<ChunkMap> testMap;
+	//Player controls
+	THandle<Monster> m_player;
+	PlayerData m_playerData;
 
 	uint m_seed;
 };

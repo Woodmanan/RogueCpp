@@ -63,7 +63,9 @@ struct MaterialContainer
 	void AddMaterial(int materialIndex, float mass, bool staticMaterial, int index = -1);
 	void AddMaterial(const std::string& name, float mass, bool staticMaterial = false);
 	void AddMaterial(const Material& material, int index = -1);
+	void RemoveMaterial(int materialID, float mass);
 	void RemoveMaterial(const MaterialDefinition& material, float mass);
+	void RemoveMaterial(const Material& material);
 	void SortLayers();
 	void CollapseDuplicates();
 
@@ -130,6 +132,7 @@ public:
 	bool EvaluateReaction(MaterialContainer& one, MaterialContainer& two, float& heat);
 	void ExecuteReaction(Reaction& reaction, MixtureContainer& mixture, MaterialContainer& one, MaterialContainer& two, float& heat);
 
+	const MaterialDefinition& GetMaterialDefinition(const Material& material);
 	const MaterialDefinition& GetMaterialByID(int index);
 	const MaterialDefinition& GetMaterialByName(const std::string& name);
 	

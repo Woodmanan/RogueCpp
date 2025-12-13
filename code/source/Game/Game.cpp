@@ -60,9 +60,7 @@ void Game::Save(std::string filename)
 	RogueSaveManager::OpenWriteSaveFile(filename);
 	RogueSaveManager::Write("Seed", m_seed);
 	dataManager->SaveAll();
-	RogueSaveManager::Write("PlayerLoc", playerLoc);
-	RogueSaveManager::Write("LookDir", lookDirection);
-	RogueSaveManager::Write("LOS", los);
+	RogueSaveManager::Write("Player", m_player);
 	RogueSaveManager::Write("PlayerData", m_playerData);
 	RogueSaveManager::CloseWriteSaveFile();
 }
@@ -75,9 +73,7 @@ void Game::Load(std::string filename)
 		RogueSaveManager::Read("Seed", m_seed);
 		//RogueSaveManager::Write("View", m_view);
 		dataManager->LoadAll();
-		RogueSaveManager::Read("PlayerLoc", playerLoc);
-		RogueSaveManager::Read("LookDir", lookDirection);
-		RogueSaveManager::Read("LOS", los);
+		RogueSaveManager::Read("Player", m_player);
 		RogueSaveManager::Read("PlayerData", m_playerData);
 		RogueSaveManager::CloseReadSaveFile();
 	}
@@ -116,7 +112,7 @@ void Game::InitNewGame(uint seed)
 	Game::worldManager = new WorldManager();
 	worldManager->Init();
 
-	testMap = dataManager->Allocate<ChunkMap>();
+	map = dataManager->Allocate<ChunkMap>();
 
 	{ // Backing tile linkage - TODO: Make this automatic!!
 		MaterialContainer groundMat;
@@ -134,14 +130,17 @@ void Game::InitNewGame(uint seed)
 		MaterialContainer stoneWallMat(true);
 		stoneWallMat.AddMaterial("Stone", 1000, true);
 
-		testMap->LinkBackingTile<BackingTile>(groundMat, woodWallMat);
-		testMap->LinkBackingTile<BackingTile>(mudMat, airMat);
-		testMap->LinkBackingTile<BackingTile>(groundMat, airMat);
-		testMap->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
+		map->LinkBackingTile<BackingTile>(groundMat, woodWallMat);
+		map->LinkBackingTile<BackingTile>(mudMat, airMat);
+		map->LinkBackingTile<BackingTile>(groundMat, airMat);
+		map->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
 	}
 
+	m_player = dataManager->Allocate<Monster>(ResourceManager::Get()->LoadSynchronous("MonsterDefinition", "Player"));
+	m_player->SetLocation(Location(0, 0, 0));
+
 	m_playerData.GetCurrentMemory() = TileMemory();
-	m_playerData.GetCurrentMemory().Move(Vec2(1, 1));
+	//m_playerData.GetCurrentMemory().Move(Vec2(1, 1));
 }
 
 void Game::MainLoop()
@@ -185,48 +184,48 @@ void Game::HandleInput(const Input& input)
 		{
 			ROGUE_PROFILE_SECTION("Handle Movement Input");
 			std::shared_ptr<TInput<Movement>> data = input.Get<Movement>();
-			auto move = playerLoc.Traverse(data->m_direction, lookDirection);
-			playerLoc = move.first;
-			lookDirection = Rotate(lookDirection, move.second);
-			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
+			bool canMove = m_player->Move(data->m_direction);
 
-			los.SetRadius(30);
-			LOS::Calculate(los, playerLoc, lookDirection);
-			m_playerData.UpdateViewGame(los);
+			if (canMove)
+			{
+				m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
 
-			testMap->Simulate(playerLoc);
-			testMap->TriggerStreamingAroundLocation(playerLoc);
+				m_player->GetView().SetRadius(30);
+				LOS::Calculate(m_player);
+				m_playerData.UpdateViewGame(m_player->GetView());
+
+				map->Simulate(m_player->GetLocation());
+				map->TriggerStreamingAroundLocation(m_player->GetLocation());
+			}
 		}
 		break;
 	case EInputType::DEBUG_FIRE:
 	{
-		testMap->AddHeat(playerLoc, 1000);
+		map->AddHeat(m_player->GetLocation(), 1000);
 	}
 	case EInputType::Wait:
 		{
-			//m_currentMap->Simulate();
-			testMap->Simulate(playerLoc);
+			map->Simulate(m_player->GetLocation());
 
-			//auto data = input.Get<EInputType::Movement>();
-			los.SetRadius(30);
-			LOS::Calculate(los, playerLoc, lookDirection);
-			m_playerData.UpdateViewGame(los);
+			m_player->GetView().SetRadius(30);
+			LOS::Calculate(m_player);
+			m_playerData.UpdateViewGame(m_player->GetView());
 		}
 		break;
 	case EInputType::DEBUG_MAKE_STONE:
-		testMap->SetTile(playerLoc, 3);
+		map->SetTile(m_player->GetLocation(), 3);
 		break;
 	case EInputType::BeginNewGame:
 		InitNewGame();
 
-		testMap->TriggerStreamingAroundLocation(playerLoc);
+		map->TriggerStreamingAroundLocation(m_player->GetLocation());
 		//Assumably, we just enqueued a ton of jobs to get the game spun up - let that queue clear out before we start
-		testMap->WaitForStreaming();
+		map->WaitForStreaming();
 
 		//Game ready! Temp - boot up first view
-		los.SetRadius(30);
-		LOS::Calculate(los, playerLoc, lookDirection);
-		m_playerData.UpdateViewGame(los);
+		m_player->GetView().SetRadius(30);
+		LOS::Calculate(m_player);
+		m_playerData.UpdateViewGame(m_player->GetView());
 
 		CreateOutput<GameReady>();
 		break;
@@ -234,14 +233,14 @@ void Game::HandleInput(const Input& input)
 	{
 		auto data = input.Get<BeginSeededGame>();
 		InitNewGame(data->seed);
-		testMap->TriggerStreamingAroundLocation(playerLoc);
+		map->TriggerStreamingAroundLocation(m_player->GetLocation());
 		//Assumably, we just enqueued a ton of jobs to get the game spun up - let that queue clear out before we start
-		testMap->WaitForStreaming();
+		map->WaitForStreaming();
 
 		//Game ready! Temp - boot up first view
-		los.SetRadius(30);
-		LOS::Calculate(los, playerLoc, lookDirection);
-		m_playerData.UpdateViewGame(los);
+		m_player->GetView().SetRadius(30);
+		LOS::Calculate(m_player);
+		m_playerData.UpdateViewGame(m_player->GetView());
 
 		CreateOutput<GameReady>();
 	}
@@ -251,7 +250,7 @@ void Game::HandleInput(const Input& input)
 			InitNewGame();
 			auto data = input.Get<LoadSaveGame>();
 			Load(data->fileName);
-			m_playerData.UpdateViewGame(los);
+			m_playerData.UpdateViewGame(m_player->GetView());
 			CreateOutput<GameReady>();
 		}
 		break;

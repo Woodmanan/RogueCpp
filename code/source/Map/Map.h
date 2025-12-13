@@ -102,6 +102,9 @@ public:
     bool UsingInstanceData() const;
     void CreateInstanceData();
     pair<int, bool> GetVisibleMaterial() const;
+
+    //Util functions
+    void BreakWall();
 };
 
 class Chunk

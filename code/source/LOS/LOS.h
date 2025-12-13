@@ -18,6 +18,7 @@ class TileStats;
 class TileNeighbors;
 class Tile;
 class Location;
+class Monster;
 
 using namespace std;
 
@@ -132,6 +133,7 @@ namespace LOS
 	};
 
 	//Core shadowcasting
+	void Calculate(THandle<Monster> monster, uchar maxPass = 255);
 	void Calculate(View& view, Location location, Direction rotation, uchar maxPass = 255);
 	void CalculateQuadrant(View& view, View& scratch, Direction direction, Direction rotation, uchar maxPass);
 	void Scan(View& view, View& scratch, Direction direction, Row& row, uchar maxPass);

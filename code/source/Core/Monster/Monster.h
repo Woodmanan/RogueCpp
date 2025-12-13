@@ -1,7 +1,9 @@
+#pragma once
 #include "Core/CoreDataTypes.h"
 #include "Data/Resources.h"
 #include "Data/Serialization/Serialization.h"
 #include "Core/Collections/StackArray.h"
+#include "LOS/LOS.h"
 
 class BodyDriver;
 class MovementDriver;
@@ -24,6 +26,10 @@ struct TileBody
 
 class MonsterDefinition
 {
+public:
+	MonsterDefinition() {}
+	MonsterDefinition(BodyDriver* bodyDriver, MovementDriver* movementDriver) : m_bodyDriver(bodyDriver), m_movementDrivers({ movementDriver }) {}
+
 	BodyDriver* m_bodyDriver;
 	std::vector<MovementDriver*> m_movementDrivers;
 };
@@ -32,9 +38,26 @@ class Monster
 {
 public:
 	Monster() {}
+	Monster(TResourcePointer<MonsterDefinition> definition) : m_definition(definition) {}
+
+	Location GetLocation();
+	void SetLocation(Location newLocation);
+
+	View& GetView() { return m_view; }
+	Direction GetRotation() { return m_rotation; }
+	void SetRotation(Direction rotation);
+	
+	bool Move(Direction direction);
+	MovementDriver* GetDriverForMovement(Direction direction);
+
+	bool CanMove(Direction direction);
 
 private:
 	TResourcePointer<MonsterDefinition> m_definition;
+
+	Location m_location;
+	View m_view;
+	Direction m_rotation;
 
 	template<typename Stream>
 	friend void Serialization::Serialize(Stream& stream, const Monster& value);
@@ -54,6 +77,8 @@ class MovementDriver
 public:
 	virtual	bool CanStandOn(Location location) = 0;
 	virtual void GetConnectedPositions(Location location, StackArray<Location>& locations) = 0;
+	virtual void OnMovementTaken(Monster& monster);
+	virtual void OnMovedOnTile(Location location, Monster& monster, float& cost);
 	void FillValidPositions(Location location, StackArray<Location>&locations);
 	void AddIfValid(Location location, StackArray<Location>& locations);
 };
@@ -82,12 +107,14 @@ namespace Serialization
 	template<typename Stream>
 	void Serialize(Stream& stream, const Monster& value)
 	{
-		Write(stream, "Definition", value.m_definition);
+		//Write(stream, "Definition", value.m_definition);
 	}
 
 	template<typename Stream>
 	void Deserialize(Stream& stream, Monster& value)
 	{
-		Read(stream, "Definition", value.m_definition);
+		PRINT_ERR("Whoops, can't deserialize monsters yet.");
+		HALT();
+		//Read(stream, "Definition", value.m_definition);
 	}
 }

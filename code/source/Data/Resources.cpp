@@ -441,6 +441,18 @@ void ResourceManager::InsertLoadedResource(const HashID& id, const HashID& name,
 	inProgress.erase(name);
 }
 
+void ResourceManager::SetResource(const HashID& type, const HashID& name, std::shared_ptr<void> ptr)
+{
+	HashID ID = HashID::Mix(type, name);
+	SetResource(ID, ptr);
+}
+
+void ResourceManager::SetResource(const HashID& id, std::shared_ptr<void> ptr)
+{
+	std::unique_lock lock(resourceMutex);
+	loadedResources[id] = ptr;
+}
+
 bool ResourceManager::HasResourceRequests()
 {
 	std::lock_guard lock(loadingMutex);
