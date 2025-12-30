@@ -1,6 +1,17 @@
 #include "Monster.h"
 #include "Map/Map.h"
 
+Monster::Monster(TResourcePointer<MonsterDefinition> definition) : m_definition(definition)
+{
+	ASSERT(definition.IsValid() && definition.IsReady());
+	//ASSERT(definition->m_bodyDriver != nullptr);
+	ASSERT(!definition->m_movementDrivers.empty());
+
+	//m_bodyTiles.resize(definition->m_bodyTiles.size());
+
+	//definition->m_bodyDriver->InitMonster(*this, definition);
+}
+
 Location Monster::GetLocation()
 {
 	return m_location;
@@ -29,7 +40,7 @@ bool Monster::Move(Direction direction)
 	SetRotation(Rotate(m_rotation, move.second));
 
 	float cost = 1.0f;
-	driver->OnMovedOnTile(move.first, *this, cost); //TODO: Real costing!
+	driver->OnMovedOnTile(*this, move.first, cost); //TODO: Real costing!
 
 	return true;
 }
@@ -48,12 +59,16 @@ MovementDriver* Monster::GetDriverForMovement(Direction direction)
 		}
 		else
 		{
-			STACKARRAY(Location, validMoves, 30);
-			driver->FillValidPositions(m_location, validMoves);
+			//TODO: Make this a ranking search
+			MovementArray validMoves;
+			driver->GetConnectedMovements(m_location, validMoves);
 
-			if (validMoves.contains(destination))
+			for (const Movement& movement : validMoves)
 			{
-				return driver;
+				if (movement.m_location == destination)
+				{
+					return driver;
+				}
 			}
 		}
 	}
@@ -66,31 +81,31 @@ bool Monster::CanMove(Direction direction)
 	return (GetDriverForMovement(direction) != nullptr);
 }
 
+Movement Movement::FromLocation(Location location)
+{
+	return { location, location->m_movementCost };
+}
+
 void MovementDriver::OnMovementTaken(Monster& monster)
 {
 
 }
 
-void MovementDriver::OnMovedOnTile(Location location, Monster& monster, float& cost)
+void MovementDriver::OnMovedOnTile(Monster& monster, Location location, float& cost)
 {
 
 }
 
-void MovementDriver::FillValidPositions(Location location, StackArray<Location>& locations)
+void MovementDriver::FillValidMovements(Location location, MovementArray& outMovements)
 {
-	STACKARRAY(Location, allPositions, 20);
-	GetConnectedPositions(location, allPositions);
+	MovementArray allMovements;
+	GetConnectedMovements(location, allMovements);
 
-	for (Location& loc : allPositions)
+	for (Movement& move : allMovements)
 	{
-		AddIfValid(loc, locations);
-	}
-}
-
-void MovementDriver::AddIfValid(Location location, StackArray<Location>& locations)
-{
-	if (CanStandOn(location))
-	{
-		locations.push_back(location);
+		if (CanStandOn(move.m_location))
+		{
+			outMovements.push_back(move);
+		}
 	}
 }

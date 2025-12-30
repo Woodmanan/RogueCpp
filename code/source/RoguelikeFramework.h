@@ -9,6 +9,7 @@
 enum class EDrawState
 {
 	Normal,
+	Path,
 	Temperature,
 	COUNT
 };

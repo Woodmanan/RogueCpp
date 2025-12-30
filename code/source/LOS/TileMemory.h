@@ -63,6 +63,7 @@ public:
 	int IndexIntoTilemap(short x, short y);
 
 	vector<DataTile> m_tiles;
+	vector<Location> m_realLocations;
 	Vec2 m_localPosition;
 
 private:

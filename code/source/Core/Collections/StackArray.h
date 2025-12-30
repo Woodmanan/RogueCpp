@@ -110,6 +110,22 @@ public:
 		return false;
 	}
 
+	bool empty() const
+	{
+		return m_size == 0;
+	}
+
+	void reverse()
+	{
+		for (size_t index = 0; index < m_size / 2; index++)
+		{
+			size_t opposite = m_size - 1 - index;
+			T hold = operator[](index);
+			operator[](index) = operator[](opposite);
+			operator[](opposite) = hold;
+		}
+	}
+
 private:
 	T* m_buffer;
 	uint m_size = 0;

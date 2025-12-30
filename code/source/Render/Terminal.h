@@ -57,6 +57,7 @@ enum EKey
 	NUM_7 = TK_7,
 	NUM_8 = TK_8,
 	NUM_9 = TK_9,
+	MOUSE_UPATE = TK_MOUSE_MOVE
 };
 
 inline void terminal_color(Color color)
@@ -96,6 +97,16 @@ inline int terminal_height()
 	return terminal_state(TK_HEIGHT);
 }
 
+inline int terminal_mouse_x()
+{
+	return terminal_state(TK_MOUSE_X);
+}
+
+inline int terminal_mouse_y()
+{
+	return terminal_state(TK_MOUSE_Y);
+}
+
 inline void terminal_set_font(string name)
 {
 	TResourcePointer<std::vector<unsigned char>> fontBuffer = ResourceManager::Get()->LoadSynchronous("Font", name);
@@ -109,6 +120,7 @@ inline void terminal_custom_init()
 		std::cout << "Terminal failed to init!" << std::endl;
 	}
 	terminal_set("window: title='Unnamed Roguelike', size=80x25, resizable=true, fullscreen=false;");
+	terminal_set("input.filter = [keyboard, mouse]");
 }
 
 inline void terminal_fullscreen()

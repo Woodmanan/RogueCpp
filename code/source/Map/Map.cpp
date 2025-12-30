@@ -1,6 +1,7 @@
 #include "Map.h"
 #include "Game/Game.h"
 #include "Data/JobSystem.h"
+#include "Core/Collections/StackArray.h"
 
 bool Tile::operator==(const Tile& other)
 {

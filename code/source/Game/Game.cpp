@@ -7,6 +7,7 @@
 #include "Map/Map.h"
 #include "Map/WorldManager.h"
 #include "LOS/TileMemory.h"
+#include "Core/Pathfinding/Pathfinding.h"
 
 thread_local Game* Game::game = nullptr;
 thread_local RogueDataManager* Game::dataManager = nullptr;
@@ -181,37 +182,37 @@ void Game::HandleInput(const Input& input)
 	case EInputType::InvalidInput:
 		break;
 	case EInputType::Movement:
+	{
+		ROGUE_PROFILE_SECTION("Handle Movement Input");
+		std::shared_ptr<TInput<Movement>> data = input.Get<Movement>();
+		bool canMove = m_player->Move(data->m_direction);
+
+		if (canMove)
 		{
-			ROGUE_PROFILE_SECTION("Handle Movement Input");
-			std::shared_ptr<TInput<Movement>> data = input.Get<Movement>();
-			bool canMove = m_player->Move(data->m_direction);
+			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
 
-			if (canMove)
-			{
-				m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
+			m_player->GetView().SetRadius(30);
+			LOS::Calculate(m_player);
+			m_playerData.UpdateViewGame(m_player->GetView());
 
-				m_player->GetView().SetRadius(30);
-				LOS::Calculate(m_player);
-				m_playerData.UpdateViewGame(m_player->GetView());
-
-				map->Simulate(m_player->GetLocation());
-				map->TriggerStreamingAroundLocation(m_player->GetLocation());
-			}
+			map->Simulate(m_player->GetLocation());
+			map->TriggerStreamingAroundLocation(m_player->GetLocation());
 		}
-		break;
+	}
+	break;
 	case EInputType::DEBUG_FIRE:
 	{
 		map->AddHeat(m_player->GetLocation(), 1000);
 	}
 	case EInputType::Wait:
-		{
-			map->Simulate(m_player->GetLocation());
+	{
+		map->Simulate(m_player->GetLocation());
 
-			m_player->GetView().SetRadius(30);
-			LOS::Calculate(m_player);
-			m_playerData.UpdateViewGame(m_player->GetView());
-		}
-		break;
+		m_player->GetView().SetRadius(30);
+		LOS::Calculate(m_player);
+		m_playerData.UpdateViewGame(m_player->GetView());
+	}
+	break;
 	case EInputType::DEBUG_MAKE_STONE:
 		map->SetTile(m_player->GetLocation(), 3);
 		break;
@@ -246,20 +247,46 @@ void Game::HandleInput(const Input& input)
 	}
 	break;
 	case EInputType::LoadSaveGame:
-		{
-			InitNewGame();
-			auto data = input.Get<LoadSaveGame>();
-			Load(data->fileName);
-			m_playerData.UpdateViewGame(m_player->GetView());
-			CreateOutput<GameReady>();
-		}
-		break;
+	{
+		InitNewGame();
+		auto data = input.Get<LoadSaveGame>();
+		Load(data->fileName);
+		m_playerData.UpdateViewGame(m_player->GetView());
+		CreateOutput<GameReady>();
+	}
+	break;
 	case EInputType::SaveAndExit:
 		Save("TestSave.rsf");
 		active = false;
 		break;
 	case EInputType::ExitGame:
 		active = false;
+		break;
+	case EInputType::RequestPath:
+		{
+			Vec3 offset = input.Get<RequestPath>()->m_localOffset;
+			Location playerLoc = m_player->GetLocation();
+			Location offsetLoc = Location(playerLoc.GetVector() + offset);
+
+			STACKARRAY(Location, locations, 60);
+			Pathfinding::PathfindingSettings settings;
+			settings.m_maxCost = 30;
+			settings.driver = m_player->GetDefinition()->m_movementDrivers[0];
+			if (Pathfinding::GetPath(playerLoc, offsetLoc, settings, locations))
+			{
+				vector<Vec2> offsets;
+				for (Location location : locations)
+				{
+					Vec2 diff = location.AsVec2() - playerLoc.AsVec2();
+					offsets.push_back(diff);
+				}
+				CreateOutput<RecievePath>(offsets);
+			}
+			else
+			{
+				CreateOutput<RecievePath>(vector<Vec2>());
+			}
+		}
 		break;
 	}
 }

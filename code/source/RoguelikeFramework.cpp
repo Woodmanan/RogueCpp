@@ -94,6 +94,28 @@ void Render_Player_Data(PlayerData& data, Window* window, Location playerLocatio
     window->Put(window->m_rect.w / 2, window->m_rect.h / 2, '@', Color(0,0,0), Color(255,255,255));
 }
 
+std::vector<Vec2> lastPath;
+void Render_Path(PlayerData& data, Window* window)
+{
+    View& view = data.GetCurrentView();
+    TileMemory& memory = data.GetCurrentMemory();
+
+    for (Vec2 offset : lastPath)
+    {
+        int localX = offset.x;
+        int localY = offset.y;
+        int windowX = offset.x + (window->m_rect.w / 2);
+        int windowY = (window->m_rect.h / 2) - offset.y;
+
+        if (memory.ValidTile(localX, localY))
+        {
+            DataTile& dataTile = data.GetTileForLocal(localX, localY);
+            BackingTile& tile = data.GetBackingTileForLocal(localX, localY);
+            window->Put(windowX, windowY, dataTile.m_renderChar, Color(255, 255, 255), Color(255, 255, 255));
+        }
+    }
+}
+
 void Render_Temperature(PlayerData& data, Window* window, Location playerLocation)
 {
     ROGUE_PROFILE;
@@ -225,7 +247,9 @@ void SetupResources(uint resourceThreads)
 
 void AddCodeDefinedResources()
 {
-    ResourceManager::Get()->SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(nullptr, new CrushingDriver()));
+    std::vector<BodyTileDefinitions> bodyParts;
+    bodyParts.push_back({ '@', Color(255,255,0) });
+    ResourceManager::Get()->SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(nullptr, new MiningDriver(), bodyParts));
 }
 
 void TestStackArray()
@@ -590,6 +614,16 @@ int main(int argc, char* argv[])
             std::snprintf(&buffer[0], 50, "window: size=%dx%d", (x + 1), (y + 1));
             terminal_set(&buffer[0]);
             break;
+        case EKey::MOUSE_UPATE:
+        {
+            if (drawState == EDrawState::Path)
+            {
+                int localMouseX = terminal_mouse_x() - (terminal_width() / 2);
+                int localMouseY = (terminal_height() / 2) - terminal_mouse_y();
+                game.CreateInput<RequestPath>(Vec3(localMouseX, localMouseY, 0));
+            }
+            break;
+        }
         case EKey::A: //Anchors!
             Window* selected = nullptr;
 
@@ -774,6 +808,9 @@ int main(int argc, char* argv[])
             case ViewUpdated:
                 playerData.UpdateViewPlayer(output.Get<ViewUpdated>());
                 break;
+            case RecievePath:
+                lastPath = output.Get<RecievePath>()->m_offsets;
+                break;
             default:
                 // Unhandled case! Either invalid, or this output type needs to be handled.
                 HALT();
@@ -799,6 +836,10 @@ int main(int argc, char* argv[])
         {
         case EDrawState::Normal:
             Render_Player_Data(playerData, renderWindow, playerLoc);
+            break;
+        case EDrawState::Path:
+            Render_Player_Data(playerData, renderWindow, playerLoc);
+            Render_Path(playerData, renderWindow);
             break;
         case EDrawState::Temperature:
             Render_Temperature(playerData, renderWindow, playerLoc);

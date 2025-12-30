@@ -2,12 +2,28 @@
 
 class WalkingDriver : public MovementDriver
 {
+protected:
 	virtual	bool CanStandOn(Location location) override;
-	virtual void GetConnectedPositions(Location location, StackArray<Location>& locations) override;
+	virtual void GetConnectedMovements(Location location, MovementArray& outMovements) override;
 };
 
-class CrushingDriver : public WalkingDriver
+class MiningDriver : public WalkingDriver
 {
 	virtual	bool CanStandOn(Location location) override;
-	virtual void OnMovedOnTile(Location location, Monster& monster, float& cost) override;
+	virtual void GetConnectedMovements(Location location, MovementArray& outMovements) override;
+	virtual void OnMovedOnTile(Monster& monster, Location location, float& cost) override;
 };
+
+/*class RectangularBodyDriver : public BodyDriver
+{
+public:
+	RectangularBodyDriver(Vec2 dimensions) : m_dimensions(dimensions) {}
+
+	virtual	bool CanStandOn(Location location) override;
+	virtual void GetConnectedPositions(Location location, StackArray<Location>& locations) override;
+	virtual void InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition) override;
+	virtual void OnMovementFinished(THandle<Monster> monster) override;
+
+private:
+	Vec2 m_dimensions;
+};*/

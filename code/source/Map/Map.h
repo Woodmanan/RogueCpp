@@ -94,6 +94,7 @@ public:
 	THandle<TileStats> m_stats;
     bool m_wall;
     float m_heat;
+    float m_movementCost = 1.0f;
     bool m_dirty = false;
 
     bool operator==(const Tile& other);

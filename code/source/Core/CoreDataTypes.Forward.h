@@ -21,3 +21,5 @@ static constexpr uint LOCATION_MAX_Z = 1 << 7;
 static constexpr uint CHUNK_MAX_X = LOCATION_MAX_X / CHUNK_SIZE_X;
 static constexpr uint CHUNK_MAX_Y = LOCATION_MAX_Y / CHUNK_SIZE_Y;
 static constexpr uint CHUNK_MAX_Z = LOCATION_MAX_Z / CHUNK_SIZE_Z;
+
+static constexpr float BIG_FLOAT = 1000000000.0f;

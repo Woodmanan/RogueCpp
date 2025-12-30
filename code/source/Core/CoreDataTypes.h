@@ -29,14 +29,14 @@ struct Vec2
 
     Vec2& operator+=(const Vec2& rhs) 
     {
-        this->x += rhs.x;
-        this->y += rhs.y;
+        x += rhs.x;
+        y += rhs.y;
         return *this;
     }
 
     bool operator==(const Vec2& rhs)
     {
-        return this->x == rhs.x && this->y == rhs.y;
+        return x == rhs.x && y == rhs.y;
     }
 };
 
@@ -99,29 +99,6 @@ struct Rect3
     Vec3 m_lower;
     Vec3 m_upper;
 };
-
-namespace std {
-
-    inline size_t HashPtr(const char* ptr, size_t size)
-    {
-        size_t value = 0;
-        for (const char* it = ptr; it < (ptr + size); it++)
-        {
-            value = (hash<char>()(*it)) ^ (value << 1);
-        }
-
-        return value;
-    }
-
-    template <> struct hash<Vec3>
-    {
-        size_t operator()(const Vec3& value) const
-        {
-            const char* asChar = (char*)(&value);
-            return HashPtr(asChar, sizeof(Vec3));
-        }
-    };
-}
 
 enum Direction : char
 {
@@ -501,6 +478,38 @@ inline Color Blend(Color f, Color s, float percent)
     uchar b = Lerp(f.b, s.b, percent);
     uchar a = Lerp(f.a, s.a, percent);
     return Color(r, g, b, a);
+}
+
+namespace std
+{
+    inline size_t HashPtr(const char* ptr, size_t size)
+    {
+        size_t value = 0;
+        for (const char* it = ptr; it < (ptr + size); it++)
+        {
+            value = (hash<char>()(*it)) ^ (value << 1);
+        }
+
+        return value;
+    }
+
+    template <> struct hash<Vec3>
+    {
+        size_t operator()(const Vec3& value) const
+        {
+            const char* asChar = (char*)(&value);
+            return HashPtr(asChar, sizeof(Vec3));
+        }
+    };
+
+    template <> struct hash<Location>
+    {
+        size_t operator()(const Location& value) const
+        {
+            const char* asChar = (char*)(&value);
+            return HashPtr(asChar, sizeof(Location));
+        }
+    };
 }
 
 namespace Serialization

@@ -2,7 +2,7 @@
 #include "Core/CoreDataTypes.h"
 #include "Data/Resources.h"
 #include "Data/Serialization/Serialization.h"
-#include "Core/Collections/StackArray.h"
+#include "Core/Collections/FixedArrary.h"
 #include "LOS/LOS.h"
 
 class BodyDriver;
@@ -17,28 +17,33 @@ namespace Serialization
 	void Deserialize(Stream& stream, Monster& value);
 }
 
-struct TileBody
+struct BodyTileDefinitions
 {
-	Vec3 position;
 	char sprite;
 	Color color;
+};
+
+struct BodyTile
+{
+	Location location;
 };
 
 class MonsterDefinition
 {
 public:
 	MonsterDefinition() {}
-	MonsterDefinition(BodyDriver* bodyDriver, MovementDriver* movementDriver) : m_bodyDriver(bodyDriver), m_movementDrivers({ movementDriver }) {}
+	MonsterDefinition(BodyDriver* bodyDriver, MovementDriver* movementDriver, vector<BodyTileDefinitions> definitions) : m_bodyDriver(bodyDriver), m_movementDrivers({ movementDriver }), m_bodyTiles(definitions) {}
 
 	BodyDriver* m_bodyDriver;
 	std::vector<MovementDriver*> m_movementDrivers;
+	vector<BodyTileDefinitions> m_bodyTiles;
 };
 
 class Monster
 {
 public:
 	Monster() {}
-	Monster(TResourcePointer<MonsterDefinition> definition) : m_definition(definition) {}
+	Monster(TResourcePointer<MonsterDefinition> definition);
 
 	Location GetLocation();
 	void SetLocation(Location newLocation);
@@ -51,6 +56,9 @@ public:
 	MovementDriver* GetDriverForMovement(Direction direction);
 
 	bool CanMove(Direction direction);
+	bool CouldAnyMovementStandOn(Location location);
+
+	TResourcePointer<MonsterDefinition> GetDefinition() { return m_definition; }
 
 private:
 	TResourcePointer<MonsterDefinition> m_definition;
@@ -59,12 +67,24 @@ private:
 	View m_view;
 	Direction m_rotation;
 
+	vector<BodyTile> m_bodyTiles;
+
 	template<typename Stream>
 	friend void Serialization::Serialize(Stream& stream, const Monster& value);
 	template<typename Stream>
 	friend void Serialization::Deserialize(Stream& stream, Monster& value);
 	friend class BodyDriver;
 };
+
+struct Movement
+{
+	Location m_location;
+	float m_cost;
+
+	static Movement FromLocation(Location location);
+};
+
+using MovementArray = FixedArray<Movement, 20>;
 
 /* Additive movement modifiers
  * 
@@ -76,11 +96,10 @@ class MovementDriver
 {
 public:
 	virtual	bool CanStandOn(Location location) = 0;
-	virtual void GetConnectedPositions(Location location, StackArray<Location>& locations) = 0;
+	virtual void GetConnectedMovements(Location location, MovementArray& outMovements) = 0;
 	virtual void OnMovementTaken(Monster& monster);
-	virtual void OnMovedOnTile(Location location, Monster& monster, float& cost);
-	void FillValidPositions(Location location, StackArray<Location>&locations);
-	void AddIfValid(Location location, StackArray<Location>& locations);
+	virtual void OnMovedOnTile(Monster& monster, Location location, float& cost);
+	void FillValidMovements(Location location, MovementArray& outMovements);
 };
 
 /* Semi-effect type of class
@@ -97,6 +116,11 @@ class BodyDriver : public MovementDriver
 {
 public:
 	BodyDriver() {}
+
+	//MovementDriver* FindBestDriverForMovement(Monster& monster, StackArray<Location>& path, Direction direction);
+	//bool CanMovementStandOn(Monster& monster, MovementDriver* driver, StackArray<Location>& path, Location location) = 0;
+
+	virtual void InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition) = 0;
 
 	//For reorganizing the body after a movment!
 	virtual void OnMovementFinished(THandle<Monster> monster) = 0;

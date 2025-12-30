@@ -11,6 +11,7 @@ enum EInputType
 	InvalidInput,
 	Movement,
 	Wait,
+	RequestPath,
 	BeginNewGame,
 	BeginSeededGame,
 	LoadSaveGame,
@@ -53,6 +54,19 @@ public:
 	void Deserialize(DefaultStream& stream);
 
 	Direction m_direction;
+};
+
+template<>
+class TInput<RequestPath> : public TInputBase<RequestPath>
+{
+public:
+	TInput() { m_localOffset = Vec3(0, 0, 0); }
+	TInput(Vec3 offset) { m_localOffset = offset; }
+
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
+
+	Vec3 m_localOffset;
 };
 
 template<>
@@ -127,7 +141,8 @@ enum EOutputType
 {
 	InvalidOutput,
 	GameReady,
-	ViewUpdated
+	ViewUpdated,
+	RecievePath
 };
 
 class OutputBase
@@ -166,6 +181,19 @@ public:
 	void Deserialize(DefaultStream& stream);
 
 	std::vector<char> m_data;
+};
+
+template <>
+class TOutput<RecievePath> : public TOutputBase<RecievePath>
+{
+public:
+	TOutput() {}
+	TOutput(const vector<Vec2>& offsets) : m_offsets(offsets) {}
+
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
+
+	vector<Vec2> m_offsets;
 };
 
 struct Output

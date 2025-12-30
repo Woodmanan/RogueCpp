@@ -10,6 +10,16 @@ void TInput<Movement>::Deserialize(DefaultStream& stream)
 	Serialization::Read(stream, "Direction", m_direction);
 }
 
+void TInput<RequestPath>::Serialize(DefaultStream& stream)
+{
+	Serialization::Write(stream, "Offset", m_localOffset);
+}
+
+void TInput<RequestPath>::Deserialize(DefaultStream& stream)
+{
+	Serialization::Read(stream, "Offset", m_localOffset);
+}
+
 void TInput<BeginSeededGame>::Serialize(DefaultStream& stream)
 {
 	Serialization::Write(stream, "Seed", seed);
@@ -38,4 +48,14 @@ void TOutput<ViewUpdated>::Serialize(DefaultStream& stream)
 void TOutput<ViewUpdated>::Deserialize(DefaultStream& stream)
 {
 	Serialization::ReadRawBytes(stream, "data", m_data);
+}
+
+void TOutput<RecievePath>::Serialize(DefaultStream& stream)
+{
+	Serialization::Write(stream, "Offsets", m_offsets);
+}
+
+void TOutput<RecievePath>::Deserialize(DefaultStream& stream)
+{
+	Serialization::Read(stream, "Offsets", m_offsets);
 }
