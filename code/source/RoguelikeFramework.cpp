@@ -249,7 +249,7 @@ void AddCodeDefinedResources()
 {
     std::vector<BodyTileDefinitions> bodyParts;
     bodyParts.push_back({ '@', Color(255,255,0) });
-    ResourceManager::Get()->SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(nullptr, new MiningDriver(), bodyParts));
+    ResourceManager::Get()->SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(new RectangularBodyDriver(Vec2(3, 3)), vector<MovementDriver*>({ new WalkingDriver(), new MiningDriver()}), bodyParts));
 }
 
 void TestStackArray()

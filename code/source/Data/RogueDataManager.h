@@ -224,7 +224,7 @@ public:
 		_internalOffset = other._internalOffset;
 	}
 
-	T* operator ->()
+	T* GetRaw() const
 	{
 #ifdef LINK_HANDLE
 		RefreshLinkedObject();
@@ -232,9 +232,9 @@ public:
 		return GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
 	}
 
-	const T* operator ->() const
+	T* operator ->() const
 	{
-		return GetDataManager()->ResolveHandle<T>(GetIndex(), GetOffset());
+		return GetRaw();
 	}
 
 	T& GetReference()

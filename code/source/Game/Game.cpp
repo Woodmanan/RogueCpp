@@ -8,6 +8,7 @@
 #include "Map/WorldManager.h"
 #include "LOS/TileMemory.h"
 #include "Core/Pathfinding/Pathfinding.h"
+#include "Utils/Utils.h"
 
 thread_local Game* Game::game = nullptr;
 thread_local RogueDataManager* Game::dataManager = nullptr;
@@ -184,12 +185,17 @@ void Game::HandleInput(const Input& input)
 	case EInputType::Movement:
 	{
 		ROGUE_PROFILE_SECTION("Handle Movement Input");
-		std::shared_ptr<TInput<Movement>> data = input.Get<Movement>();
-		bool canMove = m_player->Move(data->m_direction);
+		Direction offset = input.Get<Movement>()->m_direction;
+		Location next = m_player->GetLocation().Traverse(offset, m_player->GetRotation()).first;
 
-		if (canMove)
+		STACKARRAY(Location, locations, 5);
+		Pathfinding::PathfindingSettings settings;
+		settings.m_maxCost = 5;
+		settings.positionGenerator = GetMember(m_player, &Monster::GetAllowedMovements);
+		if (Pathfinding::GetPath(m_player->GetLocation(), next, settings, locations) && locations.size() == 2)
 		{
-			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(data->m_direction));
+			m_player->Move(offset);
+			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(offset));
 
 			m_player->GetView().SetRadius(30);
 			LOS::Calculate(m_player);
@@ -271,7 +277,7 @@ void Game::HandleInput(const Input& input)
 			STACKARRAY(Location, locations, 60);
 			Pathfinding::PathfindingSettings settings;
 			settings.m_maxCost = 30;
-			settings.driver = m_player->GetDefinition()->m_movementDrivers[0];
+			settings.positionGenerator = GetMember(m_player, &Monster::GetAllowedMovements);
 			if (Pathfinding::GetPath(playerLoc, offsetLoc, settings, locations))
 			{
 				vector<Vec2> offsets;

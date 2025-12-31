@@ -58,6 +58,7 @@ namespace Pathfinding
 	{
 		ROGUE_PROFILE_SECTION("Pathfinding::GetPath");
 		ASSERT(locations.empty());
+		ASSERT(settings.positionGenerator);
 
 		DEBUG_PRINT("SEARCHING [%d, %d] TO [%d, %d]", source.x(), source.y(), destination.x(), destination.y());
 
@@ -96,7 +97,10 @@ namespace Pathfinding
 			{
 				ROGUE_PROFILE_SECTION("FillValidMovements");
 				next.clear();
-				settings.driver->FillValidMovements(current, next);
+				if (settings.positionGenerator)
+				{
+					settings.positionGenerator(current, next);
+				}
 			}
 
 			for (Movement& movement : next)

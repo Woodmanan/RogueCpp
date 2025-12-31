@@ -43,7 +43,7 @@ void MiningDriver::OnMovedOnTile(Monster& monster, Location location, float& cos
 	}
 }
 
-/*bool RectangularBodyDriver::CanStandOn(Location location)
+bool RectangularBodyDriver::CanMonsterStandOn(Monster& monster, Location location)
 {
 	//TODO: Assert connectedness
 
@@ -71,17 +71,13 @@ void MiningDriver::OnMovedOnTile(Monster& monster, Location location, float& cos
 	return true;
 }
 
-void RectangularBodyDriver::GetConnectedPositions(Location location, StackArray<Location>& locations)
-{
-
-}
-
 void RectangularBodyDriver::InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition)
 {
-	//ASSERT(monster.)
+
 }
 
+//For reorganizing the body after a movment!
 void RectangularBodyDriver::OnMovementFinished(THandle<Monster> monster)
 {
 
-}*/
+}

@@ -14,16 +14,17 @@ class MiningDriver : public WalkingDriver
 	virtual void OnMovedOnTile(Monster& monster, Location location, float& cost) override;
 };
 
-/*class RectangularBodyDriver : public BodyDriver
+class RectangularBodyDriver : public BodyDriver
 {
 public:
 	RectangularBodyDriver(Vec2 dimensions) : m_dimensions(dimensions) {}
 
-	virtual	bool CanStandOn(Location location) override;
-	virtual void GetConnectedPositions(Location location, StackArray<Location>& locations) override;
+	virtual bool CanMonsterStandOn(Monster& monster, Location location) override;
 	virtual void InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition) override;
+
+	//For reorganizing the body after a movment!
 	virtual void OnMovementFinished(THandle<Monster> monster) override;
 
 private:
 	Vec2 m_dimensions;
-};*/
+};

@@ -27,6 +27,32 @@ void Monster::SetRotation(Direction rotation)
 	m_rotation = rotation;
 }
 
+void Monster::GetAllowedMovements(Location location, MovementArray& outMovements)
+{
+	for (MovementDriver* driver : m_definition->m_movementDrivers)
+	{
+		MovementArray next;
+		driver->FillValidMovements(location, next);
+
+		for (Movement& move : next)
+		{
+			Movement* match = outMovements.find([&move](Movement& other)
+				{
+					return other.m_location == move.m_location;
+				});
+
+			if (match)
+			{
+				match->m_cost = std::min(move.m_cost, match->m_cost);
+			}
+			else if (m_definition->m_bodyDriver->CanMonsterStandOn(*this, move.m_location))
+			{
+				outMovements.push_back(move);
+			}
+		}
+	}
+}
+
 bool Monster::Move(Direction direction)
 {
 	MovementDriver* driver = GetDriverForMovement(direction);
@@ -79,6 +105,19 @@ MovementDriver* Monster::GetDriverForMovement(Direction direction)
 bool Monster::CanMove(Direction direction)
 {
 	return (GetDriverForMovement(direction) != nullptr);
+}
+
+bool Monster::CouldAnyMovementStandOn(Location location)
+{
+	for (MovementDriver* driver : m_definition->m_movementDrivers)
+	{
+		if (driver->CanStandOn(location))
+		{
+			return true;
+		}
+	}
+
+	return false;
 }
 
 Movement Movement::FromLocation(Location location)

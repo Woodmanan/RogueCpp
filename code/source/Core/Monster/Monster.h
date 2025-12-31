@@ -28,11 +28,21 @@ struct BodyTile
 	Location location;
 };
 
+struct Movement
+{
+	Location m_location;
+	float m_cost;
+
+	static Movement FromLocation(Location location);
+};
+
+using MovementArray = FixedArray<Movement, 20>;
+
 class MonsterDefinition
 {
 public:
 	MonsterDefinition() {}
-	MonsterDefinition(BodyDriver* bodyDriver, MovementDriver* movementDriver, vector<BodyTileDefinitions> definitions) : m_bodyDriver(bodyDriver), m_movementDrivers({ movementDriver }), m_bodyTiles(definitions) {}
+	MonsterDefinition(BodyDriver* bodyDriver, std::vector<MovementDriver*> movementDrivers, vector<BodyTileDefinitions> definitions) : m_bodyDriver(bodyDriver), m_movementDrivers(movementDrivers), m_bodyTiles(definitions) {}
 
 	BodyDriver* m_bodyDriver;
 	std::vector<MovementDriver*> m_movementDrivers;
@@ -51,6 +61,9 @@ public:
 	View& GetView() { return m_view; }
 	Direction GetRotation() { return m_rotation; }
 	void SetRotation(Direction rotation);
+
+	//Movement driving!
+	void GetAllowedMovements(Location location, MovementArray& outMovements);
 	
 	bool Move(Direction direction);
 	MovementDriver* GetDriverForMovement(Direction direction);
@@ -75,16 +88,6 @@ private:
 	friend void Serialization::Deserialize(Stream& stream, Monster& value);
 	friend class BodyDriver;
 };
-
-struct Movement
-{
-	Location m_location;
-	float m_cost;
-
-	static Movement FromLocation(Location location);
-};
-
-using MovementArray = FixedArray<Movement, 20>;
 
 /* Additive movement modifiers
  * 
@@ -112,14 +115,13 @@ public:
 
    E.G., you could move into this tile, but your body won't fit because it has a unique shape or your tail would be in the way
 */
-class BodyDriver : public MovementDriver
+class BodyDriver
 {
 public:
 	BodyDriver() {}
 
 	//MovementDriver* FindBestDriverForMovement(Monster& monster, StackArray<Location>& path, Direction direction);
-	//bool CanMovementStandOn(Monster& monster, MovementDriver* driver, StackArray<Location>& path, Location location) = 0;
-
+	virtual bool CanMonsterStandOn(Monster& monster, Location location) = 0;
 	virtual void InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition) = 0;
 
 	//For reorganizing the body after a movment!

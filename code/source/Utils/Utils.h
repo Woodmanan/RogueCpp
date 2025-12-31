@@ -18,6 +18,20 @@ std::function<rType(Args...)> GetMember(Class* instance, rType(Class::* member)(
     return func;
 }
 
+template<typename Class, typename rType, typename... Args>
+std::function<rType(Args...)> GetMember(THandle<Class> instance, rType(Class::* member)(Args...))
+{
+    std::function<rType(Args...)> func = [instance, member](Args... args)
+    {
+        ASSERT(instance.IsValid());
+        Class* raw = instance.GetRaw();
+        ASSERT(raw != nullptr);
+        return (raw->*member)(std::forward<Args>(args)...);
+    };
+
+    return func;
+}
+
 float string_to_float(const std::string& string);
 
 float optional_string_to_float(std::vector<std::string>& tokens, int index, float defaultValue);

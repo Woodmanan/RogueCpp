@@ -110,6 +110,32 @@ public:
 		return m_data[index];
 	}
 
+	T* find(T& element) const
+	{
+		for (T* search = begin(); search != end(); search++)
+		{
+			if (*search == element)
+			{
+				return search;
+			}
+		}
+
+		return nullptr;
+	}
+
+	T* find(std::function<bool(T&)> func)
+	{
+		for (T* search = begin(); search != end(); search++)
+		{
+			if (func(*search))
+			{
+				return search;
+			}
+		}
+
+		return nullptr;
+	}
+
 	size_t size() const
 	{
 		return m_size;
