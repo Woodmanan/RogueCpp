@@ -1,8 +1,8 @@
-Name,Density,Movement Cost,Floor Char,Wall Char,Color,Phase
-Dirt,4,1,.,#,#7B3F00,Solid
-Stone,5,1,.,#,#777777,Solid
-Water,2,2,~,~,#DEF4FC,Liquid
-Mud,3,2,~,~,#7B3F00,Liquid
-Wood,1,1,.,#,#Bb7F00,Solid
-Fire,0,-1,F,F,#ff0000,Immaterial
-Air,0.1,-1,_,,#DEF4FC,Gas
+Name,Density,Movement Cost,Thermal Conductivity,Heat Capacity,Floor Char,Wall Char,Color,Phase
+Dirt,4,1,1,1,.,#,#7B3F00,Solid
+Stone,5,1,1,30,.,#,#777777,Solid
+Water,2,2,1,4,~,~,#DEF4FC,Liquid
+Mud,3,2,0.6,2,~,~,#7B3F00,Liquid
+Wood,1,1,1,1,.,#,#Bb7F00,Solid
+Fire,0,-1,1,1,F,F,#ff9a30,Immaterial
+Air,0.1,-1,5,0.2,_,,#DEF4FC,Gas
