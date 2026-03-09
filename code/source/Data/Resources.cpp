@@ -491,8 +491,8 @@ std::filesystem::path ResourceManager::GetPacked(const HashID& ID)
 
 std::filesystem::path ResourceManager::GetResources()
 {
-#ifdef _DEBUG
-	return std::filesystem::path("./../../../resources");
+#ifdef DEBUG
+	return std::filesystem::path("../resources");
 #else
 	return std::filesystem::path("./resources");
 #endif

@@ -132,7 +132,13 @@ private:
 	uint m_maxSize;
 };
 
+#ifdef _WIN32
+	#define STACK_ALLOC(ptr) _malloca(ptr)
+#else
+	#define STACK_ALLOC(ptr) _alloca(ptr)
+#endif
+
 #define STACKARRAY(type, name, size) \
 	uint name##BufferSize = std::max(1, size); \
-	type* name##Buffer = (type*) _malloca((name##BufferSize) * sizeof(type)); \
+	type* name##Buffer = (type*) STACK_ALLOC((name##BufferSize) * sizeof(type)); \
 	StackArray<type> name = StackArray<type>(name##Buffer, name##BufferSize);

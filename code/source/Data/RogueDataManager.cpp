@@ -2,6 +2,29 @@
 
 class BackingTile;
 
+void* Handle::Get()
+{
+#ifdef LINK_HANDLE
+	RefreshLinkedObject();
+#endif
+	return GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
+}
+
+#ifdef LINK_HANDLE
+void Handle::RefreshLinkedObject();
+{
+	if (IsValid() && GetDataManager()->CanResolve(GetIndex(), GetOffset()))
+	{
+		linked = GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
+	}
+	else
+	{
+		linked = nullptr;
+	}
+}
+#endif
+
+
 RogueDataManager::RogueDataManager()
 {
 	//Create an insert generic arena

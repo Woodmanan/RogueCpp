@@ -5,6 +5,7 @@
 #include <atomic>
 #include <thread>
 #include <array>
+#include <condition_variable>
 
 namespace Jobs
 {

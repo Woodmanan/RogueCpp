@@ -174,7 +174,7 @@ public:
 	{
 		int size;
 		RogueSaveManager::Read("size", size);
-		buffer = vector<char>(size, '\0');
+		buffer = std::vector<char>(size, '\0');
 		InitializeHeader(size);
 		ArenaHeader* header = GetHeader();
 		RogueSaveManager::Read("offset", header->currentOffset);

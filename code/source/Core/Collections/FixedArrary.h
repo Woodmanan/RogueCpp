@@ -1,5 +1,6 @@
 #pragma once
 #include "Debug/Debug.h"
+#include "Data/Serialization/Serialization.h"
 
 #include <array>
 #include <initializer_list>
@@ -67,21 +68,28 @@ public:
 
 	void insert(const T& value, size_t index)
 	{
-		ASSERT(m_size < N);
-
-		for (int moveIndex = m_size - 1; moveIndex >= index; moveIndex--)
+		if (empty())
 		{
-			m_data[moveIndex + 1] = m_data[moveIndex];
+			push_back(value);
 		}
+		else
+		{
+			ASSERT(m_size < N);
 
-		m_data[index] = value;
-		m_size++;
+			for (uint32_t moveIndex = m_size - 1; moveIndex >= index; moveIndex--)
+			{
+				m_data[moveIndex + 1] = m_data[moveIndex];
+			}
+
+			m_data[index] = value;
+			m_size++;
+		}
 	}
 
 	void remove(size_t index)
 	{
 		ASSERT(index < m_size);
-		for (int i = index; i < m_size - 1; i++)
+		for (uint32_t i = index; i < m_size - 1; i++)
 		{
 			m_data[i] = m_data[i + 1];
 		}
@@ -141,6 +149,12 @@ public:
 		return m_size;
 	}
 
+	bool empty() const
+	{
+		return size() == 0;
+	}
+
+
 private:
 	std::array<T, N> m_data;
 	size_t m_size = 0;
@@ -148,37 +162,41 @@ private:
 
 namespace Serialization
 {
-	template<typename Stream, class T, size_t N>
-	void Serialize(Stream& stream, const FixedArray<T, N>& values)
+	template<typename T, size_t N>
+	struct Serializer<FixedArray<T, N>>
 	{
-		size_t size = values.size();
-		Write(stream, "Size", size);
-		stream.BeginWrite("Values");
-		stream.OpenWriteScope();
-		for (size_t index = 0; index < values.size(); index++)
+		template<typename Stream>
+		static void Serialize(Stream& stream, const FixedArray<T, N>& values)
 		{
-			stream.WriteSpacing();
-			SerializeObject(stream, values[index]);
-			stream.WriteListSeperator();
+			size_t size = values.size();
+			Write(stream, "Size", size);
+			stream.BeginWrite("Values");
+			stream.OpenWriteScope();
+			for (size_t index = 0; index < values.size(); index++)
+			{
+				stream.WriteSpacing();
+				SerializeObject(stream, values[index]);
+				stream.WriteListSeperator();
+			}
+			stream.CloseWriteScope();
+			stream.FinishWrite();
 		}
-		stream.CloseWriteScope();
-		stream.FinishWrite();
-	}
 
-	template<typename Stream, class T, size_t N>
-	void Deserialize(Stream& stream, FixedArray<T, N>& values)
-	{
-		size_t size = Read<Stream, size_t>(stream, "Size");
-		values.resize(size);
-		stream.BeginRead("Values");
-		stream.OpenReadScope();
-		for (int index = 0; index < size; index++)
+		template<typename Stream>
+		static void Deserialize(Stream& stream, FixedArray<T, N>& values)
 		{
-			stream.ReadSpacing();
-			DeserializeObject(stream, values[index]);
-			stream.ReadListSeperator();
+			size_t size = Read<Stream, size_t>(stream, "Size");
+			values.resize(size);
+			stream.BeginRead("Values");
+			stream.OpenReadScope();
+			for (size_t index = 0; index < size; index++)
+			{
+				stream.ReadSpacing();
+				DeserializeObject(stream, values[index]);
+				stream.ReadListSeperator();
+			}
+			stream.CloseReadScope();
+			stream.FinishRead();
 		}
-		stream.CloseReadScope();
-		stream.FinishRead();
-	}
+	};
 }

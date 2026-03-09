@@ -8,7 +8,7 @@
 #include "Data/Serialization/BitStream.h"
 #include "Data/Serialization/Serialization.h"
 
-#ifdef _DEBUG
+#ifdef DEBUG
 #define JSON
 #else
 #define PACKED
@@ -36,20 +36,20 @@ namespace RogueSaveManager {
 	static void Write(const char* name, const T& value)
 	{
 		ROGUE_PROFILE_SECTION("File::Write");
-		Serialization::Write(Stream::stream, name, value);
+		Serialization::Write<SaveStreamType, T>(Stream::stream, name, value);
 	}
 
 	template <typename T>
 	static void Read(const char* name, T& value)
 	{
 		ROGUE_PROFILE_SECTION("File::Read");
-		Serialization::Read(Stream::stream, name, value);
+		Serialization::Read<SaveStreamType, T>(Stream::stream, name, value);
 	}
 
 	template <typename T>
 	static T Read(const char* name)
 	{
-		return Serialization::Read(Stream::stream, name);
+		return Serialization::Read<SaveStreamType, T>(Stream::stream, name);
 	}
 
 	template <typename T>
@@ -99,6 +99,7 @@ namespace RogueSaveManager {
 
 	static bool OpenReadSaveFileByPath(const std::filesystem::path path)
 	{
+		DEBUG_PRINT("Opening saved file with path %s", path.string().c_str());
 		if (!FilePathExists(path))
 		{
 			return false;

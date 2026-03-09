@@ -5,17 +5,63 @@
 
 namespace Serialization
 {
-	template<typename Stream, typename T>
-	void Serialize(Stream& stream, const T& value)
+	template<typename T>
+	struct Serializer 
 	{
-		stream.Write(value);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const T& value) = delete;
+
+		template<typename Stream>
+		static void Deserialize(Stream& stream, T& value) = delete;
+	};
+
+	template<typename T>
+	struct SimpleSerializer
+	{
+		template<typename Stream>
+		static void Serialize(Stream& stream, const T& value)
+		{
+			stream.Write(value);
+		}
+
+		template<typename Stream>
+    		static void Deserialize(Stream& stream, T& value)
+		{
+			stream.Read(value);
+		}
+	};
+
+	template<typename T>
+	struct EnumSerializer
+	{
+		template<typename Stream>
+		static void Serialize(Stream& stream, const T& value)
+		{
+			stream.WriteEnum(value);
+		}
+
+		template<typename Stream>
+    		static void Deserialize(Stream& stream, T& value)
+		{
+			stream.ReadEnum(value);
+		}
+	};
+
+	template<> struct Serializer<bool> : SimpleSerializer<bool> {};
+	template<> struct Serializer<char> : SimpleSerializer<char> {};
+	template<> struct Serializer<unsigned char> : SimpleSerializer<unsigned char> {};
+	template<> struct Serializer<short> : SimpleSerializer<short> {};
+	template<> struct Serializer<int> : SimpleSerializer<int> {};
+	template<> struct Serializer<unsigned int> : SimpleSerializer<unsigned int> {};
+	template<> struct Serializer<float> : SimpleSerializer<float> {};
+	template<> struct Serializer<size_t> : SimpleSerializer<size_t> {};
+	template<> struct Serializer<std::string> : SimpleSerializer<std::string> {};
 
 	template<typename Stream, typename T>
 	void SerializeObject(Stream& stream, const T& value)
 	{
 		stream.OpenWriteScope();
-		Serialize(stream, value);
+		Serializer<T>::Serialize(stream, value);
 		stream.CloseWriteScope();
 	}
 
@@ -43,17 +89,13 @@ namespace Serialization
 		stream.FinishWrite();
 	}
 
-	template<typename Stream, typename T>
-	void Deserialize(Stream& stream, T& value)
-	{
-		stream.Read(value);
-	}
+	
 
 	template<typename Stream, typename T>
 	void DeserializeObject(Stream& stream, T& value)
 	{
 		stream.OpenReadScope();
-		Deserialize(stream, value);
+		Serializer<T>::Deserialize(stream, value);
 		stream.CloseReadScope();
 	}
 
@@ -91,235 +133,138 @@ namespace Serialization
 	}
 
 	//Vector specializations
-	template<typename Stream, typename T>
-	void Serialize(Stream& stream, const std::vector<T>& values)
+	template<typename T>
+	struct Serializer<std::vector<T>>
 	{
-		size_t size = values.size();
-		Write(stream, "Size", size);
-		stream.BeginWrite("Values");
-		stream.OpenWriteScope();
-		for (size_t i = 0; i < size; i++)
+		template<typename Stream>
+		static void Serialize(Stream& stream, const std::vector<T>& values)
 		{
-			stream.WriteSpacing();
-			SerializeObject(stream, values[i]);
-			stream.WriteListSeperator();
+			size_t size = values.size();
+			Write(stream, "Size", size);
+			stream.BeginWrite("Values");
+			stream.OpenWriteScope();
+			for (size_t i = 0; i < size; i++)
+			{
+				stream.WriteSpacing();
+				SerializeObject(stream, values[i]);
+				stream.WriteListSeperator();
+			}
+			stream.CloseWriteScope();
+			stream.FinishWrite();
 		}
-		stream.CloseWriteScope();
-		stream.FinishWrite();
-	}
 
-	template<typename Stream, typename T>
-	void Deserialize(Stream& stream, std::vector<T>& values)
-	{
-		size_t size;
-		Read(stream, "Size", size);
-		values.resize(size);
-		stream.BeginRead("Values");
-		stream.OpenReadScope();
-		for (size_t i = 0; i < size; i++)
+		template<typename Stream>
+		static void Deserialize(Stream& stream, std::vector<T>& values)
 		{
-			stream.ReadSpacing();
-			DeserializeObject(stream, values[i]);
-			stream.ReadListSeperator();
+			size_t size;
+			Read(stream, "Size", size);
+			values.resize(size);
+			stream.BeginRead("Values");
+			stream.OpenReadScope();
+			for (size_t i = 0; i < size; i++)
+			{
+				stream.ReadSpacing();
+				DeserializeObject(stream, values[i]);
+				stream.ReadListSeperator();
+			}
+			stream.CloseReadScope();
+			stream.FinishRead();
 		}
-		stream.CloseReadScope();
-		stream.FinishRead();
-	}
+	};
 
 	//Map specializations
-	template<typename Stream, typename K, typename V>
-	void Serialize(Stream& stream, const std::map<K, V>& values)
+	template<typename K, typename V>
+	struct Serializer<std::map<K, V>>
 	{
-		size_t size = values.size();
-		Write(stream, "Size", size);
-		stream.BeginWrite("Values");
-		stream.OpenWriteScope();
-		for (auto it : values)
+		template<typename Stream>
+		static void Serialize(Stream& stream, const std::map<K, V>& values)
 		{
-			stream.WriteSpacing();
+			size_t size = values.size();
+			Write(stream, "Size", size);
+			stream.BeginWrite("Values");
 			stream.OpenWriteScope();
-			Write(stream, "Key", it.first);
-			Write(stream, "Value", it.second);
+			for (auto it : values)
+			{
+				stream.WriteSpacing();
+				stream.OpenWriteScope();
+				Write(stream, "Key", it.first);
+				Write(stream, "Value", it.second);
+				stream.CloseWriteScope();
+				stream.WriteListSeperator();
+			}
 			stream.CloseWriteScope();
-			stream.WriteListSeperator();
+			stream.FinishWrite();
 		}
-		stream.CloseWriteScope();
-		stream.FinishWrite();
-	}
 
-	template<typename Stream, typename K, typename V>
-	void Deserialize(Stream& stream, std::map<K, V>& values)
-	{
-		size_t size;
-		Read(stream, "Size", size);
-		stream.BeginRead("Values");
-		stream.OpenReadScope();
-		for (size_t i = 0; i < size; i++)
+		template<typename Stream>
+		static void Deserialize(Stream& stream, std::map<K, V>& values)
 		{
-			stream.ReadSpacing();
+			size_t size;
+			Read(stream, "Size", size);
+			stream.BeginRead("Values");
 			stream.OpenReadScope();
-			K key;
-			V value;
-			Read(stream, "Key", key);
-			Read(stream, "Value", value);
-			values[key] = value;
+			for (size_t i = 0; i < size; i++)
+			{
+				stream.ReadSpacing();
+				stream.OpenReadScope();
+				K key;
+				V value;
+				Read(stream, "Key", key);
+				Read(stream, "Value", value);
+				values[key] = value;
+				stream.CloseReadScope();
+				stream.ReadListSeperator();
+			}
 			stream.CloseReadScope();
-			stream.ReadListSeperator();
+			stream.FinishRead();
 		}
-		stream.CloseReadScope();
-		stream.FinishRead();
-	}
+	};
 
-	template<typename Stream, typename K, typename V>
-	void Serialize(Stream& stream, const std::unordered_map<K, V>& values)
+	template<typename K, typename V>
+	struct Serializer<std::unordered_map<K,V>>
 	{
-		size_t size = values.size();
-		Write(stream, "Size", size);
-		stream.BeginWrite("Values");
-		stream.OpenWriteScope();
-		for (auto it : values)
+		template<typename Stream>
+		static void Serialize(Stream& stream, const std::unordered_map<K, V>& values)
 		{
-			stream.WriteSpacing();
+			size_t size = values.size();
+			Write(stream, "Size", size);
+			stream.BeginWrite("Values");
 			stream.OpenWriteScope();
-			Write(stream, "Key", it.first);
-			Write(stream, "Value", it.second);
+			for (auto it : values)
+			{
+				stream.WriteSpacing();
+				stream.OpenWriteScope();
+				Write(stream, "Key", it.first);
+				Write(stream, "Value", it.second);
+				stream.CloseWriteScope();
+				stream.WriteListSeperator();
+			}
 			stream.CloseWriteScope();
-			stream.WriteListSeperator();
+			stream.FinishWrite();
 		}
-		stream.CloseWriteScope();
-		stream.FinishWrite();
-	}
 
-	template<typename Stream, typename K, typename V>
-	void Deserialize(Stream& stream, std::unordered_map<K, V>& values)
-	{
-		size_t size;
-		Read(stream, "Size", size);
-		stream.BeginRead("Values");
-		stream.OpenReadScope();
-		for (size_t i = 0; i < size; i++)
+		template<typename Stream>
+		static void Deserialize(Stream& stream, std::unordered_map<K, V>& values)
 		{
-			stream.ReadSpacing();
+			size_t size;
+			Read(stream, "Size", size);
+			stream.BeginRead("Values");
 			stream.OpenReadScope();
-			K key;
-			V value;
-			Read(stream, "Key", key);
-			Read(stream, "Value", value);
-			values[key] = value;
+			for (size_t i = 0; i < size; i++)
+			{
+				stream.ReadSpacing();
+				stream.OpenReadScope();
+				K key;
+				V value;
+				Read(stream, "Key", key);
+				Read(stream, "Value", value);
+				values[key] = value;
+				stream.CloseReadScope();
+				stream.ReadListSeperator();
+			}
 			stream.CloseReadScope();
-			stream.ReadListSeperator();
+			stream.FinishRead();
 		}
-		stream.CloseReadScope();
-		stream.FinishRead();
-	}
 
-	//Base type specializations - these should not create object scopes.
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const bool& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const char& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const unsigned char& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const short& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const int& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const unsigned int& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const float& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const size_t& value)
-	{
-		Serialize(stream, value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const std::string& value)
-	{
-		Serialize(stream, value);
-	}
-
-	//Base type specializations - these should not create object scopes.
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, bool& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, char& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, unsigned char& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, short& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, int& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, unsigned int& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, float& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, size_t& value)
-	{
-		Deserialize(stream, value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, std::string& value)
-	{
-		Deserialize(stream, value);
-	}
+	};
 }

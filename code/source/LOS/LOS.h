@@ -165,29 +165,33 @@ namespace LOS
 
 namespace Serialization
 {
-	template<typename Stream>
-	void Serialize(Stream& stream, const View& value)
+	template<>
+	struct Serializer<View>
 	{
-		Write(stream, "Radius", value.m_radius);
-		Write(stream, "Locations", value.m_locations);
-		Write(stream, "Visibility", value.m_visibility);
-		Write(stream, "Rotations", value.m_rotations);
+		template<typename Stream>
+		static void Serialize(Stream& stream, const View& value)
+		{
+			Write(stream, "Radius", value.m_radius);
+			Write(stream, "Locations", value.m_locations);
+			Write(stream, "Visibility", value.m_visibility);
+			Write(stream, "Rotations", value.m_rotations);
 
 #ifdef DEBUG_HOTSPOTS
-		Write(stream, "Hotspots", value.m_heat);
+			Write(stream, "Hotspots", value.m_heat);
 #endif
-	}
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, View& value)
-	{
-		Read(stream, "Radius", value.m_radius);
-		Read(stream, "Locations", value.m_locations);
-		Read(stream, "Visibility", value.m_visibility);
-		Read(stream, "Rotations", value.m_rotations);
+		template<typename Stream>
+		static void Deserialize(Stream& stream, View& value)
+		{
+			Read(stream, "Radius", value.m_radius);
+			Read(stream, "Locations", value.m_locations);
+			Read(stream, "Visibility", value.m_visibility);
+			Read(stream, "Rotations", value.m_rotations);
 
 #ifdef DEBUG_HOTSPOTS
-		Read(stream, "Hotspots", value.m_heat);
+			Read(stream, "Hotspots", value.m_heat);
 #endif
-	}
+		}
+	};
 }

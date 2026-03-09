@@ -130,17 +130,21 @@ public:
 
 namespace Serialization
 {
-	template<typename Stream>
-	void Serialize(Stream& stream, const Monster& value)
+	template<>
+	struct Serializer<Monster>
 	{
-		//Write(stream, "Definition", value.m_definition);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const Monster& value)
+		{
+			//Write(stream, "Definition", value.m_definition);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, Monster& value)
-	{
-		PRINT_ERR("Whoops, can't deserialize monsters yet.");
-		HALT();
-		//Read(stream, "Definition", value.m_definition);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, Monster& value)
+		{
+			PRINT_ERR("Whoops, can't deserialize monsters yet.");
+			HALT();
+			//Read(stream, "Definition", value.m_definition);
+		}
+	};
 }

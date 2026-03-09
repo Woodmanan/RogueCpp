@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <tuple>
 #include "Data/Serialization/Serialization.h"
+#include "Data/Serialization/BitStream.h"
 
 #ifdef _DEBUG
 #define LINK_TILE
@@ -514,110 +515,116 @@ namespace std
 
 namespace Serialization
 {
-    template<typename Stream>
-    void SerializeObject(Stream& stream, const Direction& direction)
-    {
-        int asInt = direction;
-        Serialize(stream, asInt);
-    }
+    template<>
+    struct Serializer<Direction> : EnumSerializer<Direction> {};
 
-    template<typename Stream>
-    void DeserializeObject(Stream& stream, Direction& direction)
+    template<>
+    struct Serializer<Vec2>
     {
-        int asInt;
-        Deserialize(stream, asInt);
-        direction = (Direction) asInt;
-    }
+	template<typename Stream>
+    	static void Serialize(Stream& stream, const Vec2& value)
+	{
+		Write(stream, "x", value.x);
+		Write(stream, "y", value.y);
+	}
 
-    template<typename Stream>
-    void Serialize(Stream& stream, const Vec2& value)
-    {
-        Write(stream, "x", value.x);
-        Write(stream, "y", value.y);
-    }
+    	template<typename Stream>
+    	static void Deserialize(Stream& stream, Vec2& value)
+	{
+		Read(stream, "x", value.x);
+		Read(stream, "y", value.y);
+	}
+    };
 
-    template<typename Stream>
-    void Deserialize(Stream& stream, Vec2& value)
-    {
-        Read(stream, "x", value.x);
-        Read(stream, "y", value.y);
-    }
+    template<>
+    struct Serializer<Vec3>
+    {   
+	template<typename Stream>
+    	static void Serialize(Stream& stream, const Vec3& value)
+	{
+		Write(stream, "x", value.x);
+		Write(stream, "y", value.y);
+		Write(stream, "z", value.z);
+	}
 
-    template<typename Stream>
-    void Serialize(Stream& stream, const Vec3& value)
+    	template<typename Stream>
+    	static void Deserialize(Stream& stream, Vec3& value)
+	{
+		Read(stream, "x", value.x);
+		Read(stream, "y", value.y);
+		Read(stream, "z", value.z);
+	}
+    };
+    
+    template<>
+    struct Serializer<Location>
     {
-        Write(stream, "x", value.x);
-        Write(stream, "y", value.y);
-        Write(stream, "z", value.z);
-    }
-
-    template<typename Stream>
-    void Deserialize(Stream& stream, Vec3& value)
-    {
-        Read(stream, "x", value.x);
-        Read(stream, "y", value.y);
-        Read(stream, "z", value.z);
-    }
-
-    template<typename Stream>
-    void Serialize(Stream& stream, const Location& value)
-    {
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const Location& value)
+    	{
 #ifdef _DEBUG
-        bool valid = value.GetValid();
-        Write(stream, "Valid", valid);
-        if (value.GetValid())
-        {
-            Vec3 vec = value.GetVector();
-            Write(stream, "Vector", vec);
-        }
+            bool valid = value.GetValid();
+       	    Write(stream, "Valid", valid);
+            if (value.GetValid())
+	    {
+	         Vec3 vec = value.GetVector();
+		Write(stream, "Vector", vec);
+	    }
 #else
-        Write(stream, "Data", value.GetData());
+	    Write(stream, "Data", value.GetData());
 #endif
-    }
+    	}
 
-    template<typename Stream>
-    void Deserialize(Stream& stream, Location& value)
-    {
+    	template<typename Stream>
+    	static void Deserialize(Stream& stream, Location& value)
+    	{
 #ifdef _DEBUG
-        value.SetValid(Read<Stream, bool>(stream, "Valid"));
-        if (value.GetValid())
-        {
-            value.SetVector(Read<Stream, Vec3>(stream, "Vector"));
-        }
+            value.SetValid(Read<Stream, bool>(stream, "Valid"));
+            if (value.GetValid())
+            {
+                value.SetVector(Read<Stream, Vec3>(stream, "Vector"));
+            }
 #else
-        value.SetData(Read<Stream, int>(stream, "Data"));
+            value.SetData(Read<Stream, int>(stream, "Data"));
 #endif
-    }
+    	}
+    };
 
-    template<typename Stream>
-    void Serialize(Stream& stream, const Color& value)
-    {
-        if constexpr (std::is_same<Stream, JSONStream>::value)
-        {
-            Write(stream, "r", value.r);
-            Write(stream, "g", value.g);
-            Write(stream, "b", value.b);
-            Write(stream, "a", value.a);
-        }
-        else
-        {
-            Write(stream, "color", value.color);
-        }
-    }
 
-    template<typename Stream>
-    void Deserialize(Stream& stream, Color& value)
+    template<>
+    struct Serializer<Color>
     {
-        if constexpr (std::is_same<Stream, JSONStream>::value)
-        {
-            Read(stream, "r", value.r);
-            Read(stream, "g", value.g);
-            Read(stream, "b", value.b);
-            Read(stream, "a", value.a);
-        }
-        else
-        {
-            Read(stream, "color", value.color);
-        }
-    }
+
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const Color& value)
+	{
+		if constexpr (std::is_same<Stream, JSONStream>::value)
+		{
+			Write(stream, "r", value.r);
+			Write(stream, "g", value.g);
+			Write(stream, "b", value.b);
+			Write(stream, "a", value.a);
+		}
+		else
+		{
+			Write(stream, "color", value.color);
+		}
+    	}
+
+    	template<typename Stream>
+    	static void Deserialize(Stream& stream, Color& value)
+	{
+		if constexpr (std::is_same<Stream, JSONStream>::value)
+		{
+			Read(stream, "r", value.r);
+			Read(stream, "g", value.g);
+			Read(stream, "b", value.b);
+			Read(stream, "a", value.a);
+		}
+		else
+		{
+			Read(stream, "color", value.color);
+		}
+	}
+    };
 }

@@ -38,9 +38,67 @@ using namespace std;
 #//define LINK_HANDLE
 #endif
 
-class Handle;
 template<typename T>
 class THandle;
+
+class Handle
+{
+	template <typename T> friend class THandle;
+
+public:
+	Handle()
+	{
+		_internalOffset = 0x80000000; //All 0's, first bit (invalid bit) set to 1
+	}
+
+	Handle(signed char index, unsigned int offset)
+	{
+		_internalOffset = (offset & 0x00FFFFFF) | (((int) index) << 24);
+	}
+
+	template <typename T>
+	Handle(const THandle<T>& other)
+	{
+		_internalOffset = other._internalOffset;
+	}
+
+	bool IsValid() const //Check if 'valid' bit is set to true;
+	{
+		return !(_internalOffset & 0x80000000);
+	}
+
+	void* Get();
+	
+
+	signed char GetIndex() const { return (signed char) (_internalOffset >> 24) & (0xFF); }
+
+	unsigned int GetOffset() const { return (_internalOffset & 0x00FFFFFF); }
+
+	const unsigned int& GetInternalOffset() const { return _internalOffset; }
+	void SetInternalOffset(unsigned int internalOffset) { _internalOffset = internalOffset; }
+
+protected:
+	unsigned int _internalOffset;
+
+#ifdef LINK_HANDLE
+	void* linked = nullptr;
+	virtual void RefreshLinkedObject();
+#endif
+};
+
+template <typename T>
+class RogueSaveable
+{
+public:
+	virtual ~RogueSaveable() {}
+	static int ID;
+
+	int GetID()
+	{
+		return ID;
+	}
+};
+
 
 class RogueDataManager
 {
@@ -143,66 +201,6 @@ private:
 	vector<RogueArena*> arenas;
 };
 
-class Handle
-{
-	template <typename T> friend class THandle;
-
-public:
-	Handle()
-	{
-		_internalOffset = 0x80000000; //All 0's, first bit (invalid bit) set to 1
-	}
-
-	Handle(signed char index, unsigned int offset)
-	{
-		_internalOffset = (offset & 0x00FFFFFF) | (((int) index) << 24);
-	}
-
-	template <typename T>
-	Handle(const THandle<T>& other)
-	{
-		_internalOffset = other._internalOffset;
-	}
-
-	bool IsValid() const //Check if 'valid' bit is set to true;
-	{
-		return !(_internalOffset & 0x80000000);
-	}
-
-	void* Get()
-	{
-#ifdef LINK_HANDLE
-		RefreshLinkedObject();
-#endif
-		return GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
-	}
-
-	signed char GetIndex() const { return (signed char) (_internalOffset >> 24) & (0xFF); }
-
-	unsigned int GetOffset() const { return (_internalOffset & 0x00FFFFFF); }
-
-	const unsigned int& GetInternalOffset() const { return _internalOffset; }
-	void SetInternalOffset(unsigned int internalOffset) { _internalOffset = internalOffset; }
-
-protected:
-	unsigned int _internalOffset;
-
-#ifdef LINK_HANDLE
-	void* linked = nullptr;
-	virtual void RefreshLinkedObject()
-	{
-		if (IsValid() && GetDataManager()->CanResolve(GetIndex(), GetOffset()))
-		{
-			linked = GetDataManager()->ResolveHandle(GetIndex(), GetOffset());
-		}
-		else
-		{
-			linked = nullptr;
-		}
-	}
-#endif
-};
-
 template <typename T>
 class THandle : public Handle
 {
@@ -280,94 +278,89 @@ struct RegisterHelper
 	static RegisterHelper<T> _helper;
 };
 
-template <typename T>
-class RogueSaveable
-{
-public:
-	virtual ~RogueSaveable() {}
-	static int ID;
-
-	int GetID()
-	{
-		return ID;
-	}
-};
-
 #define REGISTER_SAVE_TYPE(index, ClassName)\
 	class ClassName;\
-	template<> int RogueSaveable<ClassName>::ID = index;
+	template<> inline int RogueSaveable<ClassName>::ID = index;
     //template<> RegisterHelper<ClassName>::RegisterHelper (int) { DEBUG_PRINT("%d: %s (Registered %d)", index, name, size); GetDataManager()->RegisterArena<ClassName>(size); }\
     template<> RegisterHelper<ClassName> RegisterHelper<ClassName>::_helper(size);
 
 namespace Serialization
 {
-	template <typename Stream>
-	void Serialize(Stream& stream, const Handle& value)
+	template<>
+	struct Serializer<Handle>
 	{
-		Write(stream, "Valid", value.IsValid());
-		if (value.IsValid())
+		template <typename Stream>
+		static void Serialize(Stream& stream, const Handle& value)
 		{
-			Write(stream, "offset", value.GetInternalOffset());
-		}
-	}
-
-	template <typename Stream>
-	void Deserialize(Stream& stream, Handle& value)
-	{
-		if (Read<Stream, bool>(stream, "Valid"))
-		{
-			unsigned int offset;
-			Read(stream, "offset", offset);
-			value.SetInternalOffset(offset);
-			return;
-		}
-		value = Handle();
-	}
-
-	template <typename Stream, typename T>
-	void Serialize(Stream& stream, const THandle<T>& value)
-	{
-		bool valid = value.IsValid();
-		Write(stream, "Valid", valid);
-		if (value.IsValid())
-		{
-			if constexpr (std::is_same<Stream, JSONStream>::value)
-			{
-				short typeIndex = value.GetIndex();
-				unsigned int offset = value.GetOffset();
-				Write(stream, "Type Index", typeIndex);
-				Write(stream, "Offset", offset);
-			}
-			else
+			Write(stream, "Valid", value.IsValid());
+			if (value.IsValid())
 			{
 				Write(stream, "offset", value.GetInternalOffset());
 			}
 		}
-	}
 
-	template <typename Stream, typename T>
-	void Deserialize(Stream& stream, THandle<T>& value)
-	{
-		if (Read<Stream, bool>(stream, "Valid"))
+		template <typename Stream>
+		static void Deserialize(Stream& stream, Handle& value)
 		{
-			if constexpr (std::is_same<Stream, JSONStream>::value)
-			{
-				short index;
-				unsigned int offset;
-				Read(stream, "Type Index", index);
-				Read(stream, "Offset", offset);
-				value = THandle<T>((unsigned char)index, offset);
-			}
-			else
+			if (Read<Stream, bool>(stream, "Valid"))
 			{
 				unsigned int offset;
 				Read(stream, "offset", offset);
 				value.SetInternalOffset(offset);
+				return;
+			}
+			value = Handle();
+		}
+	};
+
+	template<typename T>
+	struct Serializer<THandle<T>>
+	{
+		template <typename Stream>
+		static void Serialize(Stream& stream, const THandle<T>& value)
+		{
+			bool valid = value.IsValid();
+			Write(stream, "Valid", valid);
+			if (value.IsValid())
+			{
+				if constexpr (std::is_same<Stream, JSONStream>::value)
+				{
+					short typeIndex = value.GetIndex();
+					unsigned int offset = value.GetOffset();
+					Write(stream, "Type Index", typeIndex);
+					Write(stream, "Offset", offset);
+				}
+				else
+				{
+					Write(stream, "offset", value.GetInternalOffset());
+				}
 			}
 		}
-		else
+
+		template <typename Stream>
+		static void Deserialize(Stream& stream, THandle<T>& value)
 		{
-			value = THandle<T>();
+			if (Read<Stream, bool>(stream, "Valid"))
+			{
+				if constexpr (std::is_same<Stream, JSONStream>::value)
+				{
+					short index;
+					unsigned int offset;
+					Read(stream, "Type Index", index);
+					Read(stream, "Offset", offset);
+					value = THandle<T>((unsigned char)index, offset);
+				}
+				else
+				{
+					unsigned int offset;
+					Read(stream, "offset", offset);
+					value.SetInternalOffset(offset);
+				}
+			}
+			else
+			{
+				value = THandle<T>();
+			}
 		}
-	}
+	};
 }

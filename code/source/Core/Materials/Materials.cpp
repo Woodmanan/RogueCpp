@@ -3,6 +3,7 @@
 #include "Utils/Utils.h"
 #include "Utils/FileUtils.h"
 #include "Data/SaveManager.h"
+#include "Data/Serialization/Serialization.h"
 #include "Game/ThreadManagers.h"
 #include <iostream>
 #include <algorithm>
@@ -658,7 +659,7 @@ namespace RogueResources
 		stream.close();
 
 		OpenWritePackFile(packContext.destination, packContext.header);
-		RogueSaveManager::Write("Reactions", reactions);
+		RogueSaveManager::Write<std::vector<Reaction>>("Reactions", reactions);
 		RogueSaveManager::CloseWriteSaveFile();
 	}
 
@@ -667,7 +668,7 @@ namespace RogueResources
 		std::vector<Reaction>* reactions = new std::vector<Reaction>();
 
 		OpenReadPackFile(loadContext.source);
-		RogueSaveManager::Read("Materials", *reactions);
+		RogueSaveManager::Read<std::vector<Reaction>>("Materials", *reactions);
 		RogueSaveManager::CloseReadSaveFile();
 
 		return std::shared_ptr<std::vector<Reaction>>(reactions);

@@ -14,7 +14,6 @@
 #include "LOS/LOS.h"
 #include "LOS/TileMemory.h"
 #include "Render/Windows/Window.h"
-#include <format>
 #include <chrono>
 #include "Render/UI/Bar.h"
 #include "Render/UI/Panel.h"

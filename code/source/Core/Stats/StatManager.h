@@ -62,39 +62,47 @@ namespace RogueResources
 
 namespace Serialization
 {
-	template<typename Stream>
-	void Serialize(Stream& stream, const StatDefinition& value)
-	{ 
-		Write(stream, "Name", value.m_name);
-		Write(stream, "ID", value.m_id);
-		Write(stream, "Min", value.m_min);
-		Write(stream, "Max", value.m_max);
-		Write(stream, "MinStatDefinition", value.m_minStatDefinition);
-		Write(stream, "MaxStatDefinition", value.m_maxStatDefinition);
-	}
-
-	template<typename Stream>
-	void Deserialize(Stream& stream, StatDefinition& value)
+	template<>
+	struct Serializer<StatDefinition>
 	{
-		Read(stream, "Name", value.m_name);
-		Read(stream, "ID", value.m_id);
-		Read(stream, "Min", value.m_min);
-		Read(stream, "Max", value.m_max);
-		Read(stream, "MinStatDefinition", value.m_minStatDefinition);
-		Read(stream, "MaxStatDefinition", value.m_maxStatDefinition);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const StatDefinition& value)
+		{ 
+			Write(stream, "Name", value.m_name);
+			Write(stream, "ID", value.m_id);
+			Write(stream, "Min", value.m_min);
+			Write(stream, "Max", value.m_max);
+			Write(stream, "MinStatDefinition", value.m_minStatDefinition);
+			Write(stream, "MaxStatDefinition", value.m_maxStatDefinition);
+		}
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const StatContainer& value)
-	{
-		Write(stream, "values", value.m_values);
-		Write(stream, "parent", value.m_parent);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, StatDefinition& value)
+		{
+			Read(stream, "Name", value.m_name);
+			Read(stream, "ID", value.m_id);
+			Read(stream, "Min", value.m_min);
+			Read(stream, "Max", value.m_max);
+			Read(stream, "MinStatDefinition", value.m_minStatDefinition);
+			Read(stream, "MaxStatDefinition", value.m_maxStatDefinition);
+		}
+	};
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, StatContainer& value)
+	template<>
+	struct Serializer<StatContainer>
 	{
-		Read(stream, "values", value.m_values);
-		Read(stream, "parent", value.m_parent);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const StatContainer& value)
+		{
+			Write(stream, "values", value.m_values);
+			Write(stream, "parent", value.m_parent);
+		}
+
+		template<typename Stream>
+		static void Deserialize(Stream& stream, StatContainer& value)
+		{
+			Read(stream, "values", value.m_values);
+			Read(stream, "parent", value.m_parent);
+		}
+	};
 }

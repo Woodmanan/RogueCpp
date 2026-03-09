@@ -15,19 +15,6 @@ class Location;
 class Chunk;
 class ChunkMap;
 
-namespace Serialization
-{
-    template<typename Stream>
-    void Serialize(Stream& stream, const Chunk& value);
-    template<typename Stream>
-    void Deserialize(Stream& stream, Chunk& value);
-
-    template<typename Stream>
-    void Serialize(Stream& stream, const ChunkMap& value);
-    template<typename Stream>
-    void Deserialize(Stream& stream, ChunkMap& value);
-}
-
 //Static map data!
 //Chunk size defined in CoreDataTypes, since other systems might depend upon it
 static constexpr int ACTIVE_CHUNK_RADIUS = 12;
@@ -131,15 +118,12 @@ public:
 private:
     int GetIndex(const Vec3& location);
 
-    template<typename Stream>
-    friend void Serialization::Serialize(Stream& stream, const Chunk& value);
-    template<typename Stream>
-    friend void Serialization::Deserialize(Stream& stream, Chunk& value);
-
     Vec3 m_chunkLocation;
     vector<Tile> m_tiles;
     float m_defaultHeat = 0;
     bool m_dirty = false;
+
+    friend struct Serialization::Serializer<Chunk>;
 };
 
 class ChunkMap
@@ -171,164 +155,185 @@ private:
     void StreamChunk(Vec3 chunkId, Vec3 radius);
     void MainThread_InsertReadyChunks();
 
-    template<typename Stream>
-    friend void Serialization::Serialize(Stream& stream, const ChunkMap& value);
-    template<typename Stream>
-    friend void Serialization::Deserialize(Stream& stream, ChunkMap& value);
-    
     ROGUE_LOCK(std::mutex, m_mapMutex);
     unordered_map<Vec3, Chunk*> m_chunks;
     unordered_map<Vec3, Chunk*> m_readyChunks;
     set<Vec3> m_loadingChunks;
     vector<THandle<BackingTile>> m_backingTiles;
     vector<vector<float>> m_heatScratch;
+
+    friend struct Serialization::Serializer<ChunkMap>;
 };
 
 namespace Serialization
 {
-    template<typename Stream>
-    void Serialize(Stream& stream, const BackingTile& value)
+    template<>
+    struct Serializer<BackingTile>
     {
-        Write(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
-        Write(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
-        Write(stream, "Index", value.m_index);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const BackingTile& value)
+    	{
+    	    Write(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
+    	    Write(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
+    	    Write(stream, "Index", value.m_index);
+    	}
 
-    template<typename Stream>
-    void Deserialize(Stream& stream, BackingTile& value)
+    	template<typename Stream>
+    	static void Deserialize(Stream& stream, BackingTile& value)
+    	{
+    	    Read(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
+    	    Read(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
+    	    Read(stream, "Index", value.m_index);
+    	}
+    };
+    
+    template<>
+    struct Serializer<TileStats>
     {
-        Read(stream, "Default Floor Materials", value.m_defaultFloorMaterials);
-        Read(stream, "Default Volume Materials", value.m_defaultVolumeMaterials);
-        Read(stream, "Index", value.m_index);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const TileStats& value)
+    	{
+    	    Write(stream, "Neighbors", value.m_neighbors);
+    	    Write(stream, "Floor", value.m_floorMaterials);
+    	    Write(stream, "Volume", value.m_volumeMaterials);
+    	}
 
-    template<typename Stream>
-    void Serialize(Stream& stream, const TileStats& value)
+    	template <typename Stream>
+    	static void Deserialize(Stream& stream, TileStats& value)
+    	{
+    	    Read(stream, "Neighbors", value.m_neighbors);
+    	    Read(stream, "Floor", value.m_floorMaterials);
+    	    Read(stream, "Volume", value.m_volumeMaterials);
+    	}
+    };
+
+    template<>
+    struct Serializer<Chunk>
     {
-        Write(stream, "Neighbors", value.m_neighbors);
-        Write(stream, "Floor", value.m_floorMaterials);
-        Write(stream, "Volume", value.m_volumeMaterials);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const Chunk& value)
+    	{
+    	    Write(stream, "Chunk Location", value.m_chunkLocation);
+    	    Write(stream, "Tiles", value.m_tiles);
+    	    Write(stream, "Default Heat", value.m_defaultHeat);
+    	    Write(stream, "Dirty", value.m_dirty);
+    	}
 
-    template <typename Stream>
-    void Deserialize(Stream& stream, TileStats& value)
+    	template <typename Stream>
+    	static void Deserialize(Stream& stream, Chunk& value)
+    	{
+    	    Read(stream, "Chunk Location", value.m_chunkLocation);
+    	    Read(stream, "Tiles", value.m_tiles);
+    	    Read(stream, "Default Heat", value.m_defaultHeat);
+    	    Read(stream, "Dirty", value.m_dirty);
+    	}
+    };
+
+    template<>
+    struct Serializer<ChunkMap>
     {
-        Read(stream, "Neighbors", value.m_neighbors);
-        Read(stream, "Floor", value.m_floorMaterials);
-        Read(stream, "Volume", value.m_volumeMaterials);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const ChunkMap& value)
+    	{
+    	    uint32_t chunkCount = value.m_chunks.size();
+    	    Write(stream, "Chunk Count", chunkCount);
 
-    template<typename Stream>
-    void Serialize(Stream& stream, const Chunk& value)
+    	    for (auto it : value.m_chunks)
+    	    {
+    	        Write(stream, "Location", it.first);
+    	        Write(stream, "Chunk", *it.second);
+    	    }
+
+    	    Write(stream, "Backing Tiles", value.m_backingTiles);
+    	}
+
+    	template <typename Stream>
+    	static void Deserialize(Stream& stream, ChunkMap& value)
+    	{
+    	    uint chunkCount;
+    	    Read(stream, "Chunk Count", chunkCount);
+
+    	    for (uint count = 0; count < chunkCount; count++)
+    	    {
+    	        Vec3 location;
+    	        Chunk* chunk = new Chunk();
+    	        Read(stream, "Location", location);
+    	        Read(stream, "Chunk", *chunk);
+
+    	        value.m_chunks[location] = chunk;
+    	    }
+
+    	    Read(stream, "Backing Tiles", value.m_backingTiles);
+    	}
+    };
+
+    template<>
+    struct Serializer<Tile>
     {
-        Write(stream, "Chunk Location", value.m_chunkLocation);
-        Write(stream, "Tiles", value.m_tiles);
-        Write(stream, "Default Heat", value.m_defaultHeat);
-        Write(stream, "Dirty", value.m_dirty);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const Tile& value)
+    	{
+    	    Write(stream, "Backing", value.m_backingTile);
+    	    Write(stream, "Stats", value.m_stats);
+    	    Write(stream, "Heat", value.m_heat);
+    	    Write(stream, "Wall", value.m_wall);
+    	    Write(stream, "Dirty", value.m_dirty);
+    	}
 
-    template <typename Stream>
-    void Deserialize(Stream& stream, Chunk& value)
+    	template <typename Stream>
+    	static void Deserialize(Stream& stream, Tile& value)
+    	{
+    	    Read(stream, "Backing", value.m_backingTile);
+    	    Read(stream, "Stats", value.m_stats);
+    	    Read(stream, "Heat", value.m_heat);
+    	    Read(stream, "Wall", value.m_wall);
+    	    Read(stream, "Dirty", value.m_dirty);
+    	}
+    };
+
+    template<>
+    struct Serializer<TileNeighbors>
     {
-        Read(stream, "Chunk Location", value.m_chunkLocation);
-        Read(stream, "Tiles", value.m_tiles);
-        Read(stream, "Default Heat", value.m_defaultHeat);
-        Read(stream, "Dirty", value.m_dirty);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const TileNeighbors& value)
+    	{
+    	    Write(stream, "N", value.N);
+    	    Write(stream, "NDir", value.N_Direction);
+    	    Write(stream, "NE", value.NE);
+    	    Write(stream, "NEDir", value.NE_Direction);
+    	    Write(stream, "E", value.E);
+    	    Write(stream, "EDir", value.E_Direction);
+    	    Write(stream, "SE", value.SE);
+    	    Write(stream, "SEDir", value.SE_Direction);
+    	    Write(stream, "S", value.S);
+    	    Write(stream, "SDir", value.S_Direction);
+    	    Write(stream, "SW", value.SW);
+    	    Write(stream, "SWDir", value.SW_Direction);
+    	    Write(stream, "W", value.W);
+    	    Write(stream, "WDir", value.W_Direction);
+    	    Write(stream, "NW", value.NW);
+    	    Write(stream, "NWDir", value.NW_Direction);
+    	}
 
-    template<typename Stream>
-    void Serialize(Stream& stream, const ChunkMap& value)
-    {
-        uint32_t chunkCount = value.m_chunks.size();
-        Write(stream, "Chunk Count", chunkCount);
-
-        for (auto it : value.m_chunks)
-        {
-            Write(stream, "Location", it.first);
-            Write(stream, "Chunk", *it.second);
-        }
-
-        Write(stream, "Backing Tiles", value.m_backingTiles);
-    }
-
-    template <typename Stream>
-    void Deserialize(Stream& stream, ChunkMap& value)
-    {
-        uint chunkCount;
-        Read(stream, "Chunk Count", chunkCount);
-
-        for (uint count = 0; count < chunkCount; count++)
-        {
-            Vec3 location;
-            Chunk* chunk = new Chunk();
-            Read(stream, "Location", location);
-            Read(stream, "Chunk", *chunk);
-
-            value.m_chunks[location] = chunk;
-        }
-
-        Read(stream, "Backing Tiles", value.m_backingTiles);
-    }
-
-    template<typename Stream>
-    void Serialize(Stream& stream, const Tile& value)
-    {
-        Write(stream, "Backing", value.m_backingTile);
-        Write(stream, "Stats", value.m_stats);
-        Write(stream, "Heat", value.m_heat);
-        Write(stream, "Wall", value.m_wall);
-        Write(stream, "Dirty", value.m_dirty);
-    }
-
-    template <typename Stream>
-    void Deserialize(Stream& stream, Tile& value)
-    {
-        Read(stream, "Backing", value.m_backingTile);
-        Read(stream, "Stats", value.m_stats);
-        Read(stream, "Heat", value.m_heat);
-        Read(stream, "Wall", value.m_wall);
-        Read(stream, "Dirty", value.m_dirty);
-    }
-
-    template<typename Stream>
-    void Serialize(Stream& stream, const TileNeighbors& value)
-    {
-        Write(stream, "N", value.N);
-        Write(stream, "NDir", value.N_Direction);
-        Write(stream, "NE", value.NE);
-        Write(stream, "NEDir", value.NE_Direction);
-        Write(stream, "E", value.E);
-        Write(stream, "EDir", value.E_Direction);
-        Write(stream, "SE", value.SE);
-        Write(stream, "SEDir", value.SE_Direction);
-        Write(stream, "S", value.S);
-        Write(stream, "SDir", value.S_Direction);
-        Write(stream, "SW", value.SW);
-        Write(stream, "SWDir", value.SW_Direction);
-        Write(stream, "W", value.W);
-        Write(stream, "WDir", value.W_Direction);
-        Write(stream, "NW", value.NW);
-        Write(stream, "NWDir", value.NW_Direction);
-    }
-
-    template <typename Stream>
-    void Deserialize(Stream& stream, TileNeighbors& value)
-    {
-        Read(stream, "N", value.N);
-        Read(stream, "NDir", value.N_Direction);
-        Read(stream, "NE", value.NE);
-        Read(stream, "NEDir", value.NE_Direction);
-        Read(stream, "E", value.E);
-        Read(stream, "EDir", value.E_Direction);
-        Read(stream, "SE", value.SE);
-        Read(stream, "SEDir", value.SE_Direction);
-        Read(stream, "S", value.S);
-        Read(stream, "SDir", value.S_Direction);
-        Read(stream, "SW", value.SW);
-        Read(stream, "SWDir", value.SW_Direction);
-        Read(stream, "W", value.W);
-        Read(stream, "WDir", value.W_Direction);
-        Read(stream, "NW", value.NW);
-        Read(stream, "NWDir", value.NW_Direction);
-    }
+    	template <typename Stream>
+    	static void Deserialize(Stream& stream, TileNeighbors& value)
+    	{
+    	    Read(stream, "N", value.N);
+    	    Read(stream, "NDir", value.N_Direction);
+    	    Read(stream, "NE", value.NE);
+    	    Read(stream, "NEDir", value.NE_Direction);
+    	    Read(stream, "E", value.E);
+    	    Read(stream, "EDir", value.E_Direction);
+    	    Read(stream, "SE", value.SE);
+    	    Read(stream, "SEDir", value.SE_Direction);
+    	    Read(stream, "S", value.S);
+    	    Read(stream, "SDir", value.S_Direction);
+    	    Read(stream, "SW", value.SW);
+    	    Read(stream, "SWDir", value.SW_Direction);
+    	    Read(stream, "W", value.W);
+    	    Read(stream, "WDir", value.W_Direction);
+    	    Read(stream, "NW", value.NW);
+    	    Read(stream, "NWDir", value.NW_Direction);
+    	}
+    };
 }

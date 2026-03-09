@@ -240,39 +240,13 @@ public:
 
 namespace Serialization
 {
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const EInputType& value)
-	{
-		stream.WriteEnum(value);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, EInputType& value)
-	{
-		stream.ReadEnum(value);
-	}
-
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const EOutputType& value)
-	{
-		int asInt = value;
-		Serialize(stream, asInt);
-	}
-
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, EOutputType& value)
-	{
-		int asInt;
-		Deserialize(asInt);
-		value = (EOutputType)asInt;
-	}
-
+	/*
 	template<typename Stream>
 	void Serialize(Stream& stream, const Input& value)
 	{
 		Write(stream, "Type", value.m_type);
 		bool hasData = value.HasData();
-		Write(stream "Has Data", hasData);
+		Write(stream, "Has Data", hasData);
 		if (hasData)
 		{
 			stream.WriteSpacing();
@@ -338,5 +312,5 @@ namespace Serialization
 			stream.ReadSpacing();
 			value.Get<OutputBase>()->Deserialize(stream);
 		}
-	}
+	}*/
 }

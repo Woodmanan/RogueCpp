@@ -3,7 +3,7 @@
 #define BEARLIB_TERMINAL
 
 #ifdef BEARLIB_TERMINAL
-#include "Include/C/BearLibTerminal.h"
+#include "C/BearLibTerminal.h"
 
 enum EKey
 {

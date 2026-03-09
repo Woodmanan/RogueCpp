@@ -1,10 +1,11 @@
 #pragma once
 #include <Debug/Debug.h>
-#include "include/magic_enum/magic_enum.hpp"
+#include "magic_enum.hpp"
 #include <vector>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <string>
 
 #define UseSpacesNotTabs
 
@@ -310,7 +311,7 @@ void JSONStream::WriteEnum(const E& value)
 template<typename E>
 void JSONStream::ReadEnum(E& value)
 {
-	string enum_name;
+	std::string enum_name;
 	Read(enum_name);
 
 	value = magic_enum::enum_cast<E>(enum_name, magic_enum::case_insensitive).value();

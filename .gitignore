@@ -40,3 +40,11 @@ code/libraries/*
 
 # Build folders
 out/*
+build/*
+packed/*
+
+# Tags file
+tags
+
+# Vim swap files
+*.swp

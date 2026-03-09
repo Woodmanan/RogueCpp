@@ -91,49 +91,57 @@ public:
 
 namespace Serialization
 {
-	template<typename Stream>
-	void Serialize(Stream& stream, const Rect& value)
+	template<>
+	struct Serializer<Rect>
 	{
-		Write(stream, "x", value.x);
-		Write(stream, "y", value.y);
-		Write(stream, "w", value.w);
-		Write(stream, "h", value.h);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const Rect& value)
+		{
+			Write(stream, "x", value.x);
+			Write(stream, "y", value.y);
+			Write(stream, "w", value.w);
+			Write(stream, "h", value.h);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, Rect& value)
+		template<typename Stream>
+		static void Deserialize(Stream& stream, Rect& value)
+		{
+			Read(stream, "x", value.x);
+			Read(stream, "y", value.y);
+			Read(stream, "w", value.w);
+			Read(stream, "h", value.h);
+		}
+	};
+
+	template<>
+	struct Serializer<Anchors>
 	{
-		Read(stream, "x", value.x);
-		Read(stream, "y", value.y);
-		Read(stream, "w", value.w);
-		Read(stream, "h", value.h);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const Anchors& value)
+		{
+			Write(stream, "Min X", value.minX);
+			Write(stream, "Max X", value.maxX);
+			Write(stream, "Min Y", value.minY);
+			Write(stream, "Max Y", value.maxY);
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const Anchors& value)
-	{
-		Write(stream, "Min X", value.minX);
-		Write(stream, "Max X", value.maxX);
-		Write(stream, "Min Y", value.minY);
-		Write(stream, "Max Y", value.maxY);
+			Write(stream, "Min X Offset", value.minXOffset);
+			Write(stream, "Max X Offset", value.maxXOffset);
+			Write(stream, "Min Y Offset", value.minYOffset);
+			Write(stream, "Max Y Offset", value.maxYOffset);
+		}
 
-		Write(stream, "Min X Offset", value.minXOffset);
-		Write(stream, "Max X Offset", value.maxXOffset);
-		Write(stream, "Min Y Offset", value.minYOffset);
-		Write(stream, "Max Y Offset", value.maxYOffset);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, Anchors& value)
+		{
+			Read(stream, "Min X", value.minX);
+			Read(stream, "Max X", value.maxX);
+			Read(stream, "Min Y", value.minY);
+			Read(stream, "Max Y", value.maxY);
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, Anchors& value)
-	{
-		Read(stream, "Min X", value.minX);
-		Read(stream, "Max X", value.maxX);
-		Read(stream, "Min Y", value.minY);
-		Read(stream, "Max Y", value.maxY);
-
-		Read(stream, "Min X Offset", value.minXOffset);
-		Read(stream, "Max X Offset", value.maxXOffset);
-		Read(stream, "Min Y Offset", value.minYOffset);
-		Read(stream, "Max Y Offset", value.maxYOffset);
-	}
+			Read(stream, "Min X Offset", value.minXOffset);
+			Read(stream, "Max X Offset", value.maxXOffset);
+			Read(stream, "Min Y Offset", value.minYOffset);
+			Read(stream, "Max Y Offset", value.maxYOffset);
+		}
+	};
 }

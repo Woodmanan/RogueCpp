@@ -1,8 +1,8 @@
 #include "ImageManager.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb/stb_image.h"
+#include "stb_image.h"
 #include "Debug/Profiling.h"
-#include "rectpack2D/src/finders_interface.h"
+#include "rectpack2D/finders_interface.h"
 
 using namespace rectpack2D;
 

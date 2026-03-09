@@ -8,10 +8,13 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <shared_mutex>
 #include <atomic>
 #include <array>
 #include "Debug/Debug.h"
+#include "Data/Serialization/Serialization.h"
 
 //Resource management and loading system.
 
@@ -221,32 +224,40 @@ private:
 
 namespace Serialization
 {
-	template<typename Stream>
-	void Serialize(Stream& stream, const HashID& value)
+	template<>
+	struct Serializer<HashID>
 	{
-		size_t asSize = value;
-		Write(stream, "Value", asSize);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const HashID& value)
+		{
+			size_t asSize = value;
+			Write(stream, "Value", asSize);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, HashID& value)
+		template<typename Stream>
+		static void Deserialize(Stream& stream, HashID& value)
+		{
+			size_t asSize;
+			Read(stream, "Value", asSize);
+			value = asSize;
+		}
+	};
+	
+	template<>
+	struct Serializer<ResourceHeader>
 	{
-		size_t asSize;
-		Read(stream, "Value", asSize);
-		value = asSize;
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const ResourceHeader& value)
+		{
+			Write(stream, "Resource Version", value.version);
+			Write(stream, "Dependencies", value.dependencies);
+		}
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const ResourceHeader& value)
-	{
-		Write(stream, "Resource Version", value.version);
-		Write(stream, "Dependencies", value.dependencies);
-	}
-
-	template<typename Stream>
-	void Deserialize(Stream& stream, ResourceHeader& value)
-	{
-		Read(stream, "Resource Version", value.version);
-		Read(stream, "Dependencies", value.dependencies);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, ResourceHeader& value)
+		{
+			Read(stream, "Resource Version", value.version);
+			Read(stream, "Dependencies", value.dependencies);
+		}
+	};
 }

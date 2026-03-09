@@ -156,97 +156,106 @@ namespace RogueResources
 
 namespace Serialization
 {
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const Phase& value)
+	template<>
+	struct Serializer<Phase> : EnumSerializer<Phase> {};
+	
+	template<>
+	struct Serializer<MaterialDefinition>
 	{
-		stream.WriteEnum(value);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const MaterialDefinition& value)
+		{
+			Write(stream, "ID", value.ID);
+			Write(stream, "Name", value.name);
+			Write(stream, "Density", value.density);
+			Write(stream, "Movement Cost", value.movementCost);
+			Write(stream, "Thermal Conductivity", value.thermalConductivity);
+			Write(stream, "Heat Capacity", value.heatCapacity);
+			Write(stream, "Floor Char", value.floorChar);
+			Write(stream, "Wall Char", value.wallChar);
+			Write(stream, "Color", value.color);
+			Write(stream, "Phase", value.phase);
+		}
+	
 
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, Phase& value)
-	{
-		stream.ReadEnum(value);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, MaterialDefinition& value)
+		{
+			Read(stream, "ID", value.ID);
+			Read(stream, "Name", value.name);
+			Read(stream, "Density", value.density);
+			Read(stream, "Movement Cost", value.movementCost);
+			Read(stream, "Thermal Conductivity", value.thermalConductivity);
+			Read(stream, "Heat Capacity", value.heatCapacity);
+			Read(stream, "Floor Char", value.floorChar);
+			Read(stream, "Wall Char", value.wallChar);
+			Read(stream, "Color", value.color);
+			Read(stream, "Phase", value.phase);
+		}
+	};
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const MaterialDefinition& value)
+	template<>
+	struct Serializer<Material>
 	{
-		Write(stream, "ID", value.ID);
-		Write(stream, "Name", value.name);
-		Write(stream, "Density", value.density);
-		Write(stream, "Movement Cost", value.movementCost);
-		Write(stream, "Thermal Conductivity", value.thermalConductivity);
-		Write(stream, "Heat Capacity", value.heatCapacity);
-		Write(stream, "Floor Char", value.floorChar);
-		Write(stream, "Wall Char", value.wallChar);
-		Write(stream, "Color", value.color);
-		Write(stream, "Phase", value.phase);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const Material& value)
+		{
+			Write(stream, "ID", value.m_materialID);
+			Write(stream, "Mass", value.m_mass);
+			Write(stream, "Static", value.m_static);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, MaterialDefinition& value)
-	{
-		Read(stream, "ID", value.ID);
-		Read(stream, "Name", value.name);
-		Read(stream, "Density", value.density);
-		Read(stream, "Movement Cost", value.movementCost);
-		Read(stream, "Thermal Conductivity", value.thermalConductivity);
-		Read(stream, "Heat Capacity", value.heatCapacity);
-		Read(stream, "Floor Char", value.floorChar);
-		Read(stream, "Wall Char", value.wallChar);
-		Read(stream, "Color", value.color);
-		Read(stream, "Phase", value.phase);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, Material& value)
+		{
+			Read(stream, "ID", value.m_materialID);
+			Read(stream, "Mass", value.m_mass);
+			Read(stream, "Static", value.m_static);
+		}
+	};
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const Material& value)
+	template<>
+	struct Serializer<Reaction>
 	{
-		Write(stream, "ID", value.m_materialID);
-		Write(stream, "Mass", value.m_mass);
-		Write(stream, "Static", value.m_static);
-	}
+	
+		template<typename Stream>
+		static void Serialize(Stream& stream, const Reaction& value)
+		{
+			Write(stream, "Name", value.name);
+			Write(stream, "Reactants", value.m_reactants);
+			Write(stream, "Products", value.m_products);
+			Write(stream, "Min Heat", value.m_minHeat);
+			Write(stream, "Max Heat", value.m_maxHeat);
+			Write(stream, "Delta Heat", value.m_deltaHeat);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, Material& value)
-	{
-		Read(stream, "ID", value.m_materialID);
-		Read(stream, "Mass", value.m_mass);
-		Read(stream, "Static", value.m_static);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, Reaction& value)
+		{
+			Read(stream, "Name", value.name);
+			Read(stream, "Reactants", value.m_reactants);
+			Read(stream, "Products", value.m_products);
+			Read(stream, "Min Heat", value.m_minHeat);
+			Read(stream, "Max Heat", value.m_maxHeat);
+			Read(stream, "Delta Heat", value.m_deltaHeat);
+		}
+	};
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const Reaction& value)
+	template<>
+	struct Serializer<MaterialContainer>
 	{
-		Write(stream, "Name", value.name);
-		Write(stream, "Reactants", value.m_reactants);
-		Write(stream, "Products", value.m_products);
-		Write(stream, "Min Heat", value.m_minHeat);
-		Write(stream, "Max Heat", value.m_maxHeat);
-		Write(stream, "Delta Heat", value.m_deltaHeat);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const MaterialContainer& value)
+		{
+			Write(stream, "Materials", value.m_materials);
+			Write(stream, "Layers", value.m_layers);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, Reaction& value)
-	{
-		Read(stream, "Name", value.name);
-		Read(stream, "Reactants", value.m_reactants);
-		Read(stream, "Products", value.m_products);
-		Read(stream, "Min Heat", value.m_minHeat);
-		Read(stream, "Max Heat", value.m_maxHeat);
-		Read(stream, "Delta Heat", value.m_deltaHeat);
-	}
-
-	template<typename Stream>
-	void Serialize(Stream& stream, const MaterialContainer& value)
-	{
-		Write(stream, "Materials", value.m_materials);
-		Write(stream, "Layers", value.m_layers);
-	}
-
-	template<typename Stream>
-	void Deserialize(Stream& stream, MaterialContainer& value)
-	{
-		Read(stream, "Materials", value.m_materials);
-		Read(stream, "Layers", value.m_layers);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, MaterialContainer& value)
+		{
+			Read(stream, "Materials", value.m_materials);
+			Read(stream, "Layers", value.m_layers);
+		}
+	};
 }

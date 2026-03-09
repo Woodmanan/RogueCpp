@@ -30,19 +30,23 @@ public:
 
 namespace Serialization
 {
-    template<typename Stream>
-    void Serialize(Stream& stream, const PlayerData& value)
+    template<>
+    struct Serializer<PlayerData>
     {
-        Write(stream, "BackingTiles", value.m_backingTiles);
-        Write(stream, "Memory", value.m_memory);
-        Write(stream, "View", value.m_currentView);
-    }
+    	template<typename Stream>
+    	static void Serialize(Stream& stream, const PlayerData& value)
+    	{
+    	    Write(stream, "BackingTiles", value.m_backingTiles);
+    	    Write(stream, "Memory", value.m_memory);
+    	    Write(stream, "View", value.m_currentView);
+    	}
 
-    template <typename Stream>
-    void Deserialize(Stream& stream, PlayerData& value)
-    {
-        Read(stream, "BackingTiles", value.m_backingTiles);
-        Read(stream, "Memory", value.m_memory);
-        Read(stream, "View", value.m_currentView);
-    }
+    	template <typename Stream>
+    	static void Deserialize(Stream& stream, PlayerData& value)
+    	{
+    	    Read(stream, "BackingTiles", value.m_backingTiles);
+    	    Read(stream, "Memory", value.m_memory);
+    	    Read(stream, "View", value.m_currentView);
+    	}
+    };
 }

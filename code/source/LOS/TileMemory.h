@@ -75,47 +75,46 @@ private:
 
 namespace Serialization
 {
-	template<typename Stream>
-	void SerializeObject(Stream& stream, const ETemperature& value)
-	{
-		stream.WriteEnum(value);
-	}
+	template<>
+	struct Serializer<ETemperature> : EnumSerializer<ETemperature> {};
 
-	template<typename Stream>
-	void DeserializeObject(Stream& stream, ETemperature& value)
+	template<>
+	struct Serializer<DataTile>
 	{
-		stream.ReadEnum(value);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const DataTile& value)
+		{
+			Write(stream, "Backing Tile", value.m_backingTile);
+			Write(stream, "Temperature", value.m_temperature);
+			Write(stream, "Render Char", value.m_renderChar);
+			Write(stream, "Visible Color", value.m_color);
+		}
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const DataTile& value)
-	{
-		Write(stream, "Backing Tile", value.m_backingTile);
-		Write(stream, "Temperature", value.m_temperature);
-		Write(stream, "Render Char", value.m_renderChar);
-		Write(stream, "Visible Color", value.m_color);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, DataTile& value)
+		{
+			Read(stream, "Backing Tile", value.m_backingTile);
+			Read(stream, "Temperature", value.m_temperature);
+			Read(stream, "Render Char", value.m_renderChar);
+			Read(stream, "Visible Color", value.m_color);
+		}
+	};
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, DataTile& value)
+	template<>
+	struct Serializer<TileMemory>
 	{
-		Read(stream, "Backing Tile", value.m_backingTile);
-		Read(stream, "Temperature", value.m_temperature);
-		Read(stream, "Render Char", value.m_renderChar);
-		Read(stream, "Visible Color", value.m_color);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const TileMemory& value)
+		{
+			Write(stream, "Local Position", value.m_localPosition);
+			Write(stream, "Tile Memory", value.m_tiles);
+		}
 
-	template<typename Stream>
-	void Serialize(Stream& stream, const TileMemory& value)
-	{
-		Write(stream, "Local Position", value.m_localPosition);
-		Write(stream, "Tile Memory", value.m_tiles);
-	}
-
-	template<typename Stream>
-	void Deserialize(Stream& stream, TileMemory& value)
-	{
-		Read(stream, "Local Position", value.m_localPosition);
-		Read(stream, "Tile Memory", value.m_tiles);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, TileMemory& value)
+		{
+			Read(stream, "Local Position", value.m_localPosition);
+			Read(stream, "Tile Memory", value.m_tiles);
+		}
+	};
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/CoreDataTypes.h"
+#include "Data/RogueDataManager.h"
 #include <optional>
 
 class Chunk;

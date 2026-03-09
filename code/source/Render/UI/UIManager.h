@@ -46,19 +46,23 @@ private:
 
 namespace Serialization
 {
-	template<typename Stream>
-	void Serialize(Stream& stream, const WindowSettings& value)
+	template<>
+	struct Serializer<WindowSettings>
 	{
-		Write(stream, "ID", value.id);
-		Write(stream, "Anchors", value.anchors);
-		Write(stream, "Parent", value.parentId);
-	}
+		template<typename Stream>
+		static void Serialize(Stream& stream, const WindowSettings& value)
+		{
+			Write(stream, "ID", value.id);
+			Write(stream, "Anchors", value.anchors);
+			Write(stream, "Parent", value.parentId);
+		}
 
-	template<typename Stream>
-	void Deserialize(Stream& stream, WindowSettings& value)
-	{
-		Read(stream, "ID", value.id);
-		Read(stream, "Anchors", value.anchors);
-		Read(stream, "Parent", value.parentId);
-	}
+		template<typename Stream>
+		static void Deserialize(Stream& stream, WindowSettings& value)
+		{
+			Read(stream, "ID", value.id);
+			Read(stream, "Anchors", value.anchors);
+			Read(stream, "Parent", value.parentId);
+		}
+	};
 }
