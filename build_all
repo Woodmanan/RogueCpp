@@ -1,0 +1,11 @@
+echo "Debug"
+./generate_debug
+./build_debug
+
+echo "Release with Debug"
+./generate_relwithdebuginfo
+./build_relwithdebuginfo
+
+echo "Release"
+./generate_release
+./build_release

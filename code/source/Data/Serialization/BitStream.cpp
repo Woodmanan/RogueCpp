@@ -1,4 +1,5 @@
 #include "BitStream.h"
+
 #include "Debug/Debug.h"
 #include "Debug/Profiling.h"
 #include <charconv>
@@ -233,7 +234,7 @@ void JSONStream::WriteSpacing()
 #ifdef UseSpacesNotTabs
 		Write("    ", 4);
 #else
-		Write('\t');
+		Write("\t", 1);
 #endif
 	}
 }
@@ -493,7 +494,6 @@ void JSONStream::Read(unsigned int& value)
 {
 	char buffer[16];
 	ReadNextWordIntoBuffer(buffer, 16);
-	ASSERT(atoi(buffer) >= 0); //If this triggers, you need to rewrite this function
 	value = strtoul(buffer, nullptr, 0);
 }
 

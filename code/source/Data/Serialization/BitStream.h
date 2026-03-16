@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-#define UseSpacesNotTabs
+//#define UseSpacesNotTabs
 
 /* Serialization streams! */
 /*
@@ -126,7 +126,7 @@ protected:
 template<typename E>
 void PackedStream::WriteEnum(const E& value)
 {
-	auto asInteger = magic_enum::enum_integer(value);
+	int asInteger = magic_enum::enum_integer(value);
 	Write(asInteger);
 }
 

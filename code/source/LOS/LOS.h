@@ -166,7 +166,7 @@ namespace LOS
 namespace Serialization
 {
 	template<>
-	struct Serializer<View>
+	struct Serializer<View> : ObjectSerializer<View>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const View& value)

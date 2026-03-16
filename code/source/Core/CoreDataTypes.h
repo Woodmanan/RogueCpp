@@ -519,7 +519,7 @@ namespace Serialization
     struct Serializer<Direction> : EnumSerializer<Direction> {};
 
     template<>
-    struct Serializer<Vec2>
+    struct Serializer<Vec2> : ObjectSerializer<Vec2>
     {
 	template<typename Stream>
     	static void Serialize(Stream& stream, const Vec2& value)
@@ -537,7 +537,7 @@ namespace Serialization
     };
 
     template<>
-    struct Serializer<Vec3>
+    struct Serializer<Vec3> : ObjectSerializer<Vec3>
     {   
 	template<typename Stream>
     	static void Serialize(Stream& stream, const Vec3& value)
@@ -557,7 +557,7 @@ namespace Serialization
     };
     
     template<>
-    struct Serializer<Location>
+    struct Serializer<Location> : ObjectSerializer<Location>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const Location& value)
@@ -592,39 +592,39 @@ namespace Serialization
 
 
     template<>
-    struct Serializer<Color>
+    struct Serializer<Color> : ObjectSerializer<Color>
     {
 
     	template<typename Stream>
     	static void Serialize(Stream& stream, const Color& value)
-	{
-		if constexpr (std::is_same<Stream, JSONStream>::value)
 		{
-			Write(stream, "r", value.r);
-			Write(stream, "g", value.g);
-			Write(stream, "b", value.b);
-			Write(stream, "a", value.a);
+			if constexpr (std::is_same<Stream, JSONStream>::value)
+			{
+				Write(stream, "r", value.r);
+				Write(stream, "g", value.g);
+				Write(stream, "b", value.b);
+				Write(stream, "a", value.a);
+			}
+			else
+			{
+				Write(stream, "color", value.color);
+			}
 		}
-		else
-		{
-			Write(stream, "color", value.color);
-		}
-    	}
 
     	template<typename Stream>
     	static void Deserialize(Stream& stream, Color& value)
-	{
-		if constexpr (std::is_same<Stream, JSONStream>::value)
 		{
-			Read(stream, "r", value.r);
-			Read(stream, "g", value.g);
-			Read(stream, "b", value.b);
-			Read(stream, "a", value.a);
+			if constexpr (std::is_same<Stream, JSONStream>::value)
+			{
+				Read(stream, "r", value.r);
+				Read(stream, "g", value.g);
+				Read(stream, "b", value.b);
+				Read(stream, "a", value.a);
+			}
+			else
+			{
+				Read(stream, "color", value.color);
+			}
 		}
-		else
-		{
-			Read(stream, "color", value.color);
-		}
-	}
     };
 }

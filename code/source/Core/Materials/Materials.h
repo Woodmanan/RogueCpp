@@ -160,7 +160,7 @@ namespace Serialization
 	struct Serializer<Phase> : EnumSerializer<Phase> {};
 	
 	template<>
-	struct Serializer<MaterialDefinition>
+	struct Serializer<MaterialDefinition> : ObjectSerializer<MaterialDefinition>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const MaterialDefinition& value)
@@ -195,7 +195,7 @@ namespace Serialization
 	};
 
 	template<>
-	struct Serializer<Material>
+	struct Serializer<Material> : ObjectSerializer<Material>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const Material& value)
@@ -215,7 +215,7 @@ namespace Serialization
 	};
 
 	template<>
-	struct Serializer<Reaction>
+	struct Serializer<Reaction> : ObjectSerializer<Reaction>
 	{
 	
 		template<typename Stream>
@@ -242,7 +242,7 @@ namespace Serialization
 	};
 
 	template<>
-	struct Serializer<MaterialContainer>
+	struct Serializer<MaterialContainer> : ObjectSerializer<MaterialContainer>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const MaterialContainer& value)

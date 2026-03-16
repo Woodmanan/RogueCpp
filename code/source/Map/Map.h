@@ -168,7 +168,7 @@ private:
 namespace Serialization
 {
     template<>
-    struct Serializer<BackingTile>
+    struct Serializer<BackingTile> : ObjectSerializer<BackingTile>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const BackingTile& value)
@@ -188,7 +188,7 @@ namespace Serialization
     };
     
     template<>
-    struct Serializer<TileStats>
+    struct Serializer<TileStats> : ObjectSerializer<TileStats>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const TileStats& value)
@@ -208,7 +208,7 @@ namespace Serialization
     };
 
     template<>
-    struct Serializer<Chunk>
+    struct Serializer<Chunk> : ObjectSerializer<Chunk>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const Chunk& value)
@@ -230,7 +230,7 @@ namespace Serialization
     };
 
     template<>
-    struct Serializer<ChunkMap>
+    struct Serializer<ChunkMap> : ObjectSerializer<ChunkMap>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const ChunkMap& value)
@@ -268,7 +268,7 @@ namespace Serialization
     };
 
     template<>
-    struct Serializer<Tile>
+    struct Serializer<Tile> : ObjectSerializer<Tile>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const Tile& value)
@@ -292,7 +292,7 @@ namespace Serialization
     };
 
     template<>
-    struct Serializer<TileNeighbors>
+    struct Serializer<TileNeighbors> : ObjectSerializer<TileNeighbors>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const TileNeighbors& value)

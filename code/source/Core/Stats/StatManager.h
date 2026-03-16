@@ -63,7 +63,7 @@ namespace RogueResources
 namespace Serialization
 {
 	template<>
-	struct Serializer<StatDefinition>
+	struct Serializer<StatDefinition> : ObjectSerializer<StatDefinition>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const StatDefinition& value)
@@ -89,7 +89,7 @@ namespace Serialization
 	};
 
 	template<>
-	struct Serializer<StatContainer>
+	struct Serializer<StatContainer> : ObjectSerializer<StatContainer>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const StatContainer& value)

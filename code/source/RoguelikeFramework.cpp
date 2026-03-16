@@ -312,8 +312,59 @@ void TestEvents()
     }
 }
 
+void TestSerialization()
+{
+	DEBUG_PRINT("Testing simple open and close");
+	RogueSaveManager::OpenWriteSaveFile("Test Save.rsf");
+	RogueSaveManager::Write<int>("Test int", 1);
+	RogueSaveManager::Write<int>("Test int", 2);
+	RogueSaveManager::Write<int>("Test int", 3);
+	RogueSaveManager::Write<int>("Test int", 4);
+	RogueSaveManager::Write<Direction>("Test Enum", North);
+	RogueSaveManager::CloseWriteSaveFile();
+		
+	DEBUG_PRINT("Testing simple read and close");
+	RogueSaveManager::OpenReadSaveFile("Test Save.rsf");
+	int testVal = -1;
+	Direction testDir = South;
+	RogueSaveManager::Read<int>("Test int", testVal);
+	if (testVal != 1)
+	{
+		DEBUG_PRINT("Test case 1 failed!");
+	}
+
+	RogueSaveManager::Read<int>("Test int", testVal);
+	if (testVal != 2)
+	{
+		DEBUG_PRINT("Test case 2 failed!");
+	}
+
+	RogueSaveManager::Read<int>("Test int", testVal);
+	if (testVal != 3)
+	{
+		DEBUG_PRINT("Test case 3 failed!");
+	}
+
+	RogueSaveManager::Read<int>("Test int", testVal);
+	if (testVal != 4)
+	{
+		DEBUG_PRINT("Test case 4 failed!");
+	}
+
+	RogueSaveManager::Read<Direction>("Test Enum", testDir);
+	if (testDir != North)
+	{
+		DEBUG_PRINT("Test case 5 failed!");
+	}
+
+	RogueSaveManager::CloseReadSaveFile();
+	RogueSaveManager::DeleteSaveFile("Test Save.rsf");
+}
+
 int main(int argc, char* argv[])
 {
+	TestSerialization();
+
     uint maxThreads = std::thread::hardware_concurrency();
     DEBUG_PRINT("%d concurrent threads are supported.", maxThreads);
 
@@ -404,6 +455,7 @@ int main(int argc, char* argv[])
     View view;
     view.SetRadius(radius);
 
+	DEBUG_PRINT("Starting game loop!");
     auto clock = chrono::system_clock::now();
 
     bool shouldBreak = false;

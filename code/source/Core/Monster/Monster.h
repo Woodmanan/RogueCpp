@@ -9,14 +9,6 @@ class BodyDriver;
 class MovementDriver;
 class Monster;
 
-namespace Serialization
-{
-	template<typename Stream>
-	void Serialize(Stream& stream, const Monster& value);
-	template<typename Stream>
-	void Deserialize(Stream& stream, Monster& value);
-}
-
 struct BodyTileDefinitions
 {
 	char sprite;
@@ -82,11 +74,7 @@ private:
 
 	vector<BodyTile> m_bodyTiles;
 
-	template<typename Stream>
-	friend void Serialization::Serialize(Stream& stream, const Monster& value);
-	template<typename Stream>
-	friend void Serialization::Deserialize(Stream& stream, Monster& value);
-	friend class BodyDriver;
+	friend class Serialization::Serializer<Monster>;
 };
 
 /* Additive movement modifiers
@@ -131,7 +119,7 @@ public:
 namespace Serialization
 {
 	template<>
-	struct Serializer<Monster>
+	struct Serializer<Monster> : ObjectSerializer<Monster>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const Monster& value)

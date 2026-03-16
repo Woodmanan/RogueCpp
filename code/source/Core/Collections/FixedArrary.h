@@ -163,7 +163,7 @@ private:
 namespace Serialization
 {
 	template<typename T, size_t N>
-	struct Serializer<FixedArray<T, N>>
+	struct Serializer<FixedArray<T, N>> : ObjectSerializer<FixedArray<T, N>>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const FixedArray<T, N>& values)
@@ -175,7 +175,7 @@ namespace Serialization
 			for (size_t index = 0; index < values.size(); index++)
 			{
 				stream.WriteSpacing();
-				SerializeObject(stream, values[index]);
+				Serializer<T>::SerializeObject(stream, values[index]);
 				stream.WriteListSeperator();
 			}
 			stream.CloseWriteScope();
@@ -192,7 +192,7 @@ namespace Serialization
 			for (size_t index = 0; index < size; index++)
 			{
 				stream.ReadSpacing();
-				DeserializeObject(stream, values[index]);
+				Serializer<T>::DeserializeObject(stream, values[index]);
 				stream.ReadListSeperator();
 			}
 			stream.CloseReadScope();

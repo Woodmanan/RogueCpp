@@ -485,17 +485,60 @@ std::filesystem::path ResourceManager::GetSource(const HashID& name)
 
 std::filesystem::path ResourceManager::GetPacked(const HashID& ID)
 {
-	std::filesystem::create_directory("./packed");
-	return std::filesystem::path(string_format("./packed/%zu.pck", (size_t) ID));
+	std::filesystem::path packedPath = GetPackedFolder();
+	std::filesystem::create_directory(packedPath);
+	std::string fileName = string_format("%zu.pck", (size_t) ID);
+
+	return packedPath / fileName;
+}
+
+std::filesystem::path ResourceManager::GetExecutablePath()
+{
+	//TODO: Check that this works on windows as well!
+	return std::filesystem::canonical("/proc/self/exe");
 }
 
 std::filesystem::path ResourceManager::GetResources()
 {
-#ifdef DEBUG
-	return std::filesystem::path("../resources");
-#else
-	return std::filesystem::path("./resources");
-#endif
+	static std::filesystem::path resourcePath = FindResources();
+	return resourcePath;
+}
+
+std::filesystem::path ResourceManager::FindResources()
+{
+	DEBUG_PRINT("Finding resources!");
+	int maxFoldersUp = 2;
+
+	std::filesystem::path start = GetExecutablePath().parent_path();
+	int layer = 0;
+	do
+	{	
+		for (const auto& p : std::filesystem::recursive_directory_iterator(start))
+		{
+			if (std::filesystem::is_directory(p))
+			{
+				if (p.path().filename().string() == "resources")
+				{
+					DEBUG_PRINT("Resource folder found at %s", p.path().string().c_str());
+					return p.path();
+				}
+			}
+		}
+
+		//TODO: Do this formatting in the realy way! This is gross.
+		layer++;
+		start = start.parent_path();
+
+	} while (layer <= maxFoldersUp);
+
+	DEBUG_PRINT("No resource folder found! Critical error, exiting...");
+	HALT();
+}
+
+
+std::filesystem::path ResourceManager::GetPackedFolder()
+{
+	return GetExecutablePath().parent_path() / "packed";
 }
 
 bool ResourceManager::IsNewer(std::filesystem::path current, std::filesystem::path dependency)

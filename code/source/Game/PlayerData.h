@@ -31,7 +31,7 @@ public:
 namespace Serialization
 {
     template<>
-    struct Serializer<PlayerData>
+    struct Serializer<PlayerData> : ObjectSerializer<PlayerData>
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const PlayerData& value)

@@ -92,7 +92,7 @@ public:
 namespace Serialization
 {
 	template<>
-	struct Serializer<Rect>
+	struct Serializer<Rect> : ObjectSerializer<Rect>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const Rect& value)
@@ -114,7 +114,7 @@ namespace Serialization
 	};
 
 	template<>
-	struct Serializer<Anchors>
+	struct Serializer<Anchors> : ObjectSerializer<Anchors>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const Anchors& value)

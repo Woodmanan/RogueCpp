@@ -287,7 +287,7 @@ struct RegisterHelper
 namespace Serialization
 {
 	template<>
-	struct Serializer<Handle>
+	struct Serializer<Handle> : ObjectSerializer<Handle>
 	{
 		template <typename Stream>
 		static void Serialize(Stream& stream, const Handle& value)
@@ -314,7 +314,7 @@ namespace Serialization
 	};
 
 	template<typename T>
-	struct Serializer<THandle<T>>
+	struct Serializer<THandle<T>> : ObjectSerializer<THandle<T>>
 	{
 		template <typename Stream>
 		static void Serialize(Stream& stream, const THandle<T>& value)

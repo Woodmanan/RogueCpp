@@ -183,7 +183,10 @@ public:
 private:
 	std::filesystem::path GetSource(const HashID& name);
 	std::filesystem::path GetPacked(const HashID& ID);
+	std::filesystem::path GetExecutablePath();
 	std::filesystem::path GetResources();
+	std::filesystem::path FindResources();
+	std::filesystem::path GetPackedFolder();
 
 	bool IsNewer(std::filesystem::path current, std::filesystem::path dependency);
 	bool RequiresPack(std::filesystem::path source, std::filesystem::path packed);
@@ -225,7 +228,7 @@ private:
 namespace Serialization
 {
 	template<>
-	struct Serializer<HashID>
+	struct Serializer<HashID> : ObjectSerializer<HashID>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const HashID& value)
@@ -244,7 +247,7 @@ namespace Serialization
 	};
 	
 	template<>
-	struct Serializer<ResourceHeader>
+	struct Serializer<ResourceHeader> : ObjectSerializer<ResourceHeader>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const ResourceHeader& value)

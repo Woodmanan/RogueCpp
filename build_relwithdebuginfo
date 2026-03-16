@@ -1,0 +1,2 @@
+cmake -S . -B build/relwithdebinfo -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake --build build/relwithdebinfo

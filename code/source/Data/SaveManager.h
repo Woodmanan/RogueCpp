@@ -8,7 +8,7 @@
 #include "Data/Serialization/BitStream.h"
 #include "Data/Serialization/Serialization.h"
 
-#ifdef DEBUG
+#ifdef DEBUG_FULL
 #define JSON
 #else
 #define PACKED

@@ -79,7 +79,7 @@ namespace Serialization
 	struct Serializer<ETemperature> : EnumSerializer<ETemperature> {};
 
 	template<>
-	struct Serializer<DataTile>
+	struct Serializer<DataTile> : ObjectSerializer<DataTile>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const DataTile& value)
@@ -101,7 +101,7 @@ namespace Serialization
 	};
 
 	template<>
-	struct Serializer<TileMemory>
+	struct Serializer<TileMemory> : ObjectSerializer<TileMemory>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const TileMemory& value)

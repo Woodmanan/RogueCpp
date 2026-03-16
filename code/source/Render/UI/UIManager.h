@@ -47,7 +47,7 @@ private:
 namespace Serialization
 {
 	template<>
-	struct Serializer<WindowSettings>
+	struct Serializer<WindowSettings> : ObjectSerializer<WindowSettings>
 	{
 		template<typename Stream>
 		static void Serialize(Stream& stream, const WindowSettings& value)

@@ -47,6 +47,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/c
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:DEBUG>
+    $<$<CONFIG:Debug>:DEBUG_FULL>
+    $<$<CONFIG:RelWithDebInfo>:DEBUG>
     $<$<CONFIG:Release>:RELEASE>
 )
  
@@ -221,6 +223,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(Catch2)
 target_link_libraries(${PROJECT_NAME}
     PRIVATE Catch2
+)
+
+# ------------------------------------------------------------
+# CLI 11 - CLI Utils 
+# ------------------------------------------------------------
+FetchContent_Declare(
+    CLI11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11
+    GIT_TAG v2.6.2
+)
+
+FetchContent_MakeAvailable(CLI11)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE CLI11
 )
 
 # ============================================================
