@@ -138,7 +138,7 @@ void Game::InitNewGame(uint seed)
 		map->LinkBackingTile<BackingTile>(groundMat, stoneWallMat);
 	}
 
-	m_player = dataManager->Allocate<Monster>(ResourceManager::Get()->LoadSynchronous("MonsterDefinition", "Player"));
+	m_player = dataManager->Allocate<Monster>(Resources::LoadSynchronous("MonsterDefinition", "Player"));
 	m_player->SetLocation(Location(0, 0, 0));
 
 	m_playerData.GetCurrentMemory() = TileMemory();

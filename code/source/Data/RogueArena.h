@@ -155,7 +155,6 @@ public:
 			T* current = Get<T>(i);
 			current->~T();
 		}
-		RogueArena::~RogueArena();
 	}
 
 	void WriteInternals() override

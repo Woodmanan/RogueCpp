@@ -4,6 +4,8 @@
 #include "Utils/FileUtils.h"
 #include "Utils/Utils.h"
 
+using namespace Resources;
+
 const float& StatContainer::operator[](uint statID) const
 {
 	return m_values.at(statID);
@@ -42,7 +44,7 @@ void StatContainer::UpdateStats()
 
 void StatManager::Init()
 {
-	std::vector<ResourcePointer> stats = ResourceManager::Get()->LoadFromConfigSynchronous("Stats", "stats");
+	std::vector<ResourcePointer> stats = Resources::LoadFromConfigSynchronous("Stats", "stats");
 	for (ResourcePointer& statArray : stats)
 	{
 		TResourcePointer<std::vector<StatDefinition>> pointer = statArray;
@@ -53,7 +55,7 @@ void StatManager::Init()
 	}
 }
 
-namespace RogueResources
+namespace Resources
 {
 	void PackStatDefinition(PackContext& packContext)
 	{
@@ -99,19 +101,15 @@ namespace RogueResources
 
 		stream.close();
 
-		OpenWritePackFile(packContext.destination, packContext.header);
+		OpenWritePackFile(packContext);
 		RogueSaveManager::Write("Stats", stats);
-		RogueSaveManager::CloseWriteSaveFile();
+		CloseWritePackFile();
 	}
 
 	std::shared_ptr<void> LoadStatDefinition(LoadContext& loadContext)
 	{
 		std::vector<StatDefinition>* stats = new std::vector<StatDefinition>();
-
-		OpenReadPackFile(loadContext.source);
 		RogueSaveManager::Read("Stats", *stats);
-		RogueSaveManager::CloseReadSaveFile();
-
 		return std::shared_ptr<std::vector<StatDefinition>>(stats);
 	}
 }

@@ -48,3 +48,6 @@ tags
 
 # Vim swap files
 *.swp
+
+# Ideation folders - don't want these scraped by AI slop
+project_ideas/*

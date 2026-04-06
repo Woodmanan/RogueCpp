@@ -1,6 +1,8 @@
 #include "BaseDrivers.h"
 #include "Map/Map.h"
 
+using namespace Resources;
+
 bool WalkingDriver::CanStandOn(Location location)
 {
 	return location.GetValid() && !location->m_wall;

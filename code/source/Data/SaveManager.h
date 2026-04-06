@@ -7,6 +7,7 @@
 #include "Debug/Profiling.h"
 #include "Data/Serialization/BitStream.h"
 #include "Data/Serialization/Serialization.h"
+#include "Utils/FileUtils.h"
 
 #ifdef DEBUG_FULL
 #define JSON
@@ -75,20 +76,20 @@ namespace RogueSaveManager {
 		Write("Version", version);
 	}
 
-	static bool FileExists(const std::string filename)
-	{
-		return std::filesystem::exists(filename);
-	}
-
 	static bool FilePathExists(const std::filesystem::path path)
 	{
 		ROGUE_PROFILE_SECTION("Check File Path");
 		return std::filesystem::exists(path);
 	}
 
+	static bool FileExists(const std::string filename)
+	{
+		return FilePathExists(GetExecutableFolder() / filename);
+	}
+
 	static void OpenWriteSaveFile(const std::string filename)
 	{
-		OpenWriteSaveFileByPath(std::filesystem::path(filename));
+		OpenWriteSaveFileByPath(GetExecutableFolder() / filename);
 	}
 
 	static void CloseWriteSaveFile()
@@ -133,7 +134,7 @@ namespace RogueSaveManager {
 
 	static bool OpenReadSaveFile(const std::string filename)
 	{
-		return OpenReadSaveFileByPath(std::filesystem::path(filename));
+		return OpenReadSaveFileByPath(GetExecutableFolder() / filename);
 	}
 
 	static void CloseReadSaveFile()

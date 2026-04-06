@@ -124,7 +124,7 @@ RogueImage* ImageManager::CreateAtlas(std::vector<RogueImage*>& images, std::vec
 	return image;
 }
 
-namespace RogueResources
+namespace Resources
 {
 	void PackImage(PackContext& packContext)
 	{
@@ -137,7 +137,7 @@ namespace RogueResources
 
 		if (stream.read((char*)buffer.data(), size))
 		{
-			OpenWritePackFile(packContext.destination, packContext.header);
+			OpenWritePackFile(packContext);
 			RogueSaveManager::WriteAsBuffer("Buffer", buffer);
 			RogueSaveManager::CloseWriteSaveFile();
 		}
@@ -150,9 +150,7 @@ namespace RogueResources
 
 		{
 			ROGUE_PROFILE_SECTION("File Read");
-			OpenReadPackFile(loadContext.source);
 			RogueSaveManager::ReadAsBuffer("Buffer", buffer);
-			RogueSaveManager::CloseReadSaveFile();
 		}
 
 		RogueImage* image = new RogueImage();

@@ -34,7 +34,7 @@ private:
 	static ImageManager* manager;
 };
 
-namespace RogueResources
+namespace Resources
 {
 	void PackImage(PackContext& packContext);
 	std::shared_ptr<void> LoadImage(LoadContext& loadContext);

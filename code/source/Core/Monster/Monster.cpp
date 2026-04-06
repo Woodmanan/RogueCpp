@@ -1,6 +1,8 @@
 #include "Monster.h"
 #include "Map/Map.h"
 
+using namespace Resources;
+
 Monster::Monster(TResourcePointer<MonsterDefinition> definition) : m_definition(definition)
 {
 	ASSERT(definition.IsValid() && definition.IsReady());

@@ -52,8 +52,8 @@ class FontManager
 public:
 	FontManager();
 	~FontManager();
-	void PackFont(PackContext& packContext);
-	std::shared_ptr<void> LoadFont(LoadContext& loadContext);
+	void PackFont(Resources::PackContext& packContext);
+	std::shared_ptr<void> LoadFont(Resources::LoadContext& loadContext);
 
 	static FontManager* Get() { return manager; }
 

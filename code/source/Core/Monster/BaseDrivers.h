@@ -20,7 +20,7 @@ public:
 	RectangularBodyDriver(Vec2 dimensions) : m_dimensions(dimensions) {}
 
 	virtual bool CanMonsterStandOn(Monster& monster, Location location) override;
-	virtual void InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition) override;
+	virtual void InitMonster(Monster& monster, Resources::TResourcePointer<MonsterDefinition> definition) override;
 
 	//For reorganizing the body after a movment!
 	virtual void OnMovementFinished(THandle<Monster> monster) override;

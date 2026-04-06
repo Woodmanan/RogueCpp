@@ -1,6 +1,8 @@
 #include "FontManager.h"
 #include "Debug/Profiling.h"
 
+using namespace Resources;
+
 FontManager* FontManager::manager = new FontManager();
 
 RogueFont::RogueFont(FT_Library m_library, std::vector<unsigned char>& buffer)
@@ -190,7 +192,7 @@ FontManager::~FontManager()
 	FT_Done_FreeType(m_library);
 }
 
-void FontManager::PackFont(PackContext& packContext)
+void FontManager::PackFont(Resources::PackContext& packContext)
 {
 	ROGUE_PROFILE_SECTION("FontManager::Pack");
 	std::ifstream stream(packContext.source, std::ios::binary | std::ios::ate);
@@ -201,20 +203,18 @@ void FontManager::PackFont(PackContext& packContext)
 
 	if (stream.read((char*)buffer.data(), size))
 	{
-		OpenWritePackFile(packContext.destination, packContext.header);
+		OpenWritePackFile(packContext);
 		RogueSaveManager::WriteAsBuffer("Buffer", buffer);
-		RogueSaveManager::CloseWriteSaveFile();
+		CloseWritePackFile();
 	}
 }
 
-std::shared_ptr<void> FontManager::LoadFont(LoadContext& loadContext)
+std::shared_ptr<void> FontManager::LoadFont(Resources::LoadContext& loadContext)
 {
 	ROGUE_PROFILE_SECTION("FontManager::Load");
 	std::vector<unsigned char>* buffer = new std::vector<unsigned char>();
 
-	OpenReadPackFile(loadContext.source);
 	RogueSaveManager::ReadAsBuffer("Buffer", *buffer);
-	RogueSaveManager::CloseReadSaveFile();
 
 	//RogueFont* font = new RogueFont(m_library, buffer);
 	//font->SelectCharmap(FT_ENCODING_UNICODE);

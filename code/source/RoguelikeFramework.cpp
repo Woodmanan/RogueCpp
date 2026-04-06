@@ -225,30 +225,28 @@ Direction ReadDirection(Direction currentRotation)
     return Rotate(direction, currentRotation);
 }
 
-void SetupResources(uint resourceThreads)
+void SetupResources()
 {
-    ResourceManager::InitResources();
+    Resources::Initialize();
 
     AddCodeDefinedResources();
 
     //TODO: Add new pieces!
-    ResourceManager::Get()->Register("Mat", &RogueResources::PackMaterial, &RogueResources::LoadMaterial);
-    ResourceManager::Get()->Register("Reaction", &RogueResources::PackReaction, &RogueResources::LoadReaction);
-    ResourceManager::Get()->Register("Image", &RogueResources::PackImage, &RogueResources::LoadImage);
-    ResourceManager::Get()->Register("Stats", &RogueResources::PackStatDefinition, RogueResources::LoadStatDefinition);
+	Resources::Register("Mat", &Resources::PackMaterial, &Resources::LoadMaterial);
+    Resources::Register("Reaction", &Resources::PackReaction, &Resources::LoadReaction);
+    Resources::Register("Image", &Resources::PackImage, &Resources::LoadImage);
+    Resources::Register("Stats", &Resources::PackStatDefinition, Resources::LoadStatDefinition);
 
     auto PackFont = GetMember(FontManager::Get(), &FontManager::PackFont);
     auto LoadFont = GetMember(FontManager::Get(), &FontManager::LoadFont);
-    ResourceManager::Get()->Register("Font", PackFont, LoadFont);
-
-    ResourceManager::Get()->LaunchThreads(resourceThreads);
+	Resources::Register("Font", PackFont, LoadFont);
 }
 
 void AddCodeDefinedResources()
 {
     std::vector<BodyTileDefinitions> bodyParts;
     bodyParts.push_back({ '@', Color(255,255,0) });
-    ResourceManager::Get()->SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(new RectangularBodyDriver(Vec2(3, 3)), vector<MovementDriver*>({ new WalkingDriver(), new MiningDriver()}), bodyParts));
+	Resources::SetResource("MonsterDefinition", "Player", std::make_shared<MonsterDefinition>(new RectangularBodyDriver(Vec2(3, 3)), vector<MovementDriver*>({ new WalkingDriver(), new MiningDriver()}), bodyParts));
 }
 
 void TestStackArray()
@@ -312,59 +310,8 @@ void TestEvents()
     }
 }
 
-void TestSerialization()
-{
-	DEBUG_PRINT("Testing simple open and close");
-	RogueSaveManager::OpenWriteSaveFile("Test Save.rsf");
-	RogueSaveManager::Write<int>("Test int", 1);
-	RogueSaveManager::Write<int>("Test int", 2);
-	RogueSaveManager::Write<int>("Test int", 3);
-	RogueSaveManager::Write<int>("Test int", 4);
-	RogueSaveManager::Write<Direction>("Test Enum", North);
-	RogueSaveManager::CloseWriteSaveFile();
-		
-	DEBUG_PRINT("Testing simple read and close");
-	RogueSaveManager::OpenReadSaveFile("Test Save.rsf");
-	int testVal = -1;
-	Direction testDir = South;
-	RogueSaveManager::Read<int>("Test int", testVal);
-	if (testVal != 1)
-	{
-		DEBUG_PRINT("Test case 1 failed!");
-	}
-
-	RogueSaveManager::Read<int>("Test int", testVal);
-	if (testVal != 2)
-	{
-		DEBUG_PRINT("Test case 2 failed!");
-	}
-
-	RogueSaveManager::Read<int>("Test int", testVal);
-	if (testVal != 3)
-	{
-		DEBUG_PRINT("Test case 3 failed!");
-	}
-
-	RogueSaveManager::Read<int>("Test int", testVal);
-	if (testVal != 4)
-	{
-		DEBUG_PRINT("Test case 4 failed!");
-	}
-
-	RogueSaveManager::Read<Direction>("Test Enum", testDir);
-	if (testDir != North)
-	{
-		DEBUG_PRINT("Test case 5 failed!");
-	}
-
-	RogueSaveManager::CloseReadSaveFile();
-	RogueSaveManager::DeleteSaveFile("Test Save.rsf");
-}
-
 int main(int argc, char* argv[])
 {
-	TestSerialization();
-
     uint maxThreads = std::thread::hardware_concurrency();
     DEBUG_PRINT("%d concurrent threads are supported.", maxThreads);
 
@@ -374,14 +321,13 @@ int main(int argc, char* argv[])
         maxThreads == 8; //Fallback - assume 8 threads available at the minimum
     }
 
-    uint reservedThreads = 3;  //1 thread for main, 1 for resource manager, 1 for game thread
+    uint reservedThreads = 2;  //1 thread for main, 1 for game thread - TODO 1 thread for render?
     maxThreads -= reservedThreads;
 
-    uint numResourceThreads = (maxThreads * 4) / 10;
-    uint numJobThreads = maxThreads - numResourceThreads;
+    uint numJobThreads = maxThreads;
 
     Jobs::Initialize(numJobThreads);
-    SetupResources(numResourceThreads);
+    SetupResources();
 
     //Initialize Random
     srand(1);
@@ -391,7 +337,7 @@ int main(int argc, char* argv[])
     bool gameReady = false;
     EDrawState drawState = EDrawState::Normal;
 
-    if (RogueSaveManager::FilePathExists("TestSave.rsf"))
+    if (RogueSaveManager::FileExists("TestSave.rsf"))
     {
         game.CreateInput<LoadSaveGame>("TestSave.rsf");
     }
@@ -971,8 +917,8 @@ int main(int argc, char* argv[])
     game.CreateInput<SaveAndExit>();
     gameThread.join();
     terminal_close();
+	Resources::Shutdown();
     Jobs::Shutdown();
-    ResourceManager::ShutdownResources();
 
     return EXIT_SUCCESS;
 }

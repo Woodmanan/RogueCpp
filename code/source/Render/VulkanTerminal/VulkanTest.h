@@ -181,7 +181,7 @@ private:
 	VkImageView textureImageView;
 	VkSampler textureSampler;
 
-	TResourcePointer<RogueFont> font;
+	Resources::TResourcePointer<RogueFont> font;
 	UniformTileObject tileData;
 	UniformFontData fontData;
 	FGColorsObject fgColorData;

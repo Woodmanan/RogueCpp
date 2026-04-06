@@ -8,6 +8,8 @@
 #include <iostream>
 #include <algorithm>
 
+using namespace Resources;
+
 MaterialManager::MaterialManager()
 {
 
@@ -15,7 +17,8 @@ MaterialManager::MaterialManager()
 
 void MaterialManager::Init()
 {
-	std::vector<ResourcePointer> materials = ResourceManager::Get()->LoadFromConfigSynchronous("Mat", "materials");
+	DEBUG_PRINT("Starting material manager!");
+	std::vector<ResourcePointer> materials = Resources::LoadFromConfigSynchronous("Mat", "materials");
 	for (ResourcePointer& matArray : materials)
 	{
 		TResourcePointer<std::vector<MaterialDefinition>> pointer = matArray;
@@ -25,7 +28,7 @@ void MaterialManager::Init()
 		}
 	}
 
-	std::vector<ResourcePointer> reactions = ResourceManager::Get()->LoadFromConfigSynchronous("Reaction", "reactions");
+	std::vector<ResourcePointer> reactions = Resources::LoadFromConfigSynchronous("Reaction", "reactions");
 	for (ResourcePointer& array : reactions)
 	{
 		TResourcePointer<std::vector<Reaction>> pointer = array;
@@ -34,6 +37,8 @@ void MaterialManager::Init()
 			AddReaction(*it);
 		}
 	}
+
+	DEBUG_PRINT("Material manager is ready!");
 }
 
 const MaterialDefinition& Material::GetMaterial() const
@@ -520,7 +525,7 @@ float MaterialManager::GetReactionMultiple(Reaction& reaction, MixtureContainer&
 	return maxAmount;
 }
 
-namespace RogueResources
+namespace Resources
 {
 	void PackMaterial(PackContext& packContext)
 	{
@@ -562,25 +567,23 @@ namespace RogueResources
 
 		stream.close();
 
-		OpenWritePackFile(packContext.destination, packContext.header);
+		OpenWritePackFile(packContext);
 		RogueSaveManager::Write("Materials", materials);
-		RogueSaveManager::CloseWriteSaveFile();
+		CloseWritePackFile();
 	}
 
 	std::shared_ptr<void> LoadMaterial(LoadContext& loadContext)
 	{
 		std::vector<MaterialDefinition>* materials = new std::vector<MaterialDefinition>();
 
-		OpenReadPackFile(loadContext.source);
 		RogueSaveManager::Read("Materials", *materials);
-		RogueSaveManager::CloseReadSaveFile();
 
 		return std::shared_ptr<std::vector<MaterialDefinition>>(materials);
 	}
 
 	void PackReaction(PackContext& packContext)
 	{
-		std::vector<ResourcePointer> materialLists = ResourceManager::Get()->LoadFromConfigSynchronous("Mat", "materials", &packContext);
+		std::vector<ResourcePointer> materialLists = Resources::_LoadDependenciesFromConfig("Mat", "materials", packContext);
 
 		auto FindIndex = [materialLists](const std::string& name) {
 			int index = 0;
@@ -658,7 +661,7 @@ namespace RogueResources
 
 		stream.close();
 
-		OpenWritePackFile(packContext.destination, packContext.header);
+		OpenWritePackFile(packContext);
 		RogueSaveManager::Write<std::vector<Reaction>>("Reactions", reactions);
 		RogueSaveManager::CloseWriteSaveFile();
 	}
@@ -667,9 +670,7 @@ namespace RogueResources
 	{
 		std::vector<Reaction>* reactions = new std::vector<Reaction>();
 
-		OpenReadPackFile(loadContext.source);
 		RogueSaveManager::Read<std::vector<Reaction>>("Materials", *reactions);
-		RogueSaveManager::CloseReadSaveFile();
 
 		return std::shared_ptr<std::vector<Reaction>>(reactions);
 	}

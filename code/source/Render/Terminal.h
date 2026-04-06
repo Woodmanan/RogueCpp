@@ -109,7 +109,7 @@ inline int terminal_mouse_y()
 
 inline void terminal_set_font(string name)
 {
-	TResourcePointer<std::vector<unsigned char>> fontBuffer = ResourceManager::Get()->LoadSynchronous("Font", name);
+	Resources::TResourcePointer<std::vector<unsigned char>> fontBuffer = Resources::LoadSynchronous("Font", name);
 	terminal_setf("font: %p:%d, size=8x16, codepage=437", fontBuffer->data(), fontBuffer->size());
 }
 

@@ -145,7 +145,7 @@ private:
 	vector<Reaction> m_reactions;
 };
 
-namespace RogueResources
+namespace Resources 
 {
 	void PackMaterial(PackContext& packContext);
 	std::shared_ptr<void> LoadMaterial(LoadContext& loadContext);

@@ -17,7 +17,7 @@ struct BodyTileDefinitions
 
 struct BodyTile
 {
-	Location location;
+	Location m_location;
 };
 
 struct Movement
@@ -45,7 +45,7 @@ class Monster
 {
 public:
 	Monster() {}
-	Monster(TResourcePointer<MonsterDefinition> definition);
+	Monster(Resources::TResourcePointer<MonsterDefinition> definition);
 
 	Location GetLocation();
 	void SetLocation(Location newLocation);
@@ -63,10 +63,10 @@ public:
 	bool CanMove(Direction direction);
 	bool CouldAnyMovementStandOn(Location location);
 
-	TResourcePointer<MonsterDefinition> GetDefinition() { return m_definition; }
+	Resources::TResourcePointer<MonsterDefinition> GetDefinition() { return m_definition; }
 
 private:
-	TResourcePointer<MonsterDefinition> m_definition;
+	Resources::TResourcePointer<MonsterDefinition> m_definition;
 
 	Location m_location;
 	View m_view;
@@ -110,7 +110,7 @@ public:
 
 	//MovementDriver* FindBestDriverForMovement(Monster& monster, StackArray<Location>& path, Direction direction);
 	virtual bool CanMonsterStandOn(Monster& monster, Location location) = 0;
-	virtual void InitMonster(Monster& monster, TResourcePointer<MonsterDefinition> definition) = 0;
+	virtual void InitMonster(Monster& monster, Resources::TResourcePointer<MonsterDefinition> definition) = 0;
 
 	//For reorganizing the body after a movment!
 	virtual void OnMovementFinished(THandle<Monster> monster) = 0;
@@ -124,15 +124,37 @@ namespace Serialization
 		template<typename Stream>
 		static void Serialize(Stream& stream, const Monster& value)
 		{
-			//Write(stream, "Definition", value.m_definition);
+			Write(stream, "Definition", value.m_definition);
+			Write(stream, "Location", value.m_location);
+			Write(stream, "Rotation", value.m_rotation);
+			Write(stream, "View", value.m_view);
+			Write(stream, "Body Tiles", value.m_bodyTiles);
 		}
 
 		template<typename Stream>
 		static void Deserialize(Stream& stream, Monster& value)
 		{
-			PRINT_ERR("Whoops, can't deserialize monsters yet.");
-			HALT();
-			//Read(stream, "Definition", value.m_definition);
+			Read(stream, "Definition", value.m_definition);
+			Read(stream, "Location", value.m_location);
+			Read(stream, "Rotation", value.m_rotation);
+			Read(stream, "View", value.m_view);
+			Read(stream, "Body Tiles", value.m_bodyTiles);
+		}
+	};
+
+	template<>
+	struct Serializer<BodyTile> : ObjectSerializer<BodyTile>
+	{
+		template<typename Stream>
+		static void Serialize(Stream& stream, const BodyTile& value)
+		{
+			Write(stream, "Location", value.m_location);
+		}
+
+		template<typename Stream>
+		static void Deserialize(Stream& stream, BodyTile& value)
+		{
+			Read(stream, "Location", value.m_location);
 		}
 	};
 }

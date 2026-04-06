@@ -54,7 +54,7 @@ private:
 	std::unordered_map<uint, StatDefinition> m_definitions;
 };
 
-namespace RogueResources
+namespace Resources
 {
 	void PackStatDefinition(PackContext& packContext);
 	std::shared_ptr<void> LoadStatDefinition(LoadContext& loadContext);
