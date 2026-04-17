@@ -99,12 +99,12 @@ class Chunk
 {
 public:
     Chunk() {}
-    Chunk(Vec3 chunkLocation);
-    Tile& GetTile(Vec3 location);
-    void SetTile(Vec3 location, THandle<BackingTile> tile);
-    void SetTile(Vec3 location, const Tile& tile);
+    Chunk(Vec4 chunkLocation);
+    Tile& GetTile(Vec4 location);
+    void SetTile(Vec4 location, THandle<BackingTile> tile);
+    void SetTile(Vec4 location, const Tile& tile);
 
-    Vec3 GetChunkCorner() const;
+    Vec4 GetChunkCorner() const;
 
     void GenerateHeatDeltas(int timeStep, vector<float>& scratch);
     bool ApplyHeatDeltas(vector<float>& scratch);
@@ -116,9 +116,9 @@ public:
 
 
 private:
-    int GetIndex(const Vec3& location);
+    int GetIndex(const Vec4& location);
 
-    Vec3 m_chunkLocation;
+    Vec4 m_chunkLocation;
     vector<Tile> m_tiles;
     float m_defaultHeat = 0;
     bool m_dirty = false;
@@ -129,10 +129,10 @@ private:
 class ChunkMap
 {
 public:
-    void TriggerStreamingAroundLocation(Location loc, Vec3 radius = Vec3(LOAD_CHUNK_RADIUS, LOAD_CHUNK_RADIUS, 0));
+    void TriggerStreamingAroundLocation(Location loc, Vec4 radius = Vec4(LOAD_CHUNK_RADIUS, LOAD_CHUNK_RADIUS, 0, 0));
     void WaitForStreaming();
     Tile& GetTile(Location location);
-    void AsyncAddChunk(Vec3 chunkLoc, Chunk* chunk);
+    void AsyncAddChunk(Vec4 chunkLoc, Chunk* chunk);
 
     int LinkBackingTile(THandle<BackingTile> tile);
     template<typename T, class... Args>
@@ -146,19 +146,19 @@ public:
     void SetTile(Location location, int index);
     void SetTile(Location location, THandle<BackingTile> tile);
 
-    void Simulate(Location location, Vec3 radius = Vec3(ACTIVE_CHUNK_RADIUS, ACTIVE_CHUNK_RADIUS, 0));
+    void Simulate(Location location, Vec4 radius = Vec4(ACTIVE_CHUNK_RADIUS, ACTIVE_CHUNK_RADIUS, 0, 0));
 
     void AddHeat(Location location, float heat);
 
 private:
-    Chunk* GetChunk(Vec3 chunkId);
-    void StreamChunk(Vec3 chunkId, Vec3 radius);
+    Chunk* GetChunk(Vec4 chunkId);
+    void StreamChunk(Vec4 chunkId, Vec4 radius);
     void MainThread_InsertReadyChunks();
 
     ROGUE_LOCK(std::mutex, m_mapMutex);
-    unordered_map<Vec3, Chunk*> m_chunks;
-    unordered_map<Vec3, Chunk*> m_readyChunks;
-    set<Vec3> m_loadingChunks;
+    unordered_map<Vec4, Chunk*> m_chunks;
+    unordered_map<Vec4, Chunk*> m_readyChunks;
+    set<Vec4> m_loadingChunks;
     vector<THandle<BackingTile>> m_backingTiles;
     vector<vector<float>> m_heatScratch;
 
@@ -255,7 +255,7 @@ namespace Serialization
 
     	    for (uint count = 0; count < chunkCount; count++)
     	    {
-    	        Vec3 location;
+    	        Vec4 location;
     	        Chunk* chunk = new Chunk();
     	        Read(stream, "Location", location);
     	        Read(stream, "Chunk", *chunk);

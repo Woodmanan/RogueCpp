@@ -17,19 +17,19 @@ public:
 class IWorldValueProvider
 {
 public:
-	virtual float GetValue(Vec3 worldPosition) = 0;
+	virtual float GetValue(Vec4 worldPosition) = 0;
 };
 
 class IWorldBoundsProvider
 {
 public:
-	virtual std::optional<Rect3> GetBounds(Vec3 worldPosition) = 0;
+	virtual std::optional<Rect3> GetBounds(Vec4 worldPosition) = 0;
 };
 
 class IWorldTileProvider
 {
 public:
-	virtual Tile GetTile(Vec3 tilePosition) = 0;
+	virtual Tile GetTile(Vec4 tilePosition) = 0;
 };
 
 class SimplexNoiseProvider : public SeededGenerator, public IWorldValueProvider
@@ -37,7 +37,7 @@ class SimplexNoiseProvider : public SeededGenerator, public IWorldValueProvider
 public:
 	SimplexNoiseProvider(uint seed) : SeededGenerator(seed) {}
 
-	virtual float GetValue(Vec3 worldPosition) override;
+	virtual float GetValue(Vec4 worldPosition) override;
 };
 
 class ValueToTileConverter : public IWorldTileProvider
@@ -45,7 +45,7 @@ class ValueToTileConverter : public IWorldTileProvider
 public:
 	ValueToTileConverter(IWorldValueProvider* provider, std::vector<THandle<BackingTile>> backingTiles) : m_provider(provider), m_backingTiles(backingTiles) {}
 
-	virtual Tile GetTile(Vec3 tilePosition) override;
+	virtual Tile GetTile(Vec4 tilePosition) override;
 private:
 	IWorldValueProvider* m_provider;
 	std::vector<THandle<BackingTile>> m_backingTiles;
@@ -57,7 +57,7 @@ public:
 	WorldManager();
 	void Init();
 	
-	Chunk* LoadChunk(Vec3 chunkPosition);
+	Chunk* LoadChunk(Vec4 chunkPosition);
 
 private:
 	IWorldTileProvider* m_rootProvider;

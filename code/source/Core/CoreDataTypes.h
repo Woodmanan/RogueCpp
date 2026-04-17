@@ -16,17 +16,29 @@ template<typename T>
 T ModulusNegative(T value, T modulus)
 {
     ASSERT(modulus > 0);
-    return ((value % modulus) + modulus) % modulus;
+
+	if (value < 0)
+    {
+        value = modulus - (-value % modulus);
+    }
+
+    T out = value % modulus;
+
+	ASSERT(out >= 0 && out < modulus);
+    return out;
 }
+
+struct Vec2;
+struct Vec3;
+struct Vec4;
 
 struct Vec2
 {
-    Vec2() : x(0), y(0) {}
-	Vec2(short inX, short inY) : x(inX), y(inY) {}
-	Vec2(int inX, int inY) : x((short)inX), y((short)inY) {}
+	Vec2() = default;
+	Vec2(int X, int Y) : x(X), y(Y) {}
 
-	short x;
-	short y;
+	int x = 0;
+	int y = 0;
 
     Vec2& operator+=(const Vec2& rhs) 
     {
@@ -35,64 +47,300 @@ struct Vec2
         return *this;
     }
 
-    bool operator==(const Vec2& rhs)
+    friend Vec2 operator+(Vec2 lhs, const Vec2& rhs)
     {
-        return x == rhs.x && y == rhs.y;
-    }
-};
-
-struct Vec3
-{
-    Vec3() : x(0), y(0), z(0) {}
-    Vec3(short inX, short inY, short inZ) : x(inX), y(inY), z(inZ) {}
-    Vec3(int inX, int inY, int inZ) : x((short)inX), y((short)inY), z((short)inZ) {}
-
-    static Vec3 WrapPosition(Vec3 inPosition);
-    static Vec3 WrapChunk(Vec3 inChunk);
-
-    Vec3& operator+= (const Vec3& rhs) // compound assignment (does not need to be a member,
-    {
-        x += rhs.x;
-        y += rhs.y;
-        z += rhs.z;
-        return *this; // return the result by reference
+        lhs += rhs;
+        return lhs;
     }
 
-    // friends defined inside class body are inline and are hidden from non-ADL lookup
-    friend Vec3 operator+(Vec3 lhs, const Vec3 & rhs)
+	Vec2& operator-=(const Vec2& rhs) 
     {
-        lhs += rhs; // reuse compound assignment
-        return lhs; // return the result by value (uses move constructor)
+        x -= rhs.x;
+        y -= rhs.y;
+        return *this;
     }
 
-    Vec3& operator*= (const Vec3& rhs) // compound assignment (does not need to be a member,
+    friend Vec2 operator-(Vec2 lhs, const Vec2& rhs)
+    {
+        lhs -= rhs;
+        return lhs;
+    }
+
+    Vec2& operator*= (const Vec2& rhs)
     {
         x *= rhs.x;
         y *= rhs.y;
-        z *= rhs.z;
-        return *this; // return the result by reference
+        return *this;
     }
 
-    // friends defined inside class body are inline and are hidden from non-ADL lookup
+    friend Vec2 operator*(Vec2 lhs, const Vec2& rhs)
+    {
+        lhs *= rhs;
+        return lhs;
+    } 
+
+	Vec2& operator*= (const int& rhs)
+    {
+        x *= rhs;
+        y *= rhs;
+        return *this;
+    }
+
+    friend Vec2 operator*(Vec2 lhs, const int& rhs)
+    {
+        lhs *= rhs;
+        return lhs;
+    }
+
+	Vec2& operator/= (const int& rhs)
+    {
+        x /= rhs;
+        y /= rhs;
+        return *this;
+    }
+
+    friend Vec2 operator/(Vec2 lhs, const int& rhs)
+    {
+        lhs /= rhs;
+        return lhs;
+    }
+
+    bool operator==(const Vec2& rhs) const
+    {
+        return x == rhs.x && y == rhs.y;
+    }
+
+	friend bool operator<(const Vec2& lhs, const Vec2& rhs)
+    {
+        return std::tie(lhs.x, lhs.y) < std::tie(rhs.x, rhs.y);
+    }
+};
+
+struct Vec3 : Vec2
+{
+	Vec3() = default;
+	Vec3(int X, int Y, int Z) : Vec2(X, Y), z(Z) {}
+
+	//Conversion
+	Vec3(const Vec2& Vec) : Vec2(Vec), z(0) {}
+	operator Vec2() const { return Vec2(x, y); }
+	
+
+	int z = 0;
+
+	Vec3& operator+=(const Vec3& rhs) 
+    {
+        x += rhs.x;
+        y += rhs.y;
+		z += rhs.z;
+        return *this;
+    }
+
+    friend Vec3 operator+(Vec3 lhs, const Vec3& rhs)
+    {
+        lhs += rhs;
+        return lhs;
+    }
+
+	Vec3& operator-=(const Vec3& rhs) 
+    {
+        x -= rhs.x;
+        y -= rhs.y;
+		z -= rhs.z;
+        return *this;
+    }
+
+    friend Vec3 operator-(Vec3 lhs, const Vec3& rhs)
+    {
+        lhs -= rhs;
+        return lhs;
+    }
+
+    Vec3& operator*= (const Vec3& rhs)
+    {
+        x *= rhs.x;
+        y *= rhs.y;
+		z *= rhs.z;
+        return *this;
+    }
+
     friend Vec3 operator*(Vec3 lhs, const Vec3& rhs)
     {
-        lhs *= rhs; // reuse compound assignment
-        return lhs; // return the result by value (uses move constructor)
-    }
+        lhs *= rhs;
+        return lhs;
+    } 
 
-    friend bool operator==(const Vec3& lhs, const Vec3& rhs)
+	Vec3& operator*= (const int& rhs)
     {
-        return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+        x *= rhs;
+        y *= rhs;
+        z *= rhs;
+        return *this;
     }
 
-    friend bool operator<(const Vec3& lhs, const Vec3& rhs)
+    friend Vec3 operator*(Vec3 lhs, const int& rhs)
+    {
+        lhs *= rhs;
+        return lhs;
+    }
+
+	Vec3& operator/= (const int& rhs)
+    {
+        x /= rhs;
+        y /= rhs;
+        z /= rhs;
+        return *this;
+    }
+
+    friend Vec3 operator/(Vec3 lhs, const int& rhs)
+    {
+        lhs /= rhs;
+        return lhs;
+    }
+
+    bool operator==(const Vec3& rhs) const
+    {
+        return x == rhs.x && y == rhs.y && z == rhs.z;
+    }
+
+	friend bool operator<(const Vec3& lhs, const Vec3& rhs)
     {
         return std::tie(lhs.x, lhs.y, lhs.z) < std::tie(rhs.x, rhs.y, rhs.z);
     }
+};
 
-    short x;
-    short y;
-    short z;
+struct Vec4 : Vec3
+{
+	Vec4() = default;
+	Vec4(int X, int Y, int Z, int W) : Vec3(X, Y, Z), w(W) {}
+	Vec4(int X, int Y) : Vec4(X, Y, 0, 0) {}
+	Vec4(int X, int Y, int Z) : Vec4(X, Y, Z, 0) {}
+
+	//Conversion
+	Vec4(const Vec2& Vec) : Vec3(Vec), w(0) {}
+	Vec4(const Vec3& Vec) : Vec3(Vec), w(0) {}
+	operator Vec2() const { return Vec2(x, y); }
+	operator Vec3() const { return Vec3(x, y, z); }
+
+	int w = 0;
+
+	Vec4& operator+=(const Vec4& rhs) 
+    {
+        x += rhs.x;
+        y += rhs.y;
+		z += rhs.z;
+		w += rhs.w;
+        return *this;
+    }
+
+    friend Vec4 operator+(Vec4 lhs, const Vec4& rhs)
+    {
+        lhs += rhs;
+        return lhs;
+    }
+
+	Vec4& operator-=(const Vec4& rhs) 
+    {
+        x -= rhs.x;
+        y -= rhs.y;
+		z -= rhs.z;
+		w -= rhs.w;
+        return *this;
+    }
+
+    friend Vec4 operator-(Vec4 lhs, const Vec4& rhs)
+    {
+        lhs -= rhs;
+        return lhs;
+    }
+
+    Vec4& operator*= (const Vec4& rhs)
+    {
+        x *= rhs.x;
+        y *= rhs.y;
+		z *= rhs.z;
+		w *= rhs.w;
+        return *this;
+    }
+
+    friend Vec4 operator*(Vec4 lhs, const Vec4& rhs)
+    {
+        lhs *= rhs;
+        return lhs;
+    } 
+
+	Vec4 operator/= (const Vec4& rhs)
+	{
+		x /= rhs.x;
+		y /= rhs.y;
+		z /= rhs.z;
+		w /= rhs.w;
+		return *this;
+	}
+
+	friend Vec4 operator/(Vec4 lhs, const Vec4& rhs)
+    {
+        lhs /= rhs;
+        return lhs;
+    }
+
+	Vec4 operator%= (const Vec4& rhs)
+	{
+		x %= rhs.x;
+		y %= rhs.y;
+		z %= rhs.z;
+		w %= rhs.w;
+		return *this;
+	}
+
+	friend Vec4 operator%(Vec4 lhs, const Vec4& rhs)
+    {
+        lhs %= rhs;
+        return lhs;
+    }
+
+	Vec4& operator*= (const int& rhs)
+    {
+        x *= rhs;
+        y *= rhs;
+        z *= rhs;
+        w *= rhs;
+        return *this;
+    }
+
+    friend Vec4 operator*(Vec4 lhs, const int& rhs)
+    {
+        lhs *= rhs;
+        return lhs;
+    }
+
+	Vec3& operator/= (const int& rhs)
+    {
+        x /= rhs;
+        y /= rhs;
+        z /= rhs;
+        w /= rhs;
+        return *this;
+    }
+
+    friend Vec4 operator/(Vec4 lhs, const int& rhs)
+    {
+        lhs /= rhs;
+        return lhs;
+    }
+
+    bool operator==(const Vec4& rhs) const
+    {
+        return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
+    }
+
+	friend bool operator<(const Vec4& lhs, const Vec4& rhs)
+    {
+        return std::tie(lhs.x, lhs.y, lhs.z, lhs.w) < std::tie(rhs.x, rhs.y, rhs.z, lhs.w);
+    }
+
+	static Vec4 WrapPosition(Vec4 inPosition);
+	static Vec4 WrapChunk(Vec4 inChunk);
 };
 
 struct Rect3
@@ -201,7 +449,7 @@ inline static Direction TurnClockwise(Direction direction)
     }
 }
 
-inline static Vec2 Vector2FromDirection(const Direction direction)
+inline static Vec2 VectorFromDirection(const Direction direction)
 {
     switch (direction)
     {
@@ -224,29 +472,6 @@ inline static Vec2 Vector2FromDirection(const Direction direction)
     }
 }
 
-inline static Vec3 VectorFromDirection(const Direction direction)
-{
-    switch (direction)
-    {
-    case North:
-        return Vec3(0, 1, 0);
-    case NorthEast:
-        return Vec3(1, 1, 0);
-    case East:
-        return Vec3(1, 0, 0);
-    case SouthEast:
-        return Vec3(1, -1, 0);
-    case South:
-        return Vec3(0, -1, 0);
-    case SouthWest:
-        return Vec3(-1, -1, 0);
-    case West:
-        return Vec3(-1, 0, 0);
-    case NorthWest:
-        return Vec3(-1, 1, 0);
-    }
-}
-
 inline static Direction Rotate(Direction direction, Direction rotation)
 {
     return (Direction) ((direction + rotation) % 8);
@@ -266,21 +491,23 @@ class Location
 {
 public:
     Location();
-    Location(ushort x, ushort y, ushort z);
-    Location(Vec3 vector) : Location(vector.x, vector.y, vector.z) {};
+    Location(uint x, uint y, uint z = 0, uint w = 0);
+    Location(Vec4 vector) : Location(vector.x, vector.y, vector.z, vector.w) {};
 
     bool GetValid() const;
     void SetValid(bool valid);
-    ushort x() const;
-    ushort y() const;
-    ushort z() const;
+    uint x() const;
+    uint y() const;
+    uint z() const;
+    uint w() const;
 
-    Vec3 GetVector() const;
-    void SetVector(Vec3 vector);
+	Vec4 GetVector() const;
+    void SetVector(Vec4 vector);
+
 
     Vec2 AsVec2();
-    Vec3 GetChunkPosition();
-    Vec3 GetChunkLocalPosition();
+    Vec4 GetChunkPosition();
+    Vec4 GetChunkLocalPosition();
 
 
     Tile& GetTile();
@@ -290,30 +517,21 @@ public:
 
     friend bool operator<(const Location& l, const Location& r)
     {
-#ifndef _DEBUG
-        return l.m_data < r.m_data;
-#else
-        return std::tie(l.m_valid, l.m_x, l.m_y, l.m_z) <
-            std::tie(r.m_valid, r.m_x, r.m_y, r.m_z);
-#endif
+		bool lValid = l.GetValid();
+		bool rValid = r.GetValid();
+        return std::tie(lValid, l.m_vec) <
+               std::tie(rValid, r.m_vec);
     }
 
     friend bool operator==(const Location& l, const Location& r)
     {
-#ifndef _DEBUG
-        return l.m_data == r.m_data;
-#else
-        return (l.m_valid == r.m_valid) &&
-               (l.m_x == r.m_x) &&
-               (l.m_y == r.m_y) &&
-               (l.m_z == r.m_z);
-#endif
-    }
+		if (!l.GetValid() && !r.GetValid())
+		{
+			return true;
+		}
 
-#ifndef _DEBUG
-    const int& GetData() const { return m_data; }
-    void SetData(int newData) { m_data = newData; }
-#endif // _DEBUG
+		return l.m_vec == r.m_vec;
+    }
 
     std::pair<Location, Direction> Traverse(Vec2 offset, Direction rotation = North);
     std::pair<Location, Direction> Traverse(short xOffset, short yOffset, Direction rotation = North);
@@ -324,30 +542,18 @@ public:
 
     THandle<TileNeighbors> GetNeighbors();
 
-    static const int xSize = 12;
-    static const int ySize = 12;
-    static const int zSize = 7;
-    static const int xMask = (0x00000FFF) << (ySize + zSize);
-    static const int yMask = 0x00000FFF << (zSize);
-    static const int zMask = 0x0000007F;
-    static const int invalidMask = 0x80000000;
+    static const uint invalidMask = 0x80000000;
 
-#ifndef _DEBUG
 private:
-    int m_data;
-#else
-private:
-    bool m_valid;
-    ushort m_x;
-    ushort m_y;
-    ushort m_z;
-#endif
+	Vec4 m_vec;
 
 #ifdef LINK_TILE
 private:
     Tile* linkedTile = nullptr;
     void RefreshLinkedTile();
 #endif
+
+	friend class Serialization::Serializer<Location>;
 };
 
 //Define all the useful math ops here!
@@ -375,21 +581,6 @@ inline Location operator-(Location lhs, Vec2 rhs)
     ASSERT(x >= 0);
     ASSERT(y >= 0);
     return Location((ushort)x, (ushort)y, lhs.z());
-}
-
-inline Vec2 operator+(const Vec2 lhs, const Vec2 rhs)
-{
-    return Vec2(lhs.x + rhs.x, lhs.y + rhs.y);
-}
-
-inline Vec2 operator-(Vec2 lhs, Vec2 rhs)
-{
-    return Vec2(lhs.x - rhs.x, lhs.y - rhs.y);
-}
-
-inline Vec2 operator/(Vec2 lhs, int rhs)
-{
-    return Vec2(lhs.x / rhs, lhs.y / rhs);
 }
 
 inline int IntDivisionFloor(int num, int denom)
@@ -494,12 +685,30 @@ namespace std
         return value;
     }
 
+    template <> struct hash<Vec2>
+    {
+        size_t operator()(const Vec2& value) const
+        {
+            const char* asChar = (char*)(&value);
+            return HashPtr(asChar, sizeof(Vec2));
+        }
+    };
+
     template <> struct hash<Vec3>
     {
         size_t operator()(const Vec3& value) const
         {
             const char* asChar = (char*)(&value);
             return HashPtr(asChar, sizeof(Vec3));
+        }
+    };
+
+    template <> struct hash<Vec4>
+    {
+        size_t operator()(const Vec4& value) const
+        {
+            const char* asChar = (char*)(&value);
+            return HashPtr(asChar, sizeof(Vec4));
         }
     };
 
@@ -521,39 +730,61 @@ namespace Serialization
     template<>
     struct Serializer<Vec2> : ObjectSerializer<Vec2>
     {
-	template<typename Stream>
+		template<typename Stream>
     	static void Serialize(Stream& stream, const Vec2& value)
-	{
-		Write(stream, "x", value.x);
-		Write(stream, "y", value.y);
-	}
+		{
+			Write(stream, "x", value.x);
+			Write(stream, "y", value.y);
+		}
 
     	template<typename Stream>
     	static void Deserialize(Stream& stream, Vec2& value)
-	{
-		Read(stream, "x", value.x);
-		Read(stream, "y", value.y);
-	}
+		{
+			Read(stream, "x", value.x);
+			Read(stream, "y", value.y);
+		}
     };
 
     template<>
     struct Serializer<Vec3> : ObjectSerializer<Vec3>
     {   
-	template<typename Stream>
+		template<typename Stream>
     	static void Serialize(Stream& stream, const Vec3& value)
-	{
-		Write(stream, "x", value.x);
-		Write(stream, "y", value.y);
-		Write(stream, "z", value.z);
-	}
+		{
+			Write(stream, "x", value.x);
+			Write(stream, "y", value.y);
+			Write(stream, "z", value.z);
+		}
 
     	template<typename Stream>
     	static void Deserialize(Stream& stream, Vec3& value)
-	{
-		Read(stream, "x", value.x);
-		Read(stream, "y", value.y);
-		Read(stream, "z", value.z);
-	}
+		{
+			Read(stream, "x", value.x);
+			Read(stream, "y", value.y);
+			Read(stream, "z", value.z);
+		}
+    };
+
+	template<>
+    struct Serializer<Vec4> : ObjectSerializer<Vec4>
+    {   
+		template<typename Stream>
+    	static void Serialize(Stream& stream, const Vec4& value)
+		{
+			Write(stream, "x", value.x);
+			Write(stream, "y", value.y);
+			Write(stream, "z", value.z);
+			Write(stream, "w", value.w);
+		}
+
+    	template<typename Stream>
+    	static void Deserialize(Stream& stream, Vec4& value)
+		{
+			Read(stream, "x", value.x);
+			Read(stream, "y", value.y);
+			Read(stream, "z", value.z);
+			Read(stream, "w", value.w);
+		}
     };
     
     template<>
@@ -561,32 +792,23 @@ namespace Serialization
     {
     	template<typename Stream>
     	static void Serialize(Stream& stream, const Location& value)
-    	{
-#ifdef _DEBUG
-            bool valid = value.GetValid();
-       	    Write(stream, "Valid", valid);
-            if (value.GetValid())
-	    {
-	         Vec3 vec = value.GetVector();
-		Write(stream, "Vector", vec);
-	    }
-#else
-	    Write(stream, "Data", value.GetData());
-#endif
-    	}
+		{
+			bool valid = value.GetValid();
+			Write(stream, "Valid", valid);
+			if (value.GetValid())
+			{
+				Write(stream, "Vector", value.m_vec);
+			}
+		}
 
     	template<typename Stream>
     	static void Deserialize(Stream& stream, Location& value)
     	{
-#ifdef _DEBUG
             value.SetValid(Read<Stream, bool>(stream, "Valid"));
             if (value.GetValid())
             {
-                value.SetVector(Read<Stream, Vec3>(stream, "Vector"));
+				Read(stream, "Vector", value.m_vec);
             }
-#else
-            value.SetData(Read<Stream, int>(stream, "Data"));
-#endif
     	}
     };
 

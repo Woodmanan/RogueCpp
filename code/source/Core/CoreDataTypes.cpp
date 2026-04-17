@@ -5,56 +5,40 @@
 #include "Debug/Profiling.h"
 #include "Game/ThreadManagers.h"
 
-Vec3 Vec3::WrapPosition(Vec3 inPosition)
+Vec4 Vec4::WrapPosition(Vec4 inPosition)
 {
-    return Vec3(
-        ModulusNegative<short>(inPosition.x, LOCATION_MAX_X),
-        ModulusNegative<short>(inPosition.y, LOCATION_MAX_Y),
-        ModulusNegative<short>(inPosition.z, LOCATION_MAX_Z)
+    return Vec4(
+        ModulusNegative<int>(inPosition.x, LOCATION_MAX_X),
+        ModulusNegative<int>(inPosition.y, LOCATION_MAX_Y),
+        ModulusNegative<int>(inPosition.z, LOCATION_MAX_Z),
+        ModulusNegative<int>(inPosition.w, LOCATION_MAX_W)
     );
 }
 
-Vec3 Vec3::WrapChunk(Vec3 inChunk)
+Vec4 Vec4::WrapChunk(Vec4 inChunk)
 {
-    return Vec3(
-        ModulusNegative<short>(inChunk.x, CHUNK_MAX_X),
-        ModulusNegative<short>(inChunk.y, CHUNK_MAX_Y),
-        ModulusNegative<short>(inChunk.z, CHUNK_MAX_Z)
+    return Vec4(
+        ModulusNegative<int>(inChunk.x, CHUNK_MAX_X),
+        ModulusNegative<int>(inChunk.y, CHUNK_MAX_Y),
+        ModulusNegative<int>(inChunk.z, CHUNK_MAX_Z),
+        ModulusNegative<int>(inChunk.w, CHUNK_MAX_W)
     );
 }
 
 Location::Location()
 {
-#ifdef _DEBUG
-    m_valid = false;
-    m_x = 0;
-    m_y = 0;
-    m_z = 0;
-#else
-    m_data = invalidMask;
-#endif
+	m_vec = Vec4(0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF);
+
+	ASSERT(!GetValid());
 
 #ifdef LINK_TILE
     RefreshLinkedTile();
 #endif
 }
 
-Location::Location(ushort x, ushort y, ushort z)
-{
-    static_assert((xSize + ySize + zSize + 1) == 32, "Location will not fit into an int!");
-    ASSERT(x < (1 << xSize));
-    ASSERT(y < (1 << ySize));
-    ASSERT(z < (1 << zSize));
-#ifdef _DEBUG
-    m_x = x;
-    m_y = y;
-    m_z = z;
-    m_valid = true;
-#else
-    m_data = ((x << (ySize + zSize)) & xMask) |
-             ((y << (zSize))         & yMask) |
-             ( z                     & zMask);
-#endif
+Location::Location(uint x, uint y, uint z, uint w)
+{	
+	SetVector(Vec4(x,y,z,w));
 
 #ifdef LINK_TILE
     RefreshLinkedTile();
@@ -63,94 +47,74 @@ Location::Location(ushort x, ushort y, ushort z)
 
 bool Location::GetValid() const
 {
-#ifdef _DEBUG
-    return m_valid;
-#else
-    return !(m_data & invalidMask);
-#endif
+    return !(m_vec.x & invalidMask);
 }
 
 void Location::SetValid(bool valid)
 {
-#ifdef _DEBUG
-    m_valid = valid;
-#else
     if (valid)
     {
-        m_data &= (~invalidMask);
+        m_vec.x &= (~invalidMask);
     }
     else
     {
-        m_data |= invalidMask;
+        m_vec.x |= invalidMask;
     }
-#endif
 }
 
-ushort Location::x() const
+uint Location::x() const
 {
     ASSERT(GetValid());
-#ifdef _DEBUG
-    return m_x;
-#else
-    return (ushort)((m_data & xMask) >> (ySize + zSize));
-#endif
+    return (uint) m_vec.x;
 }
 
-ushort Location::y() const
+uint Location::y() const
 {
     ASSERT(GetValid());
-#ifdef _DEBUG
-    return m_y;
-#else
-    return (ushort)((m_data & yMask) >> (zSize));
-#endif
+    return (uint) m_vec.y;
 }
 
-ushort Location::z() const
+uint Location::z() const
 {
     ASSERT(GetValid());
-#ifdef _DEBUG
-        return m_z;
-#else
-    return (ushort)(m_data & zMask);
-#endif
+    return (uint) m_vec.z;
 }
 
-Vec3 Location::GetVector() const
+uint Location::w() const
 {
-    return Vec3(x(), y(), z());
+    ASSERT(GetValid());
+    return (uint) m_vec.w;
 }
 
-void Location::SetVector(Vec3 vector)
+Vec4 Location::GetVector() const
 {
-    ASSERT(vector.x < (1 << xSize));
-    ASSERT(vector.y < (1 << ySize));
-    ASSERT(vector.z < (1 << zSize));
-#ifdef _DEBUG
-    m_x = vector.x;
-    m_y = vector.y;
-    m_z = vector.z;
-    m_valid = true;
-#else
-    m_data = ((vector.x << (ySize + zSize)) & xMask) |
-             ((vector.y << (zSize))         & yMask) |
-             ( vector.z                     & zMask);
-#endif
+	return m_vec;
+}
+
+void Location::SetVector(Vec4 vector)
+{
+	ASSERT(vector.x >= 0 && vector.x < LOCATION_MAX_X);
+    ASSERT(vector.y >= 0 && vector.y < LOCATION_MAX_Y);
+    ASSERT(vector.z >= 0 && vector.z < LOCATION_MAX_Z);
+    ASSERT(vector.w >= 0 && vector.w < LOCATION_MAX_W);
+
+	m_vec = vector;
+	ASSERT(GetValid());
 }
 
 Vec2 Location::AsVec2()
 {
-    return Vec2(x(), y());
+	return (Vec2) GetVector();
 }
 
-Vec3 Location::GetChunkPosition()
+Vec4 Location::GetChunkPosition()
 {
-    return Vec3(x() / CHUNK_SIZE_X, y() / CHUNK_SIZE_Y, z() / CHUNK_SIZE_Z);
+	return m_vec / Vec4(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_SIZE_W);
 }
 
-Vec3 Location::GetChunkLocalPosition()
+Vec4 Location::GetChunkLocalPosition()
 {
-    return Vec3(x() % CHUNK_SIZE_X, y() % CHUNK_SIZE_Y, z() % CHUNK_SIZE_Z);
+	return m_vec % Vec4(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_SIZE_W);
 }
 
 Tile& Location::GetTile()
@@ -194,8 +158,8 @@ Location Location::GetNeighbor(Direction direction)
     }
     else
     {
-        Vec3 offset = VectorFromDirection(direction);
-        return Location(Vec3::WrapPosition(GetVector() + offset));
+        Vec4 offset = VectorFromDirection(direction);
+        return Location(Vec4::WrapPosition(m_vec + offset));
     }
 }
 

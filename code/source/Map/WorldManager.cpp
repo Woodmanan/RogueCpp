@@ -3,7 +3,7 @@
 #include "Game/Game.h"
 #include "Core/Math/Perlin.h"
 
-float SimplexNoiseProvider::GetValue(Vec3 worldPosition)
+float SimplexNoiseProvider::GetValue(Vec4 worldPosition)
 {
     double x = worldPosition.x * 0.05f;
     double y = worldPosition.y* 0.05f;
@@ -12,7 +12,7 @@ float SimplexNoiseProvider::GetValue(Vec3 worldPosition)
     return Perlin::OctavePerlin(x, y, z, 5, .5f);
 }
 
-Tile ValueToTileConverter::GetTile(Vec3 tilePosition)
+Tile ValueToTileConverter::GetTile(Vec4 tilePosition)
 {
     Tile tile;
     float value = m_provider->GetValue(tilePosition);
@@ -68,22 +68,25 @@ void WorldManager::Init()
     m_rootProvider = converter;
 }
 
-Chunk* WorldManager::LoadChunk(Vec3 chunkPosition)
+Chunk* WorldManager::LoadChunk(Vec4 chunkPosition)
 {
     ROGUE_PROFILE_SECTION("WorldManager::LoadChunk");
     Chunk* newChunk = new Chunk(chunkPosition);
-    Vec3 chunkCorner = chunkPosition * Vec3(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
+    Vec4 chunkCorner = chunkPosition * Vec4(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_SIZE_W);
 
     for (int x = 0; x < CHUNK_SIZE_X; x++)
     {
         for (int y = 0; y < CHUNK_SIZE_Y; y++)
         {
             for (int z = 0; z < CHUNK_SIZE_Z; z++)
-            {
-                Vec3 localPos = Vec3(x, y, z);
-                Vec3 worldPos = chunkCorner + localPos;
-                newChunk->SetTile(localPos, m_rootProvider->GetTile(worldPos));
-            }
+			{
+				for (int w = 0; w < CHUNK_SIZE_W; w++)
+				{
+					Vec4 localPos = Vec4(x, y, z);
+					Vec4 worldPos = chunkCorner + localPos;
+					newChunk->SetTile(localPos, m_rootProvider->GetTile(worldPos));
+				}
+			}
         }
     }
 
@@ -96,8 +99,11 @@ Chunk* WorldManager::LoadChunk(Vec3 chunkPosition)
         {
             for (int z = 0; z < CHUNK_SIZE_Z; z++)
             {
-                newChunk->GetTile(Vec3(x, y, z)).m_heat = defaultHeat;
-            }
+	            for (int w = 0; w < CHUNK_SIZE_W; w++)
+            	{
+                	newChunk->GetTile(Vec4(x, y, z, w)).m_heat = defaultHeat;
+            	}
+			}
         }
     }
 

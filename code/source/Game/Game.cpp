@@ -195,7 +195,7 @@ void Game::HandleInput(const Input& input)
 		if (Pathfinding::GetPath(m_player->GetLocation(), next, settings, locations) && locations.size() == 2)
 		{
 			m_player->Move(offset);
-			m_playerData.GetCurrentMemory().Move(Vector2FromDirection(offset));
+			m_playerData.GetCurrentMemory().Move(VectorFromDirection(offset));
 
 			m_player->GetView().SetRadius(30);
 			LOS::Calculate(m_player);
@@ -270,7 +270,7 @@ void Game::HandleInput(const Input& input)
 		break;
 	case EInputType::RequestPath:
 		{
-			Vec3 offset = input.Get<RequestPath>()->m_localOffset;
+			Vec4 offset = input.Get<RequestPath>()->m_localOffset;
 			Location playerLoc = m_player->GetLocation();
 			Location offsetLoc = Location(playerLoc.GetVector() + offset);
 
