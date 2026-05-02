@@ -6,4 +6,3 @@ Mud,3,2,0.6,2,~,~,#7B3F00,Liquid
 Wood,1,1,1,1,.,#,#Bb7F00,Solid
 Fire,0,-1,1,1,F,F,#ff9a30,Immaterial
 Air,0.1,-1,5,0.2,_,,#DEF4FC,Gas
-Air2,0.1,-1,5,0.2,_,,#DEF4FC,Gas

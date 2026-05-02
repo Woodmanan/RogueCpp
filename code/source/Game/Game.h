@@ -67,6 +67,8 @@ public:
 	void Save(std::string filename);
 	void Load(std::string filename);
 
+	THandle<ChunkMap> GetMap() const { return map; }
+
 private:
 	void InitNewGame(uint seed = 0);
 	void MainLoop();
@@ -90,6 +92,10 @@ private:
 	//Player controls
 	THandle<Monster> m_player;
 	PlayerData m_playerData;
+
+	//Debug Temp - portal storage
+	Location m_portalLocation;
+	Direction m_portalDirection;
 
 	uint m_seed;
 };

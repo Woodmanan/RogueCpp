@@ -2,6 +2,7 @@
 
 class Tile;
 class TileNeighbors;
+class TileStats;
 
 template<typename T>
 class THandle;

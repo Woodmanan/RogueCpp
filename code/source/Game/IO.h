@@ -20,7 +20,8 @@ enum EInputType
 
 	DEBUG_FIRE,
 	DEBUG_MAKE_STONE,
-	DEBUG_LOAD_RESOURCES
+	DEBUG_LOAD_RESOURCES,
+	DEBUG_ADD_PORTAL
 };
 
 class InputBase
@@ -93,6 +94,22 @@ public:
 	void Deserialize(DefaultStream& stream);
 
 	std::string fileName = "";
+};
+
+//====================================================
+//Debug outputs
+//====================================================
+template<>
+class TInput<DEBUG_ADD_PORTAL> : public TInputBase<DEBUG_ADD_PORTAL>
+{
+public:
+	TInput() {}
+	TInput(Direction direction) : m_direction(direction) {}
+
+	void Serialize(DefaultStream& stream);
+	void Deserialize(DefaultStream& stream);
+
+	Direction m_direction = North;
 };
 
 struct Input

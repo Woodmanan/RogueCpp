@@ -88,6 +88,7 @@ uint Location::w() const
 
 Vec4 Location::GetVector() const
 {
+    ASSERT(GetValid());
 	return m_vec;
 }
 
@@ -104,38 +105,41 @@ void Location::SetVector(Vec4 vector)
 
 Vec2 Location::AsVec2()
 {
+    ASSERT(GetValid());
 	return (Vec2) GetVector();
 }
 
 Vec4 Location::GetChunkPosition()
 {
+    ASSERT(GetValid());
 	return m_vec / Vec4(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_SIZE_W);
 }
 
 Vec4 Location::GetChunkLocalPosition()
 {
+    ASSERT(GetValid());
 	return m_vec % Vec4(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_SIZE_W);
 }
 
-Tile& Location::GetTile()
+Tile& Location::GetTile() const
 {
-    //ASSERT(InMap());
+	ASSERT(GetValid());
     return GetDataManager()->ResolveByTypeIndex<ChunkMap>(0)->GetTile(*this);
 }
 
-Tile* Location::operator ->()
+Tile* Location::operator ->() const
 {
-    //ASSERT(InMap());
+	ASSERT(GetValid());
     return &GetDataManager()->ResolveByTypeIndex<ChunkMap>(0)->GetTile(*this);
 }
 
 Location Location::GetNeighbor(Direction direction)
 {
-    Tile& tile = GetTile();
-    THandle<TileNeighbors> neighbors = tile.m_stats.IsValid() ? tile.m_stats->m_neighbors : THandle<TileNeighbors>();
-
-    if (neighbors.IsValid())
+    ASSERT(GetValid());
+    if (HasNeighbors())
     {
+		THandle<TileNeighbors> neighbors = GetNeighbors();
+
         switch (direction)
         {
         case North:
@@ -163,13 +167,56 @@ Location Location::GetNeighbor(Direction direction)
     }
 }
 
+void Location::SetNeighbor(Direction direction, Location location, Direction rotation)
+{
+    ASSERT(GetValid());
+	THandle<TileNeighbors> neighbors = GetOrCreateNeighbors();
+	switch (direction)
+	{
+		case North:
+			neighbors->N = location;
+			neighbors->N_Direction = rotation;
+			break;
+		case NorthEast:
+			neighbors->NE = location;
+			neighbors->NE_Direction = rotation;
+			break;
+		case East:
+			neighbors->E = location;
+			neighbors->E_Direction = rotation;
+			break;
+		case SouthEast:
+			neighbors->SE = location;
+			neighbors->SE_Direction = rotation;
+			break;
+		case South:
+			neighbors->S = location;
+			neighbors->S_Direction = rotation;
+			break;
+		case SouthWest:
+			neighbors->SW = location;
+			neighbors->SW_Direction = rotation;
+			break;
+		case West:
+			neighbors->W = location;
+			neighbors->W_Direction = rotation;
+			break;
+		case NorthWest:
+			neighbors->NW = location;
+			neighbors->NW_Direction = rotation;
+			break;
+	}
+}
+
 std::pair<Location, Direction> Location::Traverse(Vec2 offset, Direction rotation)
 {
+    ASSERT(GetValid());
     return Traverse(offset.x, offset.y, rotation);
 }
 
 std::pair<Location, Direction> Location::Traverse(short xOffset, short yOffset, Direction rotation)
 {
+    ASSERT(GetValid());
     ASSERT(xOffset >= -1 && xOffset <= 1);
     ASSERT(yOffset >= -1 && yOffset <= 1);
 
@@ -225,21 +272,23 @@ std::pair<Location, Direction> Location::Traverse(short xOffset, short yOffset, 
 std::pair<Location, Direction> Location::Traverse(Direction direction, Direction rotation)
 {
     ROGUE_PROFILE_SECTION("LOS::Traverse");
+    ASSERT(GetValid());
     Direction finalDirection = Rotate(direction, rotation);
 
-    if (!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid())
+    if (HasNeighbors())
     {
-        return _Traverse_No_Neighbor(finalDirection);
+        return _Traverse_Neighbors(finalDirection);
     }
     else
     {
-        return _Traverse_Neighbors(finalDirection);
+        return _Traverse_No_Neighbor(finalDirection);
     }
 }
 
 std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction direction)
 {
     ROGUE_PROFILE_SECTION("LOS::_Traverse_No_Neighbor");
+    ASSERT(GetValid());
     ASSERT((!GetTile().m_stats.IsValid() || !GetTile().m_stats->m_neighbors.IsValid()));
     return std::make_pair(GetNeighbor(direction), North);
 }
@@ -247,6 +296,7 @@ std::pair<Location, Direction> Location::_Traverse_No_Neighbor(Direction directi
 std::pair<Location, Direction> Location::_Traverse_Neighbors(Direction direction)
 {
     ROGUE_PROFILE_SECTION("LOS::_Traverse_Neighbors");
+    ASSERT(GetValid());
     ASSERT(GetTile().m_stats.IsValid());
     THandle<TileNeighbors> neighbors = GetTile().m_stats->m_neighbors;
     ASSERT(neighbors.IsValid());
@@ -296,21 +346,91 @@ std::pair<Location, Direction> Location::_Traverse_Neighbors(Direction direction
     return std::make_pair(foundTile, foundDirection);
 }
 
-THandle<TileNeighbors> Location::GetNeighbors()
+bool Location::UsingInstanceData() const
 {
-    if (GetValid())
-    {
-        THandle<TileStats> stats = GetTile().m_stats;
-        if (stats.IsValid())
-        {
-            THandle<TileNeighbors> neighbors = stats->m_neighbors;
-            if (neighbors.IsValid())
-            {
-                return neighbors;
-            }
-        }
-    }
-    return THandle<TileNeighbors>();
+	ASSERT(GetValid());
+    return GetTile().UsingInstanceData();
+}
+
+void Location::CreateInstanceData() const
+{
+	ASSERT(GetValid());
+	ASSERT(!UsingInstanceData());
+	GetTile().CreateInstanceData();
+}
+
+THandle<TileStats> Location::GetOrCreateInstanceData() const
+{
+	if (!UsingInstanceData())
+	{
+		CreateInstanceData();
+	}
+
+	return GetInstanceData();
+}
+
+THandle<TileStats> Location::GetInstanceData() const
+{
+	ASSERT(UsingInstanceData());
+
+	return GetTile().m_stats;
+}
+
+bool Location::HasNeighbors() const
+{
+	return UsingInstanceData() && GetInstanceData()->m_neighbors.IsValid();
+}
+
+void Location::CreateDefaultNeighbors() const
+{
+	ASSERT(GetValid());
+	if (HasNeighbors())
+	{
+		return;
+	}
+
+	THandle<TileStats> stats = GetOrCreateInstanceData();
+	THandle<TileNeighbors> neighbors = GetDataManager()->Allocate<TileNeighbors>();
+	stats->m_neighbors = neighbors;
+
+	neighbors->N  = Location(Vec4::WrapPosition(m_vec + Vec4(0, 1)));
+	neighbors->NE = Location(Vec4::WrapPosition(m_vec + Vec4(1, 1)));
+	neighbors->E  = Location(Vec4::WrapPosition(m_vec + Vec4(1, 0)));
+	neighbors->SE = Location(Vec4::WrapPosition(m_vec + Vec4(1, -1)));
+	neighbors->S  = Location(Vec4::WrapPosition(m_vec + Vec4(0, -1)));
+	neighbors->SW = Location(Vec4::WrapPosition(m_vec + Vec4(-1, -1)));
+	neighbors->W  = Location(Vec4::WrapPosition(m_vec + Vec4(-1, 0)));
+	neighbors->NW = Location(Vec4::WrapPosition(m_vec + Vec4(-1, 1)));
+	
+	neighbors->N_Direction = North;
+	neighbors->NE_Direction = North;
+	neighbors->E_Direction = North;
+	neighbors->SE_Direction = North;
+	neighbors->S_Direction = North;
+	neighbors->SW_Direction = North;
+	neighbors->W_Direction = North;
+	neighbors->NW_Direction = North;
+
+	ASSERT(HasNeighbors());
+}
+
+THandle<TileStats> Location::GetOrCreateNeighbors() const
+{
+	ASSERT(GetValid());
+	if (!HasNeighbors())
+	{
+		CreateDefaultNeighbors();
+	}
+
+	return GetNeighbors();
+}
+
+THandle<TileNeighbors> Location::GetNeighbors() const
+{
+	ASSERT(GetValid());
+	ASSERT(HasNeighbors());
+
+	return GetInstanceData()->m_neighbors;
 }
 
 #ifdef LINK_TILE

@@ -5,6 +5,7 @@
 #include "Data/RegisterSaveTypes.h"
 #include "Core/Materials/Materials.h"
 #include "Map/Map.h"
+#include "Map/MapUtils.h"
 #include "Map/WorldManager.h"
 #include "LOS/TileMemory.h"
 #include "Core/Pathfinding/Pathfinding.h"
@@ -221,6 +222,21 @@ void Game::HandleInput(const Input& input)
 	break;
 	case EInputType::DEBUG_MAKE_STONE:
 		map->SetTile(m_player->GetLocation(), 3);
+		break;
+	case EInputType::DEBUG_ADD_PORTAL:
+		if (!m_portalLocation.GetValid())
+		{
+			m_portalLocation = m_player->GetLocation();
+			m_portalDirection = Rotate(input.Get<DEBUG_ADD_PORTAL>()->m_direction, m_player->GetRotation());
+		}
+		else
+		{
+			Location exitLocation = m_player->GetLocation();
+			Direction exitDirection = Rotate(input.Get<DEBUG_ADD_PORTAL>()->m_direction, m_player->GetRotation());
+
+			MapUtils::CreatePortal(m_portalLocation, m_portalDirection, exitLocation, exitDirection);
+			m_portalLocation.SetValid(false);
+		}
 		break;
 	case EInputType::BeginNewGame:
 		InitNewGame();

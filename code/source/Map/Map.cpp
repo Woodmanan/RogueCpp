@@ -13,9 +13,9 @@ bool Tile::UsingInstanceData() const
     return m_stats.IsValid();
 }
 
-void Tile::CreateInstanceData()
+void Tile::CreateInstanceData() 
 {
-    ASSERT(!UsingInstanceData());
+	ASSERT(!UsingInstanceData());
     m_stats = GetDataManager()->Allocate<TileStats>();
     m_stats->m_floorMaterials = MaterialContainer(m_backingTile->m_defaultFloorMaterials);
     m_stats->m_volumeMaterials = MaterialContainer(m_backingTile->m_defaultVolumeMaterials);
@@ -23,7 +23,7 @@ void Tile::CreateInstanceData()
 
 pair<int, bool> Tile::GetVisibleMaterial() const
 {
-    if (UsingInstanceData())
+    if (m_stats.IsValid())
     {
         for (int i = 0; i < m_stats->m_volumeMaterials.m_materials.size(); i--)
         {
@@ -67,35 +67,6 @@ pair<int, bool> Tile::GetVisibleMaterial() const
 
         return { -1, false };
     }
-}
-
-void Tile::BreakWall()
-{
-    ASSERT(m_wall);
-
-    if (!UsingInstanceData())
-    {
-        CreateInstanceData();
-    }
-
-    STACKARRAY(Material, materialsToMove, 20);
-    for (const Material& material : m_stats->m_volumeMaterials.m_materials)
-    {
-        MaterialDefinition definition = GetMaterialManager()->GetMaterialDefinition(material);
-        if (definition.phase == Phase::Solid)
-        {
-            materialsToMove.push_back(material);
-        }
-    }
-
-    for (const Material& material : materialsToMove)
-    {
-        m_stats->m_volumeMaterials.RemoveMaterial(material);
-        m_stats->m_floorMaterials.AddMaterial(material);
-    }
-
-    m_wall = false;
-    m_dirty = true;
 }
 
 Chunk::Chunk(Vec4 chunkLocation)

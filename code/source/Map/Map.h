@@ -87,12 +87,12 @@ public:
     bool operator==(const Tile& other);
 
     //Flyweight pattern - check if we have had to create data and create it when needed
-    bool UsingInstanceData() const;
-    void CreateInstanceData();
+    
     pair<int, bool> GetVisibleMaterial() const;
 
-    //Util functions
-    void BreakWall();
+	//Helpers
+	bool UsingInstanceData() const;
+    void CreateInstanceData();
 };
 
 class Chunk

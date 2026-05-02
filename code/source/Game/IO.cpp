@@ -40,6 +40,16 @@ void TInput<LoadSaveGame>::Deserialize(DefaultStream& stream)
 	Serialization::Read(stream, "File Name", fileName);
 }
 
+void TInput<DEBUG_ADD_PORTAL>::Serialize(DefaultStream& stream)
+{
+	Serialization::Write(stream, "Direction", m_direction);
+}
+
+void TInput<DEBUG_ADD_PORTAL>::Deserialize(DefaultStream& stream)
+{
+	Serialization::Read(stream, "Direction", m_direction);
+}
+
 void TOutput<ViewUpdated>::Serialize(DefaultStream& stream)
 {
 	Serialization::WriteRawBytes(stream, "data", m_data);

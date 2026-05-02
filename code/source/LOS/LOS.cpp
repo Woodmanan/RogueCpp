@@ -390,8 +390,7 @@ namespace LOS
 
 	bool RequiresRecast(Location location)
 	{
-		THandle<TileNeighbors> neighbors = location.GetNeighbors();
-		return neighbors.IsValid();
+		return location.GetValid() && location.HasNeighbors();
 	}
 
 	bool BlocksVision(Location location)

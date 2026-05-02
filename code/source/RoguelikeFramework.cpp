@@ -186,43 +186,43 @@ void RenderBresenham(Window* window, Vec2 endpoint)
     }
 }
 
-Direction ReadDirection(Direction currentRotation)
-{
-    Direction direction = North;
 
+
+bool ReadDirection(Direction& outDirection)
+{
     switch (terminal_read())
     {
     case EKey::K:
     case EKey::UP:
-        direction = North;
-        break;
+        outDirection = North;
+		return true;
     case EKey::U:
-        direction = NorthEast;
-        break;
+        outDirection = NorthEast;
+		return true;
     case EKey::L:
     case EKey::RIGHT:
-        direction = East;
-        break;
+        outDirection = East;
+		return true;
     case EKey::N:
-        direction = SouthEast;
-        break;
+        outDirection = SouthEast;
+		return true;
     case EKey::J:
     case EKey::DOWN:
-        direction = South;
-        break;
+        outDirection = South;
+		return true;
     case EKey::B:
-        direction = SouthWest;
-        break;
+        outDirection = SouthWest;
+		return true;
     case EKey::H:
     case EKey::LEFT:
-        direction = West;
-        break;
+        outDirection = West;
+		return true;
     case EKey::Y:
-        direction = NorthWest;
-        break;
+        outDirection = NorthWest;
+		return true;
     }
 
-    return Rotate(direction, currentRotation);
+    return false;
 }
 
 void SetupResources()
@@ -560,6 +560,15 @@ int main(int argc, char* argv[])
             game.CreateInput<DEBUG_LOAD_RESOURCES>();
             break;
         }
+		case EKey::P:
+		{
+			Direction dir;
+			if (ReadDirection(dir))
+			{
+				game.CreateInput<DEBUG_ADD_PORTAL>(dir);
+			}
+			break;
+		}
         case EKey::C:
             if (renderFlags & color)
             {

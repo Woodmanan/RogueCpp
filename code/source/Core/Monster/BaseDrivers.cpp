@@ -1,5 +1,6 @@
 #include "BaseDrivers.h"
 #include "Map/Map.h"
+#include "Map/MapUtils.h"
 
 using namespace Resources;
 
@@ -41,7 +42,7 @@ void MiningDriver::OnMovedOnTile(Monster& monster, Location location, float& cos
 {
 	if (location->m_wall)
 	{
-		location->BreakWall();
+		MapUtils::BreakWall(location);
 	}
 }
 

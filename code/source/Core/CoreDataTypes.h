@@ -510,8 +510,8 @@ public:
     Vec4 GetChunkLocalPosition();
 
 
-    Tile& GetTile();
-    Tile* operator ->();
+    Tile& GetTile() const;
+    Tile* operator ->() const;
 
     Location GetNeighbor(Direction direction);
 
@@ -540,7 +540,19 @@ public:
     std::pair<Location, Direction> _Traverse_No_Neighbor(Direction direction);
     std::pair<Location, Direction> _Traverse_Neighbors(Direction direction);
 
-    THandle<TileNeighbors> GetNeighbors();
+	//Tile controls
+	bool UsingInstanceData() const;
+    void CreateInstanceData() const;
+	THandle<TileStats> GetOrCreateInstanceData() const;
+	THandle<TileStats> GetInstanceData() const;
+
+	bool HasNeighbors() const;
+    void CreateDefaultNeighbors() const;
+	THandle<TileStats> GetOrCreateNeighbors() const;
+    THandle<TileNeighbors> GetNeighbors() const;
+
+	void SetNeighbor(Direction direction, Location location, Direction rotation);
+
 
     static const uint invalidMask = 0x80000000;
 
